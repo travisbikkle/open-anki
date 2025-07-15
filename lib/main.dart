@@ -29,7 +29,6 @@ class ImportAnkiPage extends StatefulWidget {
 }
 
 class _ImportAnkiPageState extends State<ImportAnkiPage> {
-  ApkgParseResult? result;
   String? error;
   bool loading = false;
 
@@ -46,10 +45,12 @@ class _ImportAnkiPageState extends State<ImportAnkiPage> {
       }
       String path = picked.files.single.path!;
       final res = await parseApkg(path: path);
-      setState(() {
-        result = res;
-        loading = false;
-      });
+      setState(() { loading = false; });
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CardReviewPage(result: res)),
+      );
     } catch (e) {
       setState(() {
         error = e.toString();
@@ -76,10 +77,6 @@ class _ImportAnkiPageState extends State<ImportAnkiPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
             if (error != null) Text('错误: $error', style: const TextStyle(color: Colors.red)),
-            if (result != null) ...[
-              const SizedBox(height: 16),
-              Expanded(child: CardListView(result: result!)),
-            ]
           ],
         ),
       ),
@@ -87,36 +84,84 @@ class _ImportAnkiPageState extends State<ImportAnkiPage> {
   }
 }
 
-class CardListView extends StatelessWidget {
+class CardReviewPage extends StatefulWidget {
   final ApkgParseResult result;
-  const CardListView({required this.result, super.key});
+  const CardReviewPage({required this.result, super.key});
+
+  @override
+  State<CardReviewPage> createState() => _CardReviewPageState();
+}
+
+class _CardReviewPageState extends State<CardReviewPage> {
+  int currentIndex = 0;
+
+  void nextCard() {
+    if (currentIndex < widget.result.notes.length - 1) {
+      setState(() { currentIndex++; });
+    }
+  }
+
+  void prevCard() {
+    if (currentIndex > 0) {
+      setState(() { currentIndex--; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: result.notes.length,
-      itemBuilder: (context, idx) {
-        final note = result.notes[idx];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (int i = 0; i < note.flds.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: _FieldContent(
-                      content: note.flds[i],
-                      mediaFiles: result.mediaFiles,
+    final note = widget.result.notes[currentIndex];
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('刷卡 (${currentIndex + 1}/${widget.result.notes.length})'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 0; i < note.flds.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: _FieldContent(
+                              content: note.flds[i],
+                              mediaFiles: widget.result.mediaFiles,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton(
+                  onPressed: currentIndex > 0 ? prevCard : null,
+                  child: const Text('上一题'),
+                ),
+                ElevatedButton(
+                  onPressed: currentIndex < widget.result.notes.length - 1 ? nextCard : null,
+                  child: const Text('下一题'),
+                ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
