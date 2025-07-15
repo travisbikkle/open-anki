@@ -128,18 +128,19 @@ class _FieldContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 查找图片和音频引用
+    // 支持 <br> 换行
+    String normalized = content.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
     final imgReg = RegExp('<img[^>]*src=["\"]([^"\'>]+)["\"][^>]*>');
     final soundReg = RegExp(r'\[sound:([^\]]+)\]');
     List<InlineSpan> spans = [];
     int last = 0;
     final matches = [
-      ...imgReg.allMatches(content),
-      ...soundReg.allMatches(content),
+      ...imgReg.allMatches(normalized),
+      ...soundReg.allMatches(normalized),
     ]..sort((a, b) => a.start.compareTo(b.start));
     for (final m in matches) {
       if (m.start > last) {
-        spans.add(TextSpan(text: content.substring(last, m.start)));
+        spans.add(TextSpan(text: normalized.substring(last, m.start)));
       }
       if (m.groupCount > 0) {
         final fname = m.group(1)!;
@@ -159,10 +160,14 @@ class _FieldContent extends StatelessWidget {
       }
       last = m.end;
     }
-    if (last < content.length) {
-      spans.add(TextSpan(text: content.substring(last)));
+    if (last < normalized.length) {
+      spans.add(TextSpan(text: normalized.substring(last)));
     }
-    return RichText(text: TextSpan(style: const TextStyle(color: Colors.black, fontSize: 16), children: spans));
+    return RichText(
+      text: TextSpan(style: const TextStyle(color: Colors.black, fontSize: 16), children: spans),
+      textAlign: TextAlign.left,
+      softWrap: true,
+    );
   }
 }
 
