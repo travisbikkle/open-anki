@@ -16,7 +16,7 @@ class AnkiDb {
     final path = join(dbPath, 'anki_cards.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE notes (
@@ -31,7 +31,8 @@ class AnkiDb {
         await db.execute('''
           CREATE TABLE progress (
             deck_id TEXT PRIMARY KEY,
-            current_index INTEGER
+            current_index INTEGER,
+            last_reviewed INTEGER
           )
         ''');
       },
@@ -49,6 +50,9 @@ class AnkiDb {
         }
         if (oldVersion < 4) {
           await db.execute('ALTER TABLE notes ADD COLUMN deck_name TEXT');
+        }
+        if (oldVersion < 5) {
+          await db.execute('ALTER TABLE progress ADD COLUMN last_reviewed INTEGER');
         }
       },
     );
@@ -76,7 +80,13 @@ class AnkiDb {
 
   static Future<List<Map<String, dynamic>>> getAllDecks() async {
     final dbClient = await db;
-    return await dbClient.rawQuery('SELECT deck_id, deck_name, COUNT(*) as card_count FROM notes GROUP BY deck_id, deck_name');
+    return await dbClient.rawQuery('''
+      SELECT n.deck_id, n.deck_name, COUNT(*) as card_count, p.last_reviewed
+      FROM notes n
+      LEFT JOIN progress p ON n.deck_id = p.deck_id
+      GROUP BY n.deck_id, n.deck_name, p.last_reviewed
+      ORDER BY p.last_reviewed DESC NULLS LAST
+    ''');
   }
 
   static Future<void> deleteDeck(String deckId) async {
@@ -101,5 +111,14 @@ class AnkiDb {
       return result.first['current_index'] as int;
     }
     return 0;
+  }
+
+  static Future<void> updateLastReviewed(String deckId) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'progress',
+      {'deck_id': deckId, 'last_reviewed': DateTime.now().millisecondsSinceEpoch},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 } 

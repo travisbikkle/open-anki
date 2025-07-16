@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../widgets/deck_progress_tile.dart';
 import '../widgets/dashboard.dart';
+import '../db.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -10,7 +11,6 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final decks = ref.watch(decksProvider);
     final totalCards = decks.fold<int>(0, (sum, d) => sum + d.cardCount);
-    // 这里已学卡片数可后续扩展，现在用0
     final learnedCards = 0;
     return Scaffold(
       appBar: AppBar(title: const Text('首页')),
@@ -20,12 +20,29 @@ class HomePage extends ConsumerWidget {
           Dashboard(totalCards: totalCards, learnedCards: learnedCards, deckCount: decks.length),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('题库列表', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('最近刷题', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
             child: ListView.builder(
               itemCount: decks.length,
-              itemBuilder: (context, idx) => DeckProgressTile(deck: decks[idx]),
+              itemBuilder: (context, idx) {
+                final deck = decks[idx];
+                return Dismissible(
+                  key: ValueKey(deck.deckId),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) async {
+                    await AnkiDb.deleteDeck(deck.deckId);
+                    await ref.read(decksProvider.notifier).loadDecks();
+                  },
+                  child: DeckProgressTile(deck: deck),
+                );
+              },
             ),
           ),
         ],

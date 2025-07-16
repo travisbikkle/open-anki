@@ -38,7 +38,7 @@ class _MyAppState extends State<MyApp> {
           type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
-            BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: '导入'),
+            BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '题库'),
             BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
           ],
