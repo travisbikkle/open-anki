@@ -12,6 +12,17 @@ final allDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
     deckName: (e['deck_name'] ?? '未命名题库') as String,
     cardCount: e['card_count'] as int,
     lastReviewed: e['last_reviewed'] as int?,
+    currentIndex: (e['current_index'] ?? 0) as int,
+  )).toList();
+});
+final recentDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
+  final decks = await AnkiDb.getRecentDecks(limit: 10);
+  return decks.map((e) => DeckInfo(
+    deckId: e['deck_id'] as String,
+    deckName: (e['deck_name'] ?? '未命名题库') as String,
+    cardCount: e['card_count'] as int,
+    lastReviewed: e['last_reviewed'] as int?,
+    currentIndex: (e['current_index'] ?? 0) as int,
   )).toList();
 });
 
@@ -35,7 +46,8 @@ class DeckInfo {
   final String deckName;
   final int cardCount;
   final int? lastReviewed;
-  DeckInfo({required this.deckId, required this.deckName, required this.cardCount, this.lastReviewed});
+  final int currentIndex;
+  DeckInfo({required this.deckId, required this.deckName, required this.cardCount, this.lastReviewed, this.currentIndex = 0});
 }
 
 class DecksNotifier extends StateNotifier<List<DeckInfo>> {
@@ -43,12 +55,15 @@ class DecksNotifier extends StateNotifier<List<DeckInfo>> {
 
   Future<void> loadDecks() async {
     final decks = await AnkiDb.getAllDecks();
-    // 只取最近3个
+    // 按 lastReviewed 降序排列，取所有题库
     state = decks.map((e) => DeckInfo(
       deckId: e['deck_id'] as String,
       deckName: (e['deck_name'] ?? '未命名题库') as String,
       cardCount: e['card_count'] as int,
       lastReviewed: e['last_reviewed'] as int?,
-    )).take(3).toList();
+      currentIndex: (e['current_index'] ?? 0) as int,
+    ))
+    .toList()
+    ..sort((a, b) => (b.lastReviewed ?? 0).compareTo(a.lastReviewed ?? 0));
   }
 } 

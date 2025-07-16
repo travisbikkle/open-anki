@@ -28,6 +28,10 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
   void _saveProgress(int idx) {
     AnkiDb.saveProgress(widget.deckId, idx);
+    AnkiDb.upsertRecentDeck(widget.deckId); // 记录最近刷题
+    ref.read(decksProvider.notifier).loadDecks(); // 刷新首页最近刷题
+    ref.invalidate(allDecksProvider); // 刷新题库管理界面
+    ref.invalidate(recentDecksProvider); // 刷新首页最近刷题记录
   }
 
   @override

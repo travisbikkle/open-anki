@@ -138,7 +138,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (successCount > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('成功导入 $successCount 个题库！可到首页查看'),
+            content: Text('成功导入 $successCount 个题库！'),
             duration: const Duration(seconds: 2),
             action: SnackBarAction(
               label: '去首页',
@@ -172,7 +172,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     if (newName == null || newName.isEmpty || newName == oldName) return;
     final db = await AnkiDb.db;
     await db.update('notes', {'deck_name': newName}, where: 'deck_id = ?', whereArgs: [deckId]);
-    await ref.read(decksProvider.notifier).loadDecks();
+    ref.invalidate(allDecksProvider);
     setState(() {});
   }
 
@@ -180,53 +180,82 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   Widget build(BuildContext context) {
     final allDecksAsync = ref.watch(allDecksProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('题库管理')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: loading ? null : importApkg,
-              child: const Text('导入anki卡片'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (loading) const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
             ),
-          ),
-          if (loading) const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          if (error != null) Text('错误: $error', style: const TextStyle(color: Colors.red)),
-          Expanded(
-            child: allDecksAsync.when(
-              data: (decks) => ListView.builder(
-                itemCount: decks.length,
-                itemBuilder: (context, idx) {
-                  final deck = decks[idx];
-                  return Card(
-                    child: ListTile(
-                      title: Text('${deck.deckName} (${deck.cardCount}题)'),
-                      subtitle: deck.lastReviewed != null
-                          ? Text('最近刷题：${DateTime.fromMillisecondsSinceEpoch(deck.lastReviewed!).toLocal()}')
-                          : const Text('还未刷题'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => _renameDeck(deck.deckId, deck.deckName),
+            if (error != null) Text('错误: $error', style: const TextStyle(color: Colors.red)),
+            Expanded(
+              child: allDecksAsync.when(
+                data: (decks) {
+                  // 统计题库名出现次数
+                  final nameCount = <String, int>{};
+                  for (final d in decks) {
+                    nameCount[d.deckName] = (nameCount[d.deckName] ?? 0) + 1;
+                  }
+                  return ListView.builder(
+                    itemCount: decks.length,
+                    itemBuilder: (context, idx) {
+                      final deck = decks[idx];
+                      final showCount = (nameCount[deck.deckName] ?? 0) > 1;
+                      final displayName = showCount
+                        ? '${deck.deckName}（${deck.cardCount}）'
+                        : deck.deckName;
+                      return Card(
+                        child: ListTile(
+                          title: Text(displayName),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('进度：${deck.currentIndex + 1}/${deck.cardCount}'),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: LinearProgressIndicator(
+                                  value: deck.cardCount > 0 ? (deck.currentIndex + 1) / deck.cardCount : 0,
+                                  minHeight: 6,
+                                  backgroundColor: Colors.grey[300],
+                                ),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.play_arrow),
-                            onPressed: () {
-                              ref.read(currentIndexProvider.notifier).state = 0;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () async {
+                          onTap: () {
+                            ref.read(currentIndexProvider.notifier).state = 0;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
+                            );
+                          },
+                          onLongPress: () async {
+                            final result = await showModalBottomSheet<String>(
+                              context: context,
+                              builder: (context) => SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.edit),
+                                      title: const Text('重命名'),
+                                      onTap: () {
+                                        Navigator.pop(context, 'rename');
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.delete),
+                                      title: const Text('删除'),
+                                      onTap: () {
+                                        Navigator.pop(context, 'delete');
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                            if (result == 'rename') {
+                              _renameDeck(deck.deckId, deck.deckName);
+                            } else if (result == 'delete') {
                               final confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -239,19 +268,40 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                 ),
                               );
                               if (confirm == true) _deleteDeck(deck.deckId);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+                            }
+                          },
+                        ),
+                      );
+                    },
                   );
                 },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('加载失败: $e')),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('加载失败: $e')),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                elevation: 2,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                foregroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: loading ? null : importApkg,
+              child: const Text('导入anki卡片'),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

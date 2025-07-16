@@ -5,8 +5,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我')),
-      body: const Center(child: Text('个人中心功能待开发')), 
+      body: SafeArea(child: Center(child: Text('个人中心功能待开发'))), 
     );
   }
 } 

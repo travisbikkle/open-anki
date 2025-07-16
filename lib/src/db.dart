@@ -16,7 +16,7 @@ class AnkiDb {
     final path = join(dbPath, 'anki_cards.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE notes (
@@ -32,6 +32,12 @@ class AnkiDb {
           CREATE TABLE progress (
             deck_id TEXT PRIMARY KEY,
             current_index INTEGER,
+            last_reviewed INTEGER
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE recent_decks (
+            deck_id TEXT PRIMARY KEY,
             last_reviewed INTEGER
           )
         ''');
@@ -53,6 +59,14 @@ class AnkiDb {
         }
         if (oldVersion < 5) {
           await db.execute('ALTER TABLE progress ADD COLUMN last_reviewed INTEGER');
+        }
+        if (oldVersion < 6) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS recent_decks (
+              deck_id TEXT PRIMARY KEY,
+              last_reviewed INTEGER
+            )
+          ''');
         }
       },
     );
@@ -81,10 +95,10 @@ class AnkiDb {
   static Future<List<Map<String, dynamic>>> getAllDecks() async {
     final dbClient = await db;
     return await dbClient.rawQuery('''
-      SELECT n.deck_id, n.deck_name, COUNT(*) as card_count, p.last_reviewed
+      SELECT n.deck_id, n.deck_name, COUNT(*) as card_count, p.last_reviewed, p.current_index
       FROM notes n
       LEFT JOIN progress p ON n.deck_id = p.deck_id
-      GROUP BY n.deck_id, n.deck_name, p.last_reviewed
+      GROUP BY n.deck_id, n.deck_name, p.last_reviewed, p.current_index
       ORDER BY p.last_reviewed DESC NULLS LAST
     ''');
   }
@@ -99,7 +113,11 @@ class AnkiDb {
     final dbClient = await db;
     await dbClient.insert(
       'progress',
-      {'deck_id': deckId, 'current_index': index},
+      {
+        'deck_id': deckId,
+        'current_index': index,
+        'last_reviewed': DateTime.now().millisecondsSinceEpoch,
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -120,5 +138,36 @@ class AnkiDb {
       {'deck_id': deckId, 'last_reviewed': DateTime.now().millisecondsSinceEpoch},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  // recent_decks 操作
+  static Future<void> upsertRecentDeck(String deckId) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'recent_decks',
+      {
+        'deck_id': deckId,
+        'last_reviewed': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<void> deleteRecentDeck(String deckId) async {
+    final dbClient = await db;
+    await dbClient.delete('recent_decks', where: 'deck_id = ?', whereArgs: [deckId]);
+  }
+
+  static Future<List<Map<String, dynamic>>> getRecentDecks({int limit = 10}) async {
+    final dbClient = await db;
+    return await dbClient.rawQuery('''
+      SELECT r.deck_id, n.deck_name, COUNT(n.id) as card_count, p.current_index, r.last_reviewed
+      FROM recent_decks r
+      LEFT JOIN notes n ON r.deck_id = n.deck_id
+      LEFT JOIN progress p ON r.deck_id = p.deck_id
+      GROUP BY r.deck_id, n.deck_name, p.current_index, r.last_reviewed
+      ORDER BY r.last_reviewed DESC
+      LIMIT ?
+    ''', [limit]);
   }
 } 

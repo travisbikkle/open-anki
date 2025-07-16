@@ -5,8 +5,7 @@ class NotesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('笔记')),
-      body: const Center(child: Text('笔记功能待开发')), 
+      body: SafeArea(child: Center(child: Text('笔记功能待开发'))), 
     );
   }
 } 
