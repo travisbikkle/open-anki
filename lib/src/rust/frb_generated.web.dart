@@ -24,10 +24,46 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  CardExt dco_decode_card_ext(dynamic raw);
+
+  @protected
+  DeckNotesResult dco_decode_deck_notes_result(dynamic raw);
+
+  @protected
   ExtractResult dco_decode_extract_result(dynamic raw);
 
   @protected
+  FieldExt dco_decode_field_ext(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<CardExt> dco_decode_list_card_ext(dynamic raw);
+
+  @protected
+  List<FieldExt> dco_decode_list_field_ext(dynamic raw);
+
+  @protected
+  List<NoteExt> dco_decode_list_note_ext(dynamic raw);
+
+  @protected
+  List<NotetypeExt> dco_decode_list_notetype_ext(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  NoteExt dco_decode_note_ext(dynamic raw);
+
+  @protected
+  NotetypeExt dco_decode_notetype_ext(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -39,10 +75,46 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  CardExt sse_decode_card_ext(SseDeserializer deserializer);
+
+  @protected
+  DeckNotesResult sse_decode_deck_notes_result(SseDeserializer deserializer);
+
+  @protected
   ExtractResult sse_decode_extract_result(SseDeserializer deserializer);
 
   @protected
+  FieldExt sse_decode_field_ext(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<CardExt> sse_decode_list_card_ext(SseDeserializer deserializer);
+
+  @protected
+  List<FieldExt> sse_decode_list_field_ext(SseDeserializer deserializer);
+
+  @protected
+  List<NoteExt> sse_decode_list_note_ext(SseDeserializer deserializer);
+
+  @protected
+  List<NotetypeExt> sse_decode_list_notetype_ext(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  NoteExt sse_decode_note_ext(SseDeserializer deserializer);
+
+  @protected
+  NotetypeExt sse_decode_notetype_ext(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -60,13 +132,55 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_card_ext(CardExt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_deck_notes_result(
+    DeckNotesResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_extract_result(ExtractResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_field_ext(FieldExt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_card_ext(List<CardExt> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_field_ext(List<FieldExt> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_note_ext(List<NoteExt> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_notetype_ext(
+    List<NotetypeExt> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_note_ext(NoteExt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_notetype_ext(NotetypeExt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);

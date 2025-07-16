@@ -6,8 +6,9 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `table_has_columns`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `Note`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
@@ -19,6 +20,76 @@ Future<ExtractResult> extractApkg({
   apkgPath: apkgPath,
   baseDir: baseDir,
 );
+
+Future<DeckNotesResult> getDeckNotes({required String sqlitePath}) =>
+    RustLib.instance.api.crateApiSimpleGetDeckNotes(sqlitePath: sqlitePath);
+
+class CardExt {
+  final PlatformInt64 id;
+  final PlatformInt64 nid;
+  final PlatformInt64 ord;
+  final PlatformInt64 type;
+  final PlatformInt64 queue;
+  final PlatformInt64 due;
+
+  const CardExt({
+    required this.id,
+    required this.nid,
+    required this.ord,
+    required this.type,
+    required this.queue,
+    required this.due,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      nid.hashCode ^
+      ord.hashCode ^
+      type.hashCode ^
+      queue.hashCode ^
+      due.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CardExt &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          nid == other.nid &&
+          ord == other.ord &&
+          type == other.type &&
+          queue == other.queue &&
+          due == other.due;
+}
+
+class DeckNotesResult {
+  final List<NoteExt> notes;
+  final List<NotetypeExt> notetypes;
+  final List<FieldExt> fields;
+  final List<CardExt> cards;
+
+  const DeckNotesResult({
+    required this.notes,
+    required this.notetypes,
+    required this.fields,
+    required this.cards,
+  });
+
+  @override
+  int get hashCode =>
+      notes.hashCode ^ notetypes.hashCode ^ fields.hashCode ^ cards.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DeckNotesResult &&
+          runtimeType == other.runtimeType &&
+          notes == other.notes &&
+          notetypes == other.notetypes &&
+          fields == other.fields &&
+          cards == other.cards;
+}
 
 class ExtractResult {
   final String dir;
@@ -36,4 +107,91 @@ class ExtractResult {
           runtimeType == other.runtimeType &&
           dir == other.dir &&
           md5 == other.md5;
+}
+
+class FieldExt {
+  final PlatformInt64 id;
+  final PlatformInt64 notetypeId;
+  final String name;
+  final PlatformInt64 ord;
+
+  const FieldExt({
+    required this.id,
+    required this.notetypeId,
+    required this.name,
+    required this.ord,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ notetypeId.hashCode ^ name.hashCode ^ ord.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FieldExt &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          notetypeId == other.notetypeId &&
+          name == other.name &&
+          ord == other.ord;
+}
+
+class NoteExt {
+  final PlatformInt64 id;
+  final String guid;
+  final PlatformInt64 mid;
+  final List<String> flds;
+  final String notetypeName;
+  final List<String> fieldNames;
+
+  const NoteExt({
+    required this.id,
+    required this.guid,
+    required this.mid,
+    required this.flds,
+    required this.notetypeName,
+    required this.fieldNames,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      guid.hashCode ^
+      mid.hashCode ^
+      flds.hashCode ^
+      notetypeName.hashCode ^
+      fieldNames.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NoteExt &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          guid == other.guid &&
+          mid == other.mid &&
+          flds == other.flds &&
+          notetypeName == other.notetypeName &&
+          fieldNames == other.fieldNames;
+}
+
+class NotetypeExt {
+  final PlatformInt64 id;
+  final String name;
+  final String? config;
+
+  const NotetypeExt({required this.id, required this.name, this.config});
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ config.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotetypeExt &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          config == other.config;
 }

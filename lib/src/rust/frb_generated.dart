@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1899997348;
+  int get rustContentHash => 2018693761;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -80,6 +80,10 @@ abstract class RustLibApi extends BaseApi {
   Future<ExtractResult> crateApiSimpleExtractApkg({
     required String apkgPath,
     required String baseDir,
+  });
+
+  Future<DeckNotesResult> crateApiSimpleGetDeckNotes({
+    required String sqlitePath,
   });
 
   String crateApiSimpleGreet({required String name});
@@ -130,13 +134,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<DeckNotesResult> crateApiSimpleGetDeckNotes({
+    required String sqlitePath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sqlitePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_deck_notes_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSimpleGetDeckNotesConstMeta,
+        argValues: [sqlitePath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSimpleGetDeckNotesConstMeta => const TaskConstMeta(
+    debugName: "get_deck_notes",
+    argNames: ["sqlitePath"],
+  );
+
+  @override
   String crateApiSimpleGreet({required String name}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -161,7 +197,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -186,6 +222,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CardExt dco_decode_card_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return CardExt(
+      id: dco_decode_i_64(arr[0]),
+      nid: dco_decode_i_64(arr[1]),
+      ord: dco_decode_i_64(arr[2]),
+      type: dco_decode_i_64(arr[3]),
+      queue: dco_decode_i_64(arr[4]),
+      due: dco_decode_i_64(arr[5]),
+    );
+  }
+
+  @protected
+  DeckNotesResult dco_decode_deck_notes_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return DeckNotesResult(
+      notes: dco_decode_list_note_ext(arr[0]),
+      notetypes: dco_decode_list_notetype_ext(arr[1]),
+      fields: dco_decode_list_field_ext(arr[2]),
+      cards: dco_decode_list_card_ext(arr[3]),
+    );
+  }
+
+  @protected
   ExtractResult dco_decode_extract_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -198,9 +264,94 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FieldExt dco_decode_field_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FieldExt(
+      id: dco_decode_i_64(arr[0]),
+      notetypeId: dco_decode_i_64(arr[1]),
+      name: dco_decode_String(arr[2]),
+      ord: dco_decode_i_64(arr[3]),
+    );
+  }
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<CardExt> dco_decode_list_card_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_card_ext).toList();
+  }
+
+  @protected
+  List<FieldExt> dco_decode_list_field_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_field_ext).toList();
+  }
+
+  @protected
+  List<NoteExt> dco_decode_list_note_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_note_ext).toList();
+  }
+
+  @protected
+  List<NotetypeExt> dco_decode_list_notetype_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_notetype_ext).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  NoteExt dco_decode_note_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return NoteExt(
+      id: dco_decode_i_64(arr[0]),
+      guid: dco_decode_String(arr[1]),
+      mid: dco_decode_i_64(arr[2]),
+      flds: dco_decode_list_String(arr[3]),
+      notetypeName: dco_decode_String(arr[4]),
+      fieldNames: dco_decode_list_String(arr[5]),
+    );
+  }
+
+  @protected
+  NotetypeExt dco_decode_notetype_ext(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NotetypeExt(
+      id: dco_decode_i_64(arr[0]),
+      name: dco_decode_String(arr[1]),
+      config: dco_decode_opt_String(arr[2]),
+    );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -223,6 +374,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CardExt sse_decode_card_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_64(deserializer);
+    var var_nid = sse_decode_i_64(deserializer);
+    var var_ord = sse_decode_i_64(deserializer);
+    var var_type = sse_decode_i_64(deserializer);
+    var var_queue = sse_decode_i_64(deserializer);
+    var var_due = sse_decode_i_64(deserializer);
+    return CardExt(
+      id: var_id,
+      nid: var_nid,
+      ord: var_ord,
+      type: var_type,
+      queue: var_queue,
+      due: var_due,
+    );
+  }
+
+  @protected
+  DeckNotesResult sse_decode_deck_notes_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_notes = sse_decode_list_note_ext(deserializer);
+    var var_notetypes = sse_decode_list_notetype_ext(deserializer);
+    var var_fields = sse_decode_list_field_ext(deserializer);
+    var var_cards = sse_decode_list_card_ext(deserializer);
+    return DeckNotesResult(
+      notes: var_notes,
+      notetypes: var_notetypes,
+      fields: var_fields,
+      cards: var_cards,
+    );
+  }
+
+  @protected
   ExtractResult sse_decode_extract_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_dir = sse_decode_String(deserializer);
@@ -231,10 +416,130 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FieldExt sse_decode_field_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_64(deserializer);
+    var var_notetypeId = sse_decode_i_64(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_ord = sse_decode_i_64(deserializer);
+    return FieldExt(
+      id: var_id,
+      notetypeId: var_notetypeId,
+      name: var_name,
+      ord: var_ord,
+    );
+  }
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CardExt> sse_decode_list_card_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CardExt>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_card_ext(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FieldExt> sse_decode_list_field_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FieldExt>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_field_ext(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<NoteExt> sse_decode_list_note_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NoteExt>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_note_ext(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<NotetypeExt> sse_decode_list_notetype_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NotetypeExt>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_notetype_ext(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  NoteExt sse_decode_note_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_64(deserializer);
+    var var_guid = sse_decode_String(deserializer);
+    var var_mid = sse_decode_i_64(deserializer);
+    var var_flds = sse_decode_list_String(deserializer);
+    var var_notetypeName = sse_decode_String(deserializer);
+    var var_fieldNames = sse_decode_list_String(deserializer);
+    return NoteExt(
+      id: var_id,
+      guid: var_guid,
+      mid: var_mid,
+      flds: var_flds,
+      notetypeName: var_notetypeName,
+      fieldNames: var_fieldNames,
+    );
+  }
+
+  @protected
+  NotetypeExt sse_decode_notetype_ext(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_64(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_config = sse_decode_opt_String(deserializer);
+    return NotetypeExt(id: var_id, name: var_name, config: var_config);
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -267,10 +572,99 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_card_ext(CardExt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.id, serializer);
+    sse_encode_i_64(self.nid, serializer);
+    sse_encode_i_64(self.ord, serializer);
+    sse_encode_i_64(self.type, serializer);
+    sse_encode_i_64(self.queue, serializer);
+    sse_encode_i_64(self.due, serializer);
+  }
+
+  @protected
+  void sse_encode_deck_notes_result(
+    DeckNotesResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_note_ext(self.notes, serializer);
+    sse_encode_list_notetype_ext(self.notetypes, serializer);
+    sse_encode_list_field_ext(self.fields, serializer);
+    sse_encode_list_card_ext(self.cards, serializer);
+  }
+
+  @protected
   void sse_encode_extract_result(ExtractResult self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.dir, serializer);
     sse_encode_String(self.md5, serializer);
+  }
+
+  @protected
+  void sse_encode_field_ext(FieldExt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.id, serializer);
+    sse_encode_i_64(self.notetypeId, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_i_64(self.ord, serializer);
+  }
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_card_ext(List<CardExt> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_card_ext(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_field_ext(
+    List<FieldExt> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_field_ext(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_note_ext(List<NoteExt> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_note_ext(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_notetype_ext(
+    List<NotetypeExt> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_notetype_ext(item, serializer);
+    }
   }
 
   @protected
@@ -281,6 +675,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_note_ext(NoteExt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.id, serializer);
+    sse_encode_String(self.guid, serializer);
+    sse_encode_i_64(self.mid, serializer);
+    sse_encode_list_String(self.flds, serializer);
+    sse_encode_String(self.notetypeName, serializer);
+    sse_encode_list_String(self.fieldNames, serializer);
+  }
+
+  @protected
+  void sse_encode_notetype_ext(NotetypeExt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_opt_String(self.config, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
   }
 
   @protected

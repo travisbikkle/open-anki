@@ -49,14 +49,19 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       );
       if (deck.isEmpty) throw Exception('题库未找到');
       final apkgPath = deck['apkg_path'] as String;
-      // TODO: 这里应调用新的 FFI 接口分页/筛选加载卡片
-      // final result = await parseApkg(path: apkgPath);
-      // setState(() { _notes = result.notes; });
-      // 进度管理仍用 AppDb
+      // collection.sqlite 路径
+      final sqlitePath = '$apkgPath/collection.sqlite';
+      print('DEBUG: apkgPath: $apkgPath');
+      print('DEBUG: sqlitePath: $sqlitePath');
+      // 1. 调用 Rust FFI 获取卡片
+      final result = await getDeckNotes(sqlitePath: sqlitePath);
+      setState(() {
+        _notes = result.notes;
+      });
+      // 2. 进度管理
       final progress = await AppDb.getProgress(deck['id'] as int);
       final idx = progress?['current_card_id'] ?? 0;
       ref.read(currentIndexProvider.notifier).state = idx;
-      // TODO: 你可以 setState 保存 notes、mediaMap、mediaFiles 等
     } catch (e) {
       // 错误处理
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
@@ -65,10 +70,17 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
   }
 
-  void _saveProgress(int idx) {
+  void _saveProgress(int idx) async {
     // 进度管理用 AppDb
-    AppDb.saveProgress(/*deckId*/ int.parse(widget.deckId), idx); // 如 deckId 为 md5，需先查 id
-    AppDb.upsertRecentDeck(/*deckId*/ int.parse(widget.deckId));
+    final allDecks = await AppDb.getAllDecks();
+    final deck = allDecks.firstWhere(
+      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (deck.isEmpty) return;
+    final deckId = deck['id'] as int;
+    await AppDb.saveProgress(deckId, idx);
+    await AppDb.upsertRecentDeck(deckId);
     // 刷新 UI
     ref.invalidate(allDecksProvider);
     ref.invalidate(recentDecksProvider);

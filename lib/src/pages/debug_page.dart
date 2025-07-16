@@ -60,19 +60,34 @@ class _DebugPageState extends State<DebugPage> {
             return ListTile(title: Text(entity.path.split('/').last + '/'), leading: const Icon(Icons.folder));
           }
           final children = snapshot.data!;
+          // 过滤只显示 collection.sqlite 文件
+          final sqliteFiles = children.where((e) => 
+            e is File && e.path.endsWith('collection.sqlite')
+          ).toList();
+          if (sqliteFiles.isEmpty) {
+            return ListTile(title: Text(entity.path.split('/').last + '/'), leading: const Icon(Icons.folder));
+          }
           return ExpansionTile(
             leading: const Icon(Icons.folder),
             title: Text(entity.path.split('/').last + '/'),
-            children: children.map(_buildTree).toList(),
+            children: sqliteFiles.map((e) => ListTile(
+              leading: const Icon(Icons.insert_drive_file, color: Colors.green),
+              title: Text('collection.sqlite'),
+              subtitle: Text(e.path, style: const TextStyle(fontSize: 12)),
+            )).toList(),
           );
         },
       );
     } else {
-      return ListTile(
-        leading: const Icon(Icons.insert_drive_file),
-        title: Text(entity.path.split('/').last),
-        subtitle: Text(entity.path),
-      );
+      // 只显示 collection.sqlite 文件
+      if (entity.path.endsWith('collection.sqlite')) {
+        return ListTile(
+          leading: const Icon(Icons.insert_drive_file, color: Colors.green),
+          title: Text('collection.sqlite'),
+          subtitle: Text(entity.path, style: const TextStyle(fontSize: 12)),
+        );
+      }
+      return const SizedBox.shrink();
     }
   }
 
