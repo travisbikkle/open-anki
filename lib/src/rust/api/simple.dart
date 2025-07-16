@@ -43,17 +43,19 @@ class Note {
   final String guid;
   final PlatformInt64 mid;
   final List<String> flds;
+  final String? notetypeName; // 新增模板名字段
 
   const Note({
     required this.id,
     required this.guid,
     required this.mid,
     required this.flds,
+    this.notetypeName,
   });
 
   @override
   int get hashCode =>
-      id.hashCode ^ guid.hashCode ^ mid.hashCode ^ flds.hashCode;
+      id.hashCode ^ guid.hashCode ^ mid.hashCode ^ flds.hashCode ^ (notetypeName?.hashCode ?? 0);
 
   @override
   bool operator ==(Object other) =>
@@ -63,5 +65,6 @@ class Note {
           id == other.id &&
           guid == other.guid &&
           mid == other.mid &&
-          flds == other.flds;
+          flds == other.flds &&
+          notetypeName == other.notetypeName;
 }

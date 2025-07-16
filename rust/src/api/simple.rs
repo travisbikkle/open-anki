@@ -23,6 +23,7 @@ pub struct Note {
     pub guid: String,
     pub mid: i64,
     pub flds: Vec<String>,
+    pub notetype_name: Option<String>, // 新增模板名字段
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -87,6 +88,15 @@ pub fn parse_apkg(path: String) -> Result<ApkgParseResult, String> {
     let conn = Connection::open(&tmp_path).map_err(|e| format!("打开sqlite失败: {e}"))?;
     let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes").map_err(|e| format!("准备SQL失败: {e}"))?;
     let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+    // 读取所有notetype映射
+    let mut notetype_map = std::collections::HashMap::new();
+    let mut stmt_nt = conn.prepare("SELECT id, name FROM notetypes").map_err(|e| format!("准备SQL失败: {e}"))?;
+    let mut rows_nt = stmt_nt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+    while let Some(row) = rows_nt.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+        let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
+        let name: String = row.get(1).map_err(|e| format!("读取name失败: {e}"))?;
+        notetype_map.insert(id, name);
+    }
     let mut notes = Vec::new();
     while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
         let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
@@ -94,7 +104,8 @@ pub fn parse_apkg(path: String) -> Result<ApkgParseResult, String> {
         let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
         let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
         let flds_vec = flds.split('\x1f').map(|s| s.to_string()).collect();
-        notes.push(Note { id, guid, mid, flds: flds_vec });
+        let notetype_name = notetype_map.get(&mid).cloned();
+        notes.push(Note { id, guid, mid, flds: flds_vec, notetype_name });
     }
 
     // 解析media映射

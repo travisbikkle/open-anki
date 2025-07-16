@@ -259,12 +259,25 @@ impl SseDecode for crate::api::simple::Note {
         let mut var_guid = <String>::sse_decode(deserializer);
         let mut var_mid = <i64>::sse_decode(deserializer);
         let mut var_flds = <Vec<String>>::sse_decode(deserializer);
+        let mut var_notetypeName = <Option<String>>::sse_decode(deserializer);
         return crate::api::simple::Note {
             id: var_id,
             guid: var_guid,
             mid: var_mid,
             flds: var_flds,
+            notetype_name: var_notetypeName,
         };
+    }
+}
+
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
     }
 }
 
@@ -372,6 +385,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::Note {
             self.guid.into_into_dart().into_dart(),
             self.mid.into_into_dart().into_dart(),
             self.flds.into_into_dart().into_dart(),
+            self.notetype_name.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -477,6 +491,17 @@ impl SseEncode for crate::api::simple::Note {
         <String>::sse_encode(self.guid, serializer);
         <i64>::sse_encode(self.mid, serializer);
         <Vec<String>>::sse_encode(self.flds, serializer);
+        <Option<String>>::sse_encode(self.notetype_name, serializer);
+    }
+}
+
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
     }
 }
 

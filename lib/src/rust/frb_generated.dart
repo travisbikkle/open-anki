@@ -255,14 +255,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Note dco_decode_note(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return Note(
       id: dco_decode_i_64(arr[0]),
       guid: dco_decode_String(arr[1]),
       mid: dco_decode_i_64(arr[2]),
       flds: dco_decode_list_String(arr[3]),
+      notetypeName: dco_decode_opt_String(arr[4]),
     );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -413,7 +420,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_guid = sse_decode_String(deserializer);
     var var_mid = sse_decode_i_64(deserializer);
     var var_flds = sse_decode_list_String(deserializer);
-    return Note(id: var_id, guid: var_guid, mid: var_mid, flds: var_flds);
+    var var_notetypeName = sse_decode_opt_String(deserializer);
+    return Note(
+      id: var_id,
+      guid: var_guid,
+      mid: var_mid,
+      flds: var_flds,
+      notetypeName: var_notetypeName,
+    );
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -568,6 +593,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.guid, serializer);
     sse_encode_i_64(self.mid, serializer);
     sse_encode_list_String(self.flds, serializer);
+    sse_encode_opt_String(self.notetypeName, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
   }
 
   @protected

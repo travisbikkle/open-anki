@@ -81,8 +81,79 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     return null;
   }
 
-  Widget _renderField(String field) {
-    // 先将[sound:xxx]语法替换为<audio src="xxx"></audio>
+  Widget _renderField(String field, {String? notetypeName}) {
+    // 针对“自动匹配-选择题模板”自动分行加A/B/C/D
+    if (notetypeName == '自动匹配-选择题模板') {
+      // 题干和选项之间用<br>分隔，选项之间没有分隔符，自动分行并加A/B/C/D
+      final parts = field.split('<br>');
+      if (parts.length >= 2) {
+        final question = parts[0];
+        // 选项部分合并后按大写字母开头分割
+        final optionsRaw = parts.sublist(1).join('<br>');
+        // 尝试用换行或大写字母加点分割
+        final optionList = optionsRaw.split(RegExp(r'(?=[A-Z][A-Z]?\s?\()|(?<=\.)\s+)'));
+        final optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        final optionsHtml = optionList.asMap().entries.map((e) =>
+          '<div><b>${optionLabels[e.key]}.</b> ${e.value.trim()}</div>'
+        ).join();
+        final html = '$question<br>$optionsHtml';
+        return Html(
+          data: html,
+          extensions: [
+            TagExtension(
+              tagsToExtend: {"img"},
+              builder: (context) {
+                final src = context.attributes['src'] ?? '';
+                return FutureBuilder<Uint8List?>(
+                  future: _findMedia(src),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Image.memory(snapshot.data!, height: 80),
+                      );
+                    } else {
+                      return Text('[图片缺失:$src]', style: const TextStyle(color: Colors.red));
+                    }
+                  },
+                );
+              },
+            ),
+            TagExtension(
+              tagsToExtend: {"audio"},
+              builder: (context) {
+                final src = context.attributes['src'] ?? '';
+                return FutureBuilder<Uint8List?>(
+                  future: _findMedia(src),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return IconButton(
+                        icon: const Icon(Icons.volume_up),
+                        onPressed: () async {
+                          try {
+                            final mediaDir = await _getMediaDir();
+                            final filePath = '$mediaDir/$src';
+                            await _audioPlayer.setFilePath(filePath);
+                            await _audioPlayer.play();
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('音频播放失败: $e')),
+                            );
+                          }
+                        },
+                      );
+                    } else {
+                      return Text('[音频缺失:$src]', style: const TextStyle(color: Colors.red));
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+        );
+      }
+    }
+    // 其他模板保持原有HTML渲染
     String html = field.replaceAllMapped(
       RegExp(r'\[sound:([^\]]+)\]'),
       (m) => '<audio src="${m[1]}"></audio>',
@@ -182,7 +253,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                         for (int i = 0; i < note.flds.length; i++)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: _renderField(note.flds[i]),
+                            child: _renderField(note.flds[i], notetypeName: note.notetypeName),
                           ),
                       ],
                     ),
