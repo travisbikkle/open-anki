@@ -43,7 +43,7 @@ class Note {
   final String guid;
   final PlatformInt64 mid;
   final List<String> flds;
-  final String? notetypeName; // 新增模板名字段
+  final String? notetypeName;
 
   const Note({
     required this.id,
@@ -55,7 +55,11 @@ class Note {
 
   @override
   int get hashCode =>
-      id.hashCode ^ guid.hashCode ^ mid.hashCode ^ flds.hashCode ^ (notetypeName?.hashCode ?? 0);
+      id.hashCode ^
+      guid.hashCode ^
+      mid.hashCode ^
+      flds.hashCode ^
+      notetypeName.hashCode;
 
   @override
   bool operator ==(Object other) =>
