@@ -26,27 +26,35 @@ class HomePage extends ConsumerWidget {
             ),
             Expanded(
               child: recentDecksAsync.when(
-                data: (decks) => ListView.builder(
-                  itemCount: decks.length,
-                  itemBuilder: (context, idx) {
-                    final deck = decks[idx];
-                    return Dismissible(
-                      key: ValueKey(deck.deckId),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      onDismissed: (_) async {
-                        await AnkiDb.deleteRecentDeck(deck.deckId); // 只删最近记录
-                        ref.invalidate(recentDecksProvider);
+                data: (decks) {
+                  // 本地可变列表，删除时立即移除，防止 Dismissible 报错
+                  final localDecks = List<DeckInfo>.from(decks);
+                  return StatefulBuilder(
+                    builder: (context, setState) => ListView.builder(
+                      itemCount: localDecks.length,
+                      itemBuilder: (context, idx) {
+                        if (idx >= localDecks.length) return const SizedBox.shrink();
+                        final deck = localDecks[idx];
+                        return Dismissible(
+                          key: ValueKey(deck.deckId),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: const Icon(Icons.delete, color: Colors.white),
+                          ),
+                          onDismissed: (_) async {
+                            setState(() => localDecks.removeAt(idx));
+                            await AnkiDb.deleteRecentDeck(deck.deckId); // 只删最近记录
+                            ref.invalidate(recentDecksProvider);
+                          },
+                          child: DeckProgressTile(deck: deck),
+                        );
                       },
-                      child: DeckProgressTile(deck: deck),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('加载失败: $e')),
               ),

@@ -183,6 +183,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       body: SafeArea(
         child: Column(
           children: [
+            SizedBox(height: 16),
             if (loading) const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
