@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:open_anki/src/rust/api/simple.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:flutter_html/flutter_html.dart';
 
 class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
@@ -81,98 +82,65 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   Widget _renderField(String field) {
-    // 渲染图片
-    final imgReg1 = RegExp(r'<img[^>]*src="([^"]+)"[^>]*>');
-    final imgReg2 = RegExp(r"<img[^>]*src='([^'>]+)'[^>]*>");
-    final soundReg = RegExp(r'\[sound:([^\]]+)\]');
-    List<InlineSpan> spans = [];
-    int last = 0;
-    for (final match in imgReg1.allMatches(field)) {
-      if (match.start > last) {
-        spans.add(TextSpan(text: field.substring(last, match.start)));
-      }
-      final fname = match.group(1)!;
-      spans.add(WidgetSpan(
-        child: FutureBuilder<Uint8List?>(
-          future: _findMedia(fname),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Image.memory(snapshot.data!, height: 80),
-              );
-            } else {
-              return Text('[图片缺失:$fname]', style: const TextStyle(color: Colors.red));
-            }
+    // 先将[sound:xxx]语法替换为<audio src="xxx"></audio>
+    String html = field.replaceAllMapped(
+      RegExp(r'\[sound:([^\]]+)\]'),
+      (m) => '<audio src="${m[1]}"></audio>',
+    );
+    return Html(
+      data: html,
+      extensions: [
+        TagExtension(
+          tagsToExtend: {"img"},
+          builder: (context) {
+            final src = context.attributes['src'] ?? '';
+            return FutureBuilder<Uint8List?>(
+              future: _findMedia(src),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Image.memory(snapshot.data!, height: 80),
+                  );
+                } else {
+                  return Text('[图片缺失:$src]', style: const TextStyle(color: Colors.red));
+                }
+              },
+            );
           },
         ),
-      ));
-      last = match.end;
-    }
-    for (final match in imgReg2.allMatches(field)) {
-      if (match.start > last) {
-        spans.add(TextSpan(text: field.substring(last, match.start)));
-      }
-      final fname = match.group(1)!;
-      spans.add(WidgetSpan(
-        child: FutureBuilder<Uint8List?>(
-          future: _findMedia(fname),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Image.memory(snapshot.data!, height: 80),
-              );
-            } else {
-              return Text('[图片缺失:$fname]', style: const TextStyle(color: Colors.red));
-            }
+        TagExtension(
+          tagsToExtend: {"audio"},
+          builder: (context) {
+            final src = context.attributes['src'] ?? '';
+            return FutureBuilder<Uint8List?>(
+              future: _findMedia(src),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  return IconButton(
+                    icon: const Icon(Icons.volume_up),
+                    onPressed: () async {
+                      try {
+                        final mediaDir = await _getMediaDir();
+                        final filePath = '$mediaDir/$src';
+                        await _audioPlayer.setFilePath(filePath);
+                        await _audioPlayer.play();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('音频播放失败: $e')),
+                        );
+                      }
+                    },
+                  );
+                } else {
+                  return Text('[音频缺失:$src]', style: const TextStyle(color: Colors.red));
+                }
+              },
+            );
           },
         ),
-      ));
-      last = match.end;
-    }
-    // 剩余文本
-    String rest = field.substring(last);
-    // 渲染音频
-    int last2 = 0;
-    for (final match in soundReg.allMatches(rest)) {
-      if (match.start > last2) {
-        spans.add(TextSpan(text: rest.substring(last2, match.start)));
-      }
-      final fname = match.group(1)!;
-      spans.add(WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: FutureBuilder<Uint8List?>(
-          future: _findMedia(fname),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return IconButton(
-                icon: const Icon(Icons.volume_up),
-                onPressed: () async {
-                  try {
-                    final mediaDir = await _getMediaDir();
-                    final filePath = '$mediaDir/$fname';
-                    await _audioPlayer.setFilePath(filePath);
-                    await _audioPlayer.play();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('音频播放失败: $e')),
-                    );
-                  }
-                },
-              );
-            } else {
-              return Text('[音频缺失:$fname]', style: const TextStyle(color: Colors.red));
-            }
-          },
-        ),
-      ));
-      last2 = match.end;
-    }
-    if (last2 < rest.length) {
-      spans.add(TextSpan(text: rest.substring(last2)));
-    }
-    return RichText(text: TextSpan(style: const TextStyle(color: Colors.black, fontSize: 16), children: spans));
+      ],
+    );
   }
 
   @override
