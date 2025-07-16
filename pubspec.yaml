@@ -37,12 +37,13 @@ dependencies:
   rust_lib_open_anki:
     path: rust_builder
   flutter_rust_bridge: 2.11.1
-  file_picker: ^6.1.1
+  file_picker: ^8.1.7
   audioplayers: ^5.2.1
   flutter_riverpod: ^2.4.0
   sqflite: ^2.3.0
   path_provider: ^2.1.5
   crypto: ^3.0.3
+  just_audio: ^0.10.4
 
 dev_dependencies:
   flutter_test:

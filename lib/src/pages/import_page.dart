@@ -9,6 +9,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:open_anki/src/rust/api/simple.dart';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -19,6 +21,12 @@ class ImportPage extends ConsumerStatefulWidget {
 class _ImportPageState extends ConsumerState<ImportPage> {
   String? error;
   bool loading = false;
+  Map<String, Map<String, String>> _deckMediaFiles = {}; // deckId -> {文件名: 本地路径}
+
+  // 自动修复：为_deckMediaFiles加安全getter，防止key不存在时抛异常
+  Map<String, String> getDeckMediaFiles(String deckId) {
+    return _deckMediaFiles[deckId] ?? {};
+  }
 
   Future<String> _calcFileMd5(String path) async {
     final file = File(path);
@@ -70,6 +78,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       final decks = await AnkiDb.getAllDecks();
       int successCount = 0;
       final existNames = decks.map((d) => d['deck_name'] as String? ?? '').toSet();
+      final appDocDir = await getApplicationDocumentsDirectory();
       if (picked.files.length == 1) {
         final file = picked.files.first;
         String? path = file.path;
@@ -87,6 +96,17 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               suffix++;
             }
             final res = await parseApkg(path: path);
+            // 保存媒体到本地
+            final mediaDir = Directory('${appDocDir.path}/media/$deckId');
+            if (!mediaDir.existsSync()) mediaDir.createSync(recursive: true);
+            final Map<String, String> fileMap = {};
+            for (final entry in res.mediaFiles.entries) {
+              final fname = entry.key;
+              final fpath = '${mediaDir.path}/$fname';
+              File(fpath).writeAsBytesSync(entry.value);
+              fileMap[fname] = fpath;
+            }
+            _deckMediaFiles[deckId] = fileMap;
             final notes = res.notes.map((n) => AnkiNote(
               id: n.id.toInt(),
               guid: n.guid,
@@ -119,6 +139,17 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           }
           existNames.add(finalName);
           final res = await parseApkg(path: path);
+          // 保存媒体到本地
+          final mediaDir = Directory('${appDocDir.path}/media/$deckId');
+          if (!mediaDir.existsSync()) mediaDir.createSync(recursive: true);
+          final Map<String, String> fileMap = {};
+          for (final entry in res.mediaFiles.entries) {
+            final fname = entry.key;
+            final fpath = '${mediaDir.path}/$fname';
+            File(fpath).writeAsBytesSync(entry.value);
+            fileMap[fname] = fpath;
+          }
+          _deckMediaFiles[deckId] = fileMap;
           final notes = res.notes.map((n) => AnkiNote(
             id: n.id.toInt(),
             guid: n.guid,
@@ -226,7 +257,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                             ref.read(currentIndexProvider.notifier).state = 0;
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
+                              MaterialPageRoute(
+                                builder: (_) => CardReviewPage(deckId: deck.deckId),
+                              ),
                             );
                           },
                           onLongPress: () async {
