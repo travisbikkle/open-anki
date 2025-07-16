@@ -1,8 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'model.dart';
 
-class AnkiDb {
+class AppDb {
   static Database? _db;
 
   static Future<Database> get db async {
@@ -13,135 +12,82 @@ class AnkiDb {
 
   static Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'anki_cards.db');
+    final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE notes (
-            id INTEGER PRIMARY KEY,
-            guid TEXT,
-            mid INTEGER,
-            flds TEXT,
-            deck_id TEXT,
-            deck_name TEXT
+          CREATE TABLE decks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            apkg_path TEXT NOT NULL,
+            user_deck_name TEXT,
+            md5 TEXT,
+            import_time INTEGER
           )
         ''');
         await db.execute('''
           CREATE TABLE progress (
-            deck_id TEXT PRIMARY KEY,
-            current_index INTEGER,
-            last_reviewed INTEGER
+            deck_id INTEGER NOT NULL,
+            current_card_id INTEGER,
+            last_reviewed INTEGER,
+            PRIMARY KEY(deck_id)
           )
         ''');
         await db.execute('''
           CREATE TABLE recent_decks (
-            deck_id TEXT PRIMARY KEY,
+            deck_id INTEGER PRIMARY KEY,
             last_reviewed INTEGER
           )
         ''');
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS progress (
-              deck_id TEXT PRIMARY KEY,
-              current_index INTEGER
-            )
-          ''');
-        }
-        if (oldVersion < 3) {
-          await db.execute('ALTER TABLE notes ADD COLUMN deck_id TEXT');
-        }
-        if (oldVersion < 4) {
-          await db.execute('ALTER TABLE notes ADD COLUMN deck_name TEXT');
-        }
-        if (oldVersion < 5) {
-          await db.execute('ALTER TABLE progress ADD COLUMN last_reviewed INTEGER');
-        }
-        if (oldVersion < 6) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS recent_decks (
-              deck_id TEXT PRIMARY KEY,
-              last_reviewed INTEGER
-            )
-          ''');
-        }
+        await db.execute('''
+          CREATE TABLE user_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+          )
+        ''');
       },
     );
   }
 
-  static Future<void> insertNotes(List<AnkiNote> notes, String deckId) async {
+  // 题库索引操作
+  static Future<int> insertDeck(String apkgPath, String? userDeckName, String? md5) async {
     final dbClient = await db;
-    final batch = dbClient.batch();
-    for (final note in notes) {
-      batch.insert('notes', note.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
-  }
-
-  static Future<List<AnkiNote>> getNotesByDeck(String deckId) async {
-    final dbClient = await db;
-    final maps = await dbClient.query('notes', where: 'deck_id = ?', whereArgs: [deckId]);
-    return maps.map((m) => AnkiNote.fromMap(m)).toList();
-  }
-
-  static Future<void> clearNotesByDeck(String deckId) async {
-    final dbClient = await db;
-    await dbClient.delete('notes', where: 'deck_id = ?', whereArgs: [deckId]);
+    return await dbClient.insert('decks', {
+      'apkg_path': apkgPath,
+      'user_deck_name': userDeckName,
+      'md5': md5,
+      'import_time': DateTime.now().millisecondsSinceEpoch,
+    });
   }
 
   static Future<List<Map<String, dynamic>>> getAllDecks() async {
     final dbClient = await db;
-    return await dbClient.rawQuery('''
-      SELECT n.deck_id, n.deck_name, COUNT(*) as card_count, p.last_reviewed, p.current_index
-      FROM notes n
-      LEFT JOIN progress p ON n.deck_id = p.deck_id
-      GROUP BY n.deck_id, n.deck_name, p.last_reviewed, p.current_index
-      ORDER BY p.last_reviewed DESC NULLS LAST
-    ''');
+    return await dbClient.query('decks', orderBy: 'import_time DESC');
   }
 
-  static Future<void> deleteDeck(String deckId) async {
-    final dbClient = await db;
-    await dbClient.delete('notes', where: 'deck_id = ?', whereArgs: [deckId]);
-    await dbClient.delete('progress', where: 'deck_id = ?', whereArgs: [deckId]);
-  }
-
-  static Future<void> saveProgress(String deckId, int index) async {
+  // 刷题进度操作
+  static Future<void> saveProgress(int deckId, int cardId) async {
     final dbClient = await db;
     await dbClient.insert(
       'progress',
       {
         'deck_id': deckId,
-        'current_index': index,
+        'current_card_id': cardId,
         'last_reviewed': DateTime.now().millisecondsSinceEpoch,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  static Future<int> loadProgress(String deckId) async {
+  static Future<Map<String, dynamic>?> getProgress(int deckId) async {
     final dbClient = await db;
-    final result = await dbClient.query('progress', where: 'deck_id = ?', whereArgs: [deckId]);
-    if (result.isNotEmpty) {
-      return result.first['current_index'] as int;
-    }
-    return 0;
+    final res = await dbClient.query('progress', where: 'deck_id = ?', whereArgs: [deckId]);
+    return res.isNotEmpty ? res.first : null;
   }
 
-  static Future<void> updateLastReviewed(String deckId) async {
-    final dbClient = await db;
-    await dbClient.insert(
-      'progress',
-      {'deck_id': deckId, 'last_reviewed': DateTime.now().millisecondsSinceEpoch},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  // recent_decks 操作
-  static Future<void> upsertRecentDeck(String deckId) async {
+  // 最近刷题记录
+  static Future<void> upsertRecentDeck(int deckId) async {
     final dbClient = await db;
     await dbClient.insert(
       'recent_decks',
@@ -153,21 +99,20 @@ class AnkiDb {
     );
   }
 
-  static Future<void> deleteRecentDeck(String deckId) async {
-    final dbClient = await db;
-    await dbClient.delete('recent_decks', where: 'deck_id = ?', whereArgs: [deckId]);
-  }
-
   static Future<List<Map<String, dynamic>>> getRecentDecks({int limit = 10}) async {
     final dbClient = await db;
-    return await dbClient.rawQuery('''
-      SELECT r.deck_id, n.deck_name, COUNT(n.id) as card_count, p.current_index, r.last_reviewed
-      FROM recent_decks r
-      LEFT JOIN notes n ON r.deck_id = n.deck_id
-      LEFT JOIN progress p ON r.deck_id = p.deck_id
-      GROUP BY r.deck_id, n.deck_name, p.current_index, r.last_reviewed
-      ORDER BY r.last_reviewed DESC
-      LIMIT ?
-    ''', [limit]);
+    return await dbClient.query('recent_decks', orderBy: 'last_reviewed DESC', limit: limit);
+  }
+
+  // 用户设置
+  static Future<void> setUserSetting(String key, String value) async {
+    final dbClient = await db;
+    await dbClient.insert('user_settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<String?> getUserSetting(String key) async {
+    final dbClient = await db;
+    final res = await dbClient.query('user_settings', where: 'key = ?', whereArgs: [key]);
+    return res.isNotEmpty ? res.first['value'] as String : null;
   }
 } 

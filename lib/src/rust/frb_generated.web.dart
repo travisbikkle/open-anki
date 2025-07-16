@@ -21,52 +21,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
-  Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
-
-  @protected
-  Map<String, Uint8List> dco_decode_Map_String_list_prim_u_8_strict_None(
-    dynamic raw,
-  );
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
-  ApkgParseResult dco_decode_apkg_parse_result(dynamic raw);
-
-  @protected
-  PlatformInt64 dco_decode_i_64(dynamic raw);
-
-  @protected
-  List<String> dco_decode_list_String(dynamic raw);
-
-  @protected
-  List<Note> dco_decode_list_note(dynamic raw);
+  ExtractResult dco_decode_extract_result(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
-
-  @protected
-  List<(String, Uint8List)> dco_decode_list_record_string_list_prim_u_8_strict(
-    dynamic raw,
-  );
-
-  @protected
-  List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
-
-  @protected
-  Note dco_decode_note(dynamic raw);
-
-  @protected
-  String? dco_decode_opt_String(dynamic raw);
-
-  @protected
-  (String, Uint8List) dco_decode_record_string_list_prim_u_8_strict(
-    dynamic raw,
-  );
-
-  @protected
-  (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -75,58 +36,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
-  Map<String, String> sse_decode_Map_String_String_None(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  Map<String, Uint8List> sse_decode_Map_String_list_prim_u_8_strict_None(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
-  ApkgParseResult sse_decode_apkg_parse_result(SseDeserializer deserializer);
-
-  @protected
-  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
-
-  @protected
-  List<String> sse_decode_list_String(SseDeserializer deserializer);
-
-  @protected
-  List<Note> sse_decode_list_note(SseDeserializer deserializer);
+  ExtractResult sse_decode_extract_result(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
-
-  @protected
-  List<(String, Uint8List)> sse_decode_list_record_string_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  List<(String, String)> sse_decode_list_record_string_string(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  Note sse_decode_note(SseDeserializer deserializer);
-
-  @protected
-  String? sse_decode_opt_String(SseDeserializer deserializer);
-
-  @protected
-  (String, Uint8List) sse_decode_record_string_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  (String, String) sse_decode_record_string_string(
-    SseDeserializer deserializer,
-  );
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -141,68 +57,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
-  void sse_encode_Map_String_String_None(
-    Map<String, String> self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_Map_String_list_prim_u_8_strict_None(
-    Map<String, Uint8List> self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_apkg_parse_result(
-    ApkgParseResult self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_note(List<Note> self, SseSerializer serializer);
+  void sse_encode_extract_result(ExtractResult self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_list_record_string_list_prim_u_8_strict(
-    List<(String, Uint8List)> self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_list_record_string_string(
-    List<(String, String)> self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_note(Note self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_opt_String(String? self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_record_string_list_prim_u_8_strict(
-    (String, Uint8List) self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_record_string_string(
-    (String, String) self,
     SseSerializer serializer,
   );
 

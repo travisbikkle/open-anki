@@ -1,2 +1,2 @@
 pub mod simple;
-pub use simple::{parse_apkg, ApkgParseResult, Note};
+pub use simple::{ApkgParseResult, Note};

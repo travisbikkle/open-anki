@@ -46,7 +46,8 @@ class HomePage extends ConsumerWidget {
                           ),
                           onDismissed: (_) async {
                             setState(() => localDecks.removeAt(idx));
-                            await AnkiDb.deleteRecentDeck(deck.deckId); // 只删最近记录
+                            // await AnkiDb.deleteRecentDeck(deck.deckId); // 只删最近记录
+                            // 新架构下直接刷新 provider，或补充 AppDb 删除逻辑
                             ref.invalidate(recentDecksProvider);
                           },
                           child: DeckProgressTile(deck: deck),

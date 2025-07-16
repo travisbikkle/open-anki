@@ -4,6 +4,7 @@ import 'src/pages/home_page.dart';
 import 'src/pages/import_page.dart';
 import 'src/pages/notes_page.dart';
 import 'src/pages/profile_page.dart';
+import 'src/pages/debug_page.dart';
 import 'package:open_anki/src/rust/frb_generated.dart';
 
 Future<void> main() async {
@@ -25,15 +26,17 @@ class _MyAppState extends State<MyApp> {
     const ImportPage(),
     const NotesPage(),
     const ProfilePage(),
+    const DebugPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final safeIndex = _selectedIndex.clamp(0, _pages.length - 1);
     return MaterialApp(
       home: Scaffold(
-        body: _pages[_selectedIndex],
+        body: _pages[safeIndex],
         bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
+          currentIndex: safeIndex,
           onTap: (idx) => setState(() => _selectedIndex = idx),
           type: BottomNavigationBarType.fixed,
           items: const [
@@ -41,6 +44,7 @@ class _MyAppState extends State<MyApp> {
             BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '题库'),
             BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
+            BottomNavigationBarItem(icon: Icon(Icons.bug_report), label: '调试'),
           ],
         ),
       ),

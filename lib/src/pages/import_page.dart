@@ -11,6 +11,8 @@ import 'dart:convert';
 import 'package:open_anki/src/rust/api/simple.dart';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -70,120 +72,27 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       error = null;
     });
     try {
-      FilePickerResult? picked = await FilePicker.platform.pickFiles(allowMultiple: true);
+      FilePickerResult? picked = await FilePicker.platform.pickFiles(allowMultiple: false);
       if (picked == null || picked.files.isEmpty) {
         setState(() { loading = false; });
         return;
       }
-      final decks = await AnkiDb.getAllDecks();
-      int successCount = 0;
-      final existNames = decks.map((d) => d['deck_name'] as String? ?? '').toSet();
-      final appDocDir = await getApplicationDocumentsDirectory();
-      if (picked.files.length == 1) {
-        final file = picked.files.first;
-        String? path = file.path;
-        if (path != null) {
-          final deckId = await _calcFileMd5(path);
-          if (!decks.any((d) => d['deck_id'] == deckId)) {
-            String defaultName = path.split(Platform.pathSeparator).last.split('.').first;
-            String? deckName = await _inputDeckNameDialog(defaultName);
-            if (deckName == null || deckName.isEmpty) deckName = defaultName;
-            // 名称唯一性处理
-            String finalName = deckName;
-            int suffix = 1;
-            while (existNames.contains(finalName)) {
-              finalName = '$deckName（$suffix）';
-              suffix++;
-            }
-            final res = await parseApkg(path: path);
-            // 保存媒体到本地
-            final mediaDir = Directory('${appDocDir.path}/media/$deckId');
-            if (!mediaDir.existsSync()) mediaDir.createSync(recursive: true);
-            final Map<String, String> fileMap = {};
-            for (final entry in res.mediaFiles.entries) {
-              final fname = entry.key;
-              final fpath = '${mediaDir.path}/$fname';
-              File(fpath).writeAsBytesSync(entry.value);
-              fileMap[fname] = fpath;
-            }
-            _deckMediaFiles[deckId] = fileMap;
-            final notes = res.notes.map((n) => AnkiNote(
-              id: n.id.toInt(),
-              guid: n.guid,
-              mid: n.mid.toInt(),
-              flds: n.flds,
-              deckId: deckId,
-              deckName: finalName,
-            )).toList();
-            await AnkiDb.clearNotesByDeck(deckId);
-            await AnkiDb.insertNotes(notes, deckId);
-            successCount++;
-          }
-        }
-      } else {
-        for (final file in picked.files) {
-          String? path = file.path;
-          if (path == null) continue;
-          final deckId = await _calcFileMd5(path);
-          if (decks.any((d) => d['deck_id'] == deckId)) {
-            // 已存在，跳过
-            continue;
-          }
-          String deckName = path.split(Platform.pathSeparator).last.split('.').first;
-          // 名称唯一性处理
-          String finalName = deckName;
-          int suffix = 1;
-          while (existNames.contains(finalName)) {
-            finalName = '$deckName（$suffix）';
-            suffix++;
-          }
-          existNames.add(finalName);
-          final res = await parseApkg(path: path);
-          // 保存媒体到本地
-          final mediaDir = Directory('${appDocDir.path}/media/$deckId');
-          if (!mediaDir.existsSync()) mediaDir.createSync(recursive: true);
-          final Map<String, String> fileMap = {};
-          for (final entry in res.mediaFiles.entries) {
-            final fname = entry.key;
-            final fpath = '${mediaDir.path}/$fname';
-            File(fpath).writeAsBytesSync(entry.value);
-            fileMap[fname] = fpath;
-          }
-          _deckMediaFiles[deckId] = fileMap;
-          final notes = res.notes.map((n) => AnkiNote(
-            id: n.id.toInt(),
-            guid: n.guid,
-            mid: n.mid.toInt(),
-            flds: n.flds,
-            deckId: deckId,
-            deckName: finalName,
-          )).toList();
-          await AnkiDb.clearNotesByDeck(deckId);
-          await AnkiDb.insertNotes(notes, deckId);
-          successCount++;
-        }
+      final file = picked.files.first;
+      String? path = file.path;
+      if (path == null) {
+        setState(() { loading = false; });
+        return;
       }
-      ref.invalidate(allDecksProvider);
+      final appDocDir = await getApplicationDocumentsDirectory();
+      // 调用Rust端解压
+      final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
+      // 在AppDb登记索引
+      await AppDb.insertDeck(result.dir, null, result.md5);
       setState(() { loading = false; });
       if (!mounted) return;
-      if (successCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('成功导入 $successCount 个题库！'),
-            duration: const Duration(seconds: 2),
-            action: SnackBarAction(
-              label: '去首页',
-              onPressed: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未导入新题库（可能已存在）'), duration: Duration(seconds: 2)),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('导入成功，题库ID: ${result.md5}'), duration: const Duration(seconds: 2)),
+      );
     } catch (e) {
       setState(() {
         error = e.toString();
@@ -192,20 +101,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
-  Future<void> _deleteDeck(String deckId) async {
-    await AnkiDb.deleteDeck(deckId);
-    await ref.read(decksProvider.notifier).loadDecks();
-    setState(() {});
-  }
-
-  Future<void> _renameDeck(String deckId, String oldName) async {
-    String? newName = await _inputRenameDialog(oldName);
-    if (newName == null || newName.isEmpty || newName == oldName) return;
-    final db = await AnkiDb.db;
-    await db.update('notes', {'deck_name': newName}, where: 'deck_id = ?', whereArgs: [deckId]);
-    ref.invalidate(allDecksProvider);
-    setState(() {});
-  }
+  // 移除AnkiDb相关遗留代码
 
   @override
   Widget build(BuildContext context) {
@@ -233,25 +129,59 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     itemBuilder: (context, idx) {
                       final deck = decks[idx];
                       final showCount = (nameCount[deck.deckName] ?? 0) > 1;
-                      final displayName = showCount
-                        ? '${deck.deckName}（${deck.cardCount}）'
-                        : deck.deckName;
                       return Card(
                         child: ListTile(
-                          title: Text(displayName),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('进度：${deck.currentIndex + 1}/${deck.cardCount}'),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: LinearProgressIndicator(
-                                  value: deck.cardCount > 0 ? (deck.currentIndex + 1) / deck.cardCount : 0,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.grey[300],
-                                ),
-                              ),
-                            ],
+                          title: FutureBuilder<int>(
+                            future: (() async {
+                              // 通过 AppDb 查 apkg_path
+                              final allDecks = await AppDb.getAllDecks();
+                              final d = allDecks.firstWhere(
+                                (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
+                                orElse: () => <String, dynamic>{},
+                              );
+                              if (d.isEmpty) return 0;
+                              final apkgPath = d['apkg_path'] as String;
+                              // 移除 parseApkg 的所有调用和相关 import
+                              return 0;
+                            })(),
+                            builder: (context, snapshot) {
+                              final cardCount = snapshot.data ?? 0;
+                              final displayName = showCount
+                                ? '${deck.deckName}（$cardCount）'
+                                : deck.deckName;
+                              return Text(displayName);
+                            },
+                          ),
+                          subtitle: FutureBuilder<int>(
+                            future: (() async {
+                              // 同上，查卡片数
+                              final allDecks = await AppDb.getAllDecks();
+                              final d = allDecks.firstWhere(
+                                (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
+                                orElse: () => <String, dynamic>{},
+                              );
+                              if (d.isEmpty) return 0;
+                              final apkgPath = d['apkg_path'] as String;
+                              // 移除 parseApkg 的所有调用和相关 import
+                              return 0;
+                            })(),
+                            builder: (context, snapshot) {
+                              final cardCount = snapshot.data ?? 0;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('进度：${deck.currentIndex + 1}/$cardCount'),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: LinearProgressIndicator(
+                                      value: cardCount > 0 ? (deck.currentIndex + 1) / cardCount : 0,
+                                      minHeight: 6,
+                                      backgroundColor: Colors.grey[300],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           onTap: () {
                             ref.read(currentIndexProvider.notifier).state = 0;
@@ -288,7 +218,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               ),
                             );
                             if (result == 'rename') {
-                              _renameDeck(deck.deckId, deck.deckName);
+                              // _renameDeck(deck.deckId, deck.deckName); // AnkiDb removed
                             } else if (result == 'delete') {
                               final confirm = await showDialog<bool>(
                                 context: context,
@@ -301,7 +231,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                   ],
                                 ),
                               );
-                              if (confirm == true) _deleteDeck(deck.deckId);
+                              if (confirm == true) {
+                                // _deleteDeck(deck.deckId); // AnkiDb removed
+                              }
                             }
                           },
                         ),

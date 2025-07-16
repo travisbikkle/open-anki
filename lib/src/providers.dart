@@ -2,44 +2,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'model.dart';
 import 'db.dart';
 
-final notesProvider = StateNotifierProvider<NotesNotifier, List<AnkiNote>>((ref) => NotesNotifier());
 final currentIndexProvider = StateProvider<int>((ref) => 0);
-final decksProvider = StateNotifierProvider<DecksNotifier, List<DeckInfo>>((ref) => DecksNotifier());
+
 final allDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
-  final decks = await AnkiDb.getAllDecks();
+  final decks = await AppDb.getAllDecks();
+  // 这里 cardCount/lastReviewed/currentIndex 需后续补充（如 FFI 查 collection.sqlite），暂设为0/null
   return decks.map((e) => DeckInfo(
-    deckId: e['deck_id'] as String,
-    deckName: (e['deck_name'] ?? '未命名题库') as String,
-    cardCount: e['card_count'] as int,
-    lastReviewed: e['last_reviewed'] as int?,
-    currentIndex: (e['current_index'] ?? 0) as int,
+    deckId: (e['md5'] ?? e['id'].toString()) as String,
+    deckName: (e['user_deck_name'] ?? '未命名题库') as String,
+    cardCount: 0, // TODO: 通过 FFI 查 collection.sqlite 获取卡片数
+    lastReviewed: null, // TODO: 通过 AppDb 或 FFI 获取
+    currentIndex: 0, // TODO: 通过 AppDb 或 FFI 获取
   )).toList();
 });
+
 final recentDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
-  final decks = await AnkiDb.getRecentDecks(limit: 10);
-  return decks.map((e) => DeckInfo(
-    deckId: e['deck_id'] as String,
-    deckName: (e['deck_name'] ?? '未命名题库') as String,
-    cardCount: e['card_count'] as int,
-    lastReviewed: e['last_reviewed'] as int?,
-    currentIndex: (e['current_index'] ?? 0) as int,
-  )).toList();
+  final recents = await AppDb.getRecentDecks(limit: 10);
+  // 需 join decks 表获取完整信息
+  final allDecks = await AppDb.getAllDecks();
+  final deckMap = {for (var d in allDecks) (d['md5'] ?? d['id'].toString()): d};
+  return recents.map((e) {
+    final deck = deckMap[e['deck_id'].toString()];
+    return DeckInfo(
+      deckId: (deck?['md5'] ?? deck?['id']?.toString() ?? e['deck_id'].toString()) as String,
+      deckName: (deck?['user_deck_name'] ?? '未命名题库') as String,
+      cardCount: 0, // TODO: FFI
+      lastReviewed: e['last_reviewed'] as int?,
+      currentIndex: 0, // TODO: FFI
+    );
+  }).toList();
 });
 
-class NotesNotifier extends StateNotifier<List<AnkiNote>> {
-  NotesNotifier() : super([]);
-
-  Future<void> loadFromDb(String deckId) async {
-    final notes = await AnkiDb.getNotesByDeck(deckId);
-    state = notes;
-  }
-
-  Future<void> setNotes(List<AnkiNote> notes, String deckId) async {
-    await AnkiDb.clearNotesByDeck(deckId);
-    await AnkiDb.insertNotes(notes, deckId);
-    state = notes;
-  }
-}
+// 卡片加载相关 provider/方法，建议直接在页面用 FFI 查 collection.sqlite，暂不在此提供
+// final notesProvider = ...
+// class NotesNotifier ...
 
 class DeckInfo {
   final String deckId;
@@ -50,20 +46,4 @@ class DeckInfo {
   DeckInfo({required this.deckId, required this.deckName, required this.cardCount, this.lastReviewed, this.currentIndex = 0});
 }
 
-class DecksNotifier extends StateNotifier<List<DeckInfo>> {
-  DecksNotifier() : super([]);
-
-  Future<void> loadDecks() async {
-    final decks = await AnkiDb.getAllDecks();
-    // 按 lastReviewed 降序排列，取所有题库
-    state = decks.map((e) => DeckInfo(
-      deckId: e['deck_id'] as String,
-      deckName: (e['deck_name'] ?? '未命名题库') as String,
-      cardCount: e['card_count'] as int,
-      lastReviewed: e['last_reviewed'] as int?,
-      currentIndex: (e['current_index'] ?? 0) as int,
-    ))
-    .toList()
-    ..sort((a, b) => (b.lastReviewed ?? 0).compareTo(a.lastReviewed ?? 0));
-  }
-} 
+// class DecksNotifier ... // 如需全局刷新可后续补充 

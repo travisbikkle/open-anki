@@ -22,6 +22,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _loading = true;
   late Map<String, Uint8List> _mediaFiles;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  List<dynamic> _notes = [];
 
   @override
   void initState() {
@@ -37,18 +38,40 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   Future<void> _loadDeck() async {
-    await ref.read(notesProvider.notifier).loadFromDb(widget.deckId);
-    final idx = await AnkiDb.loadProgress(widget.deckId);
-    ref.read(currentIndexProvider.notifier).state = idx;
-    setState(() { _loading = false; });
+    // 通过 Rust FFI 读取 collection.sqlite 卡片
+    setState(() { _loading = true; });
+    try {
+      // 假设 deckId 即为 md5，AppDb 可查到 apkg 路径
+      final allDecks = await AppDb.getAllDecks();
+      final deck = allDecks.firstWhere(
+        (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (deck.isEmpty) throw Exception('题库未找到');
+      final apkgPath = deck['apkg_path'] as String;
+      // TODO: 这里应调用新的 FFI 接口分页/筛选加载卡片
+      // final result = await parseApkg(path: apkgPath);
+      // setState(() { _notes = result.notes; });
+      // 进度管理仍用 AppDb
+      final progress = await AppDb.getProgress(deck['id'] as int);
+      final idx = progress?['current_card_id'] ?? 0;
+      ref.read(currentIndexProvider.notifier).state = idx;
+      // TODO: 你可以 setState 保存 notes、mediaMap、mediaFiles 等
+    } catch (e) {
+      // 错误处理
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
+    } finally {
+      setState(() { _loading = false; });
+    }
   }
 
   void _saveProgress(int idx) {
-    AnkiDb.saveProgress(widget.deckId, idx);
-    AnkiDb.upsertRecentDeck(widget.deckId); // 记录最近刷题
-    ref.read(decksProvider.notifier).loadDecks(); // 刷新首页最近刷题
-    ref.invalidate(allDecksProvider); // 刷新题库管理界面
-    ref.invalidate(recentDecksProvider); // 刷新首页最近刷题记录
+    // 进度管理用 AppDb
+    AppDb.saveProgress(/*deckId*/ int.parse(widget.deckId), idx); // 如 deckId 为 md5，需先查 id
+    AppDb.upsertRecentDeck(/*deckId*/ int.parse(widget.deckId));
+    // 刷新 UI
+    ref.invalidate(allDecksProvider);
+    ref.invalidate(recentDecksProvider);
   }
 
   Future<String?> _getMediaDir() async {
@@ -216,21 +239,20 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notes = ref.watch(notesProvider);
     final currentIndex = ref.watch(currentIndexProvider);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (notes.isEmpty) {
+    if (_notes.isEmpty || currentIndex < 0 || currentIndex >= _notes.length) {
       return Scaffold(
         appBar: AppBar(title: const Text('刷卡')),
         body: const Center(child: Text('无卡片')),
       );
     }
-    final note = notes[currentIndex];
+    final note = _notes[currentIndex];
     return Scaffold(
       appBar: AppBar(
-        title: Text('刷卡 (${currentIndex + 1}/${notes.length})'),
+        title: Text('刷卡 ( ${currentIndex + 1}/${_notes.length})'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -274,7 +296,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                   child: const Text('上一题'),
                 ),
                 ElevatedButton(
-                  onPressed: currentIndex < notes.length - 1
+                  onPressed: currentIndex < _notes.length - 1
                       ? () {
                           ref.read(currentIndexProvider.notifier).state++;
                           _saveProgress(currentIndex + 1);

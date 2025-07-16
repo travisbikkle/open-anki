@@ -6,69 +6,34 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `Note`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
 
-Future<ApkgParseResult> parseApkg({required String path}) =>
-    RustLib.instance.api.crateApiSimpleParseApkg(path: path);
+Future<ExtractResult> extractApkg({
+  required String apkgPath,
+  required String baseDir,
+}) => RustLib.instance.api.crateApiSimpleExtractApkg(
+  apkgPath: apkgPath,
+  baseDir: baseDir,
+);
 
-class ApkgParseResult {
-  final List<Note> notes;
-  final Map<String, String> mediaMap;
-  final Map<String, Uint8List> mediaFiles;
+class ExtractResult {
+  final String dir;
+  final String md5;
 
-  const ApkgParseResult({
-    required this.notes,
-    required this.mediaMap,
-    required this.mediaFiles,
-  });
-
-  @override
-  int get hashCode => notes.hashCode ^ mediaMap.hashCode ^ mediaFiles.hashCode;
+  const ExtractResult({required this.dir, required this.md5});
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ApkgParseResult &&
-          runtimeType == other.runtimeType &&
-          notes == other.notes &&
-          mediaMap == other.mediaMap &&
-          mediaFiles == other.mediaFiles;
-}
-
-class Note {
-  final PlatformInt64 id;
-  final String guid;
-  final PlatformInt64 mid;
-  final List<String> flds;
-  final String? notetypeName;
-
-  const Note({
-    required this.id,
-    required this.guid,
-    required this.mid,
-    required this.flds,
-    this.notetypeName,
-  });
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      guid.hashCode ^
-      mid.hashCode ^
-      flds.hashCode ^
-      notetypeName.hashCode;
+  int get hashCode => dir.hashCode ^ md5.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Note &&
+      other is ExtractResult &&
           runtimeType == other.runtimeType &&
-          id == other.id &&
-          guid == other.guid &&
-          mid == other.mid &&
-          flds == other.flds &&
-          notetypeName == other.notetypeName;
+          dir == other.dir &&
+          md5 == other.md5;
 }
