@@ -88,6 +88,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
       // 在AppDb登记索引
       await AppDb.insertDeck(result.dir, null, result.md5);
+      // 强制刷新 provider
+      ref.invalidate(allDecksProvider);
       setState(() { loading = false; });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +234,20 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                 ),
                               );
                               if (confirm == true) {
-                                // _deleteDeck(deck.deckId); // AnkiDb removed
+                                // 1. 删除 AppDb 索引
+                                await AppDb.deleteDeck(md5: deck.deckId);
+                                // 2. 删除解压目录
+                                try {
+                                  final dir = Directory(deck.deckId);
+                                  if (await dir.exists()) {
+                                    await dir.delete(recursive: true);
+                                  }
+                                } catch (e) {
+                                  print('删除解压目录失败: $e');
+                                }
+                                // 3. 刷新 provider
+                                ref.invalidate(allDecksProvider);
+                                setState(() {});
                               }
                             }
                           },

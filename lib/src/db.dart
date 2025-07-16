@@ -53,17 +53,33 @@ class AppDb {
   // 题库索引操作
   static Future<int> insertDeck(String apkgPath, String? userDeckName, String? md5) async {
     final dbClient = await db;
-    return await dbClient.insert('decks', {
+    print('insertDeck: $apkgPath, $userDeckName, $md5');
+    final id = await dbClient.insert('decks', {
       'apkg_path': apkgPath,
       'user_deck_name': userDeckName,
       'md5': md5,
       'import_time': DateTime.now().millisecondsSinceEpoch,
     });
+    print('insertDeck done, id=$id');
+    return id;
+  }
+
+  static Future<int> deleteDeck({String? md5, int? id}) async {
+    final dbClient = await db;
+    if (md5 != null) {
+      return await dbClient.delete('decks', where: 'md5 = ?', whereArgs: [md5]);
+    } else if (id != null) {
+      return await dbClient.delete('decks', where: 'id = ?', whereArgs: [id]);
+    } else {
+      throw ArgumentError('必须提供 md5 或 id');
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getAllDecks() async {
     final dbClient = await db;
-    return await dbClient.query('decks', orderBy: 'import_time DESC');
+    final result = await dbClient.query('decks', orderBy: 'import_time DESC');
+    print('getAllDecks: $result');
+    return result;
   }
 
   // 刷题进度操作

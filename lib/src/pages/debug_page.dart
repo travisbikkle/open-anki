@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import '../db.dart';
 
 class DebugPage extends StatefulWidget {
   const DebugPage({super.key});
@@ -13,6 +14,8 @@ class _DebugPageState extends State<DebugPage> {
   bool _loading = true;
   String? _error;
   List<FileSystemEntity> _rootEntities = [];
+  List<Map<String, dynamic>> _dbDecks = [];
+  bool _showDbDecks = false;
 
   @override
   void initState() {
@@ -38,6 +41,14 @@ class _DebugPageState extends State<DebugPage> {
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }
+  }
+
+  Future<void> _loadDbDecks() async {
+    final decks = await AppDb.getAllDecks();
+    setState(() {
+      _dbDecks = decks;
+      _showDbDecks = true;
+    });
   }
 
   Widget _buildTree(FileSystemEntity entity) {
@@ -69,21 +80,45 @@ class _DebugPageState extends State<DebugPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('调试-题库文件树浏览')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('错误: $_error'))
-              : _ankiDataDir == null
-                  ? const Center(child: Text('anki_data 目录不存在'))
-                  : ListView(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.sd_storage),
-                          title: Text(_ankiDataDir!.path),
-                        ),
-                        ..._rootEntities.map(_buildTree),
-                      ],
-                    ),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: _loadDbDecks,
+                child: const Text('显示题库索引(AppDb.getAllDecks)'),
+              ),
+            ],
+          ),
+          if (_showDbDecks)
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final deck in _dbDecks)
+                    ListTile(title: Text(deck.toString())),
+                ],
+              ),
+            ),
+          if (!_showDbDecks)
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text('错误: $_error'))
+                      : _ankiDataDir == null
+                          ? const Center(child: Text('anki_data 目录不存在'))
+                          : ListView(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.sd_storage),
+                                  title: Text(_ankiDataDir!.path),
+                                ),
+                                ..._rootEntities.map(_buildTree),
+                              ],
+                            ),
+            ),
+        ],
+      ),
     );
   }
 } 
