@@ -72,28 +72,34 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       error = null;
     });
     try {
-      FilePickerResult? picked = await FilePicker.platform.pickFiles(allowMultiple: false);
+      FilePickerResult? picked = await FilePicker.platform.pickFiles(allowMultiple: true);
       if (picked == null || picked.files.isEmpty) {
         setState(() { loading = false; });
         return;
       }
-      final file = picked.files.first;
-      String? path = file.path;
-      if (path == null) {
-        setState(() { loading = false; });
-        return;
-      }
       final appDocDir = await getApplicationDocumentsDirectory();
-      // 调用Rust端解压
-      final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
-      // 在AppDb登记索引
-      await AppDb.insertDeck(result.dir, null, result.md5);
+      for (final file in picked.files) {
+        String? path = file.path;
+        if (path == null) continue;
+        final fileName = p.basenameWithoutExtension(path);
+        String? deckName;
+        if (picked.files.length == 1) {
+          deckName = await _inputDeckNameDialog(fileName);
+          if (deckName == null || deckName.isEmpty) deckName = fileName;
+        } else {
+          deckName = fileName;
+        }
+        // 调用Rust端解压
+        final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
+        // 在AppDb登记索引
+        await AppDb.insertDeck(result.dir, deckName, result.md5);
+      }
       // 强制刷新 provider
       ref.invalidate(allDecksProvider);
       setState(() { loading = false; });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('导入成功，题库ID: ${result.md5}'), duration: const Duration(seconds: 2)),
+        SnackBar(content: Text('导入成功'), duration: const Duration(seconds: 2)),
       );
     } catch (e) {
       setState(() {
