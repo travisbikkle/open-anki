@@ -39,6 +39,10 @@ dependencies:
   flutter_rust_bridge: 2.11.1
   file_picker: ^6.1.1
   audioplayers: ^5.2.1
+  flutter_riverpod: ^2.4.0
+  sqflite: ^2.3.0
+  path_provider: ^2.1.5
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
