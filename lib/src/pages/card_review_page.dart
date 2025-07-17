@@ -10,6 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter_html/flutter_html.dart';
 import 'dart:convert'; // for base64Encode
+import 'package:collection/collection.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
 
 class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
@@ -22,21 +25,23 @@ class CardReviewPage extends ConsumerStatefulWidget {
 
 class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _loading = true;
-  late Map<String, Uint8List> _mediaFiles;
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  List<dynamic> _notes = [];
-  Map<String, String>? _mediaMap; // 新增：用于存储 media_map
+  List<NoteExt> _notes = [];
+  List<NotetypeExt> _cardNotetypes = [];
+  int _currentIndex = 0;
+  String? _mediaDir;
+  late WebViewController _controller;
 
   @override
   void initState() {
     super.initState();
-    _mediaFiles = widget.mediaFiles ?? {};
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000));
     _loadDeck();
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -52,17 +57,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     return '${appDocDir.path}/anki_data/$md5';
   }
 
-  Future<String?> _getMediaDir() async {
-    final deckDir = await _getDeckDir();
-    if (deckDir == null) return null;
-    final unarchivedMedia = '$deckDir/unarchived_media';
-    if (await Directory(unarchivedMedia).exists()) {
-      return unarchivedMedia;
-    } else {
-      return null;
-    }
-  }
-
   Future<void> _loadDeck() async {
     setState(() { _loading = true; });
     try {
@@ -76,18 +70,22 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       final md5 = deck['md5'] as String;
       final deckDir = '${appDocDir.path}/anki_data/$md5';
       final sqlitePath = '$deckDir/collection.sqlite';
-      print('DEBUG: deckDir: $deckDir');
-      print('DEBUG: sqlitePath: $sqlitePath');
       final result = await getDeckNotes(sqlitePath: sqlitePath);
-      final mediaMap = await AppDb.getDeckMediaMap(widget.deckId);
-      print('DEBUG: 获取到 media_map: ${mediaMap?.length ?? 0} 个映射');
+      final newMediaDir = '$deckDir/unarchived_media';
       setState(() {
-        _notes = result.notes;
-        _mediaMap = mediaMap ?? {};
+        _notes = result.notes.cast<NoteExt>();
+        _cardNotetypes = result.notetypes.cast<NotetypeExt>();
+        if (_mediaDir != newMediaDir) {
+          _mediaDir = newMediaDir;
+          _controller = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(const Color(0x00000000));
+        }
       });
       final progress = await AppDb.getProgress(deck['id'] as int);
       final idx = progress?['current_card_id'] ?? 0;
-      ref.read(currentIndexProvider.notifier).state = idx;
+      _currentIndex = idx;
+      _loadCurrentCard();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
     } finally {
@@ -96,7 +94,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   void _saveProgress(int idx) async {
-    // 进度管理用 AppDb
     final allDecks = await AppDb.getAllDecks();
     final deck = allDecks.firstWhere(
       (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
@@ -106,271 +103,101 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     final deckId = deck['id'] as int;
     await AppDb.saveProgress(deckId, idx);
     await AppDb.upsertRecentDeck(deckId);
-    // 刷新 UI
     ref.invalidate(allDecksProvider);
     ref.invalidate(recentDecksProvider);
   }
 
-  Future<Uint8List?> _findMedia(String fname) async {
-    final mediaDir = await _getMediaDir();
-    if (mediaDir == null) return null;
-    final f = File('$mediaDir/$fname');
-    if (await f.exists()) {
-      print('DEBUG: 直接找到媒体文件: $fname');
-      return await f.readAsBytes();
-    }
-    print('DEBUG: 未找到媒体文件: $fname, mediaDir: $mediaDir');
-    return null;
+  void _loadCurrentCard() {
+    if (_notes.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _notes.length) return;
+    final note = _notes[_currentIndex];
+    final html = _composeCardHtml(note);
+    debugPrint('【WebView调试】baseUrl: file://${_mediaDir!}/');
+    debugPrint('【WebView调试】HTML片段: ' + (html.length > 200 ? html.substring(0, 200) : html));
+    _controller.loadHtmlString(
+      html,
+      baseUrl: 'file://${_mediaDir!}/',
+    );
   }
 
-  Widget _renderField(String field, {String? notetypeName}) {
-    // 针对“自动匹配-选择题模板”自动分行加A/B/C/D
-    if (notetypeName == '自动匹配-选择题模板') {
-      // 题干和选项之间用<br>分隔，选项之间没有分隔符，自动分行并加A/B/C/D
-      final parts = field.split('<br>');
-      if (parts.length >= 2) {
-        final question = parts[0];
-        // 选项部分合并后按大写字母开头分割
-        final optionsRaw = parts.sublist(1).join('<br>');
-        // 尝试用换行或大写字母加点分割
-        final optionList = optionsRaw.split(RegExp(r'(?=[A-Z][A-Z]?\s?\()|(?<=\.)\s+)'));
-        final optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        final optionsHtml = optionList.asMap().entries.map((e) =>
-          '<div><b>${optionLabels[e.key]}.</b> ${e.value.trim()}</div>'
-        ).join();
-        final html = '$question<br>$optionsHtml';
-        return Html(
-          data: html,
-          extensions: [
-            TagExtension(
-              tagsToExtend: {"img"},
-              builder: (context) {
-                final src = context.attributes['src'] ?? '';
-                return FutureBuilder<Uint8List?>(
-                  future: _findMedia(src),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData && snapshot.data != null) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Image.memory(snapshot.data!, height: 80),
-                      );
-                    } else {
-                      return Text('[图片缺失:$src]', style: const TextStyle(color: Colors.red));
-                    }
-                  },
-                );
-              },
-            ),
-            TagExtension(
-              tagsToExtend: {"audio"},
-              builder: (context) {
-                final src = context.attributes['src'] ?? '';
-                return FutureBuilder<Uint8List?>(
-                  future: _findMedia(src),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData && snapshot.data != null) {
-                      return IconButton(
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () async {
-                          try {
-                            final mediaDir = await _getMediaDir();
-                            final filePath = '$mediaDir/$src';
-                            final file = File(filePath);
-                            final exists = await file.exists();
-                            final length = exists ? await file.length() : 0;
-                            String headBase64 = '';
-                            if (exists && length > 0) {
-                              final headBytes = await file.openRead(0, 16).first;
-                              headBase64 = base64Encode(headBytes);
-                            }
-                            final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
-                            print(debugInfo);
-                            await _audioPlayer.setFilePath(filePath);
-                            await _audioPlayer.play();
-                          } catch (e) {
-                            final mediaDir = await _getMediaDir();
-                            final filePath = '$mediaDir/$src';
-                            final file = File(filePath);
-                            final exists = await file.exists();
-                            final length = exists ? await file.length() : 0;
-                            String headBase64 = '';
-                            if (exists && length > 0) {
-                              final headBytes = await file.openRead(0, 16).first;
-                              headBase64 = base64Encode(headBytes);
-                            }
-                            final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
-                            print('音频播放失败: $e\n$debugInfo');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('音频播放失败: $e\n$debugInfo')),
-                            );
-                          }
-                        },
-                      );
-                    } else {
-                      return Text('[音频缺失:$src]', style: const TextStyle(color: Colors.red));
-                    }
-                  },
-                );
-              },
-            ),
-          ],
-        );
-      }
-    }
-    // 其他模板保持原有HTML渲染
-    String html = field.replaceAllMapped(
-      RegExp(r'\[sound:([^\]]+)\]'),
-      (m) => '<audio src="${m[1]}"></audio>',
-    );
-    return Html(
-      data: html,
-      extensions: [
-        TagExtension(
-          tagsToExtend: {"img"},
-          builder: (context) {
-            final src = context.attributes['src'] ?? '';
-            return FutureBuilder<Uint8List?>(
-              future: _findMedia(src),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Image.memory(snapshot.data!, height: 80),
-                  );
-                } else {
-                  return Text('[图片缺失:$src]', style: const TextStyle(color: Colors.red));
-                }
-              },
-            );
-          },
-        ),
-        TagExtension(
-          tagsToExtend: {"audio"},
-          builder: (context) {
-            final src = context.attributes['src'] ?? '';
-            return FutureBuilder<Uint8List?>(
-              future: _findMedia(src),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  return IconButton(
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: () async {
-                      try {
-                        final mediaDir = await _getMediaDir();
-                        final filePath = '$mediaDir/$src';
-                        final file = File(filePath);
-                        final exists = await file.exists();
-                        final length = exists ? await file.length() : 0;
-                        String headBase64 = '';
-                        if (exists && length > 0) {
-                          final headBytes = await file.openRead(0, 16).first;
-                          headBase64 = base64Encode(headBytes);
-                        }
-                        final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
-                        print(debugInfo);
-                        await _audioPlayer.setFilePath(filePath);
-                        await _audioPlayer.play();
-                      } catch (e) {
-                        final mediaDir = await _getMediaDir();
-                        final filePath = '$mediaDir/$src';
-                        final file = File(filePath);
-                        final exists = await file.exists();
-                        final length = exists ? await file.length() : 0;
-                        String headBase64 = '';
-                        if (exists && length > 0) {
-                          final headBytes = await file.openRead(0, 16).first;
-                          headBase64 = base64Encode(headBytes);
-                        }
-                        final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
-                        print('音频播放失败: $e\n$debugInfo');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('音频播放失败: $e\n$debugInfo')),
-                        );
-                      }
-                    },
-                  );
-                } else {
-                  return Text('[音频缺失:$src]', style: const TextStyle(color: Colors.red));
-                }
-              },
-            );
-          },
-        ),
-      ],
-    );
+  String _composeCardHtml(NoteExt note) {
+    final content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
+    debugPrint('【composeCardHtml】content: $content');
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>body{background:#222;color:#fff;font-size:18px;}</style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+$content
+</body>
+</html>
+''';
+  }
+
+  void _nextCard() {
+    if (_notes.isEmpty) return;
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % _notes.length;
+      _saveProgress(_currentIndex);
+      _loadCurrentCard();
+    });
+  }
+
+  void _prevCard() {
+    if (_notes.isEmpty) return;
+    setState(() {
+      _currentIndex = (_currentIndex - 1 + _notes.length) % _notes.length;
+      _saveProgress(_currentIndex);
+      _loadCurrentCard();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = ref.watch(currentIndexProvider);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (_notes.isEmpty || currentIndex < 0 || currentIndex >= _notes.length) {
+    if (_notes.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('刷卡')),
         body: const Center(child: Text('无卡片')),
       );
     }
-    final note = _notes[currentIndex];
+    final note = _notes[_currentIndex];
+    final html = _composeCardHtml(note);
     return Scaffold(
       appBar: AppBar(
-        title: Text('刷卡 ( ${currentIndex + 1}/${_notes.length})'),
+        title: Text('刷卡 ( ${_currentIndex + 1}/${_notes.length})'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.navigate_before),
+            onPressed: _prevCard,
+          ),
+          IconButton(
+            icon: const Icon(Icons.navigate_next),
+            onPressed: _nextCard,
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (int i = 0; i < note.flds.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: _renderField(note.flds[i], notetypeName: note.notetypeName),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.black12,
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              '调试信息：mediaDir=${_mediaDir ?? "null"}\nHTML为空: ${html.trim().isEmpty}',
+              style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  onPressed: currentIndex > 0
-                      ? () {
-                          ref.read(currentIndexProvider.notifier).state--;
-                          _saveProgress(currentIndex - 1);
-                        }
-                      : null,
-                  child: const Text('上一题'),
-                ),
-                ElevatedButton(
-                  onPressed: currentIndex < _notes.length - 1
-                      ? () {
-                          ref.read(currentIndexProvider.notifier).state++;
-                          _saveProgress(currentIndex + 1);
-                        }
-                      : null,
-                  child: const Text('下一题'),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+         Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
+        ],
       ),
     );
   }
