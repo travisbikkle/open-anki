@@ -120,7 +120,31 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   String _composeCardHtml(NoteExt note) {
-    final content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
+    String content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
+    // 替换 [sound:xxx.mp3] 为 <audio src="xxx.mp3" controls></audio>
+    content = content.replaceAllMapped(
+      RegExp(r'\[sound:([^\]]+)\]'),
+      (m) => '<audio src="${m[1]}" controls></audio>'
+    );
+    // 再用更宽松的正则，防止未被替换
+    content = content.replaceAllMapped(
+      RegExp(r'\[sound:([^\]]+)\]'),
+      (m) => '<audio src="${m[1]}" controls></audio>'
+    );
+    content = content.replaceAllMapped(
+      RegExp(r'\[sound:([^.\]]+\.mp3)\]'),
+      (m) => '<audio src="${m[1]}" controls></audio>'
+    );
+    content = content.replaceAllMapped(
+      RegExp(r'\[sound:([^.\]]+\.wav)\]'),
+      (m) => '<audio src="${m[1]}" controls></audio>'
+    );
+    // 给 <img> 标签加上样式
+    content = content.replaceAllMapped(
+      RegExp(r'<img ([^>]*?)src="([^"]+)"([^>]*)>'),
+      (m) => '<img ${m[1]}src="${m[2]}"${m[3]} style="max-width:100%;border:1px solid red;">'
+    );
+    if (content.trim().isEmpty) content = '（无内容）';
     debugPrint('【composeCardHtml】content: $content');
     return '''
 <!DOCTYPE html>
