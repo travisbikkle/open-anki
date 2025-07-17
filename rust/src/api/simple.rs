@@ -471,5 +471,6 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
         let due: i64 = row.get(5).map_err(|e| format!("读取due失败: {e}"))?;
         cards.push(CardExt { id, nid, ord, type_, queue, due });
     }
+    rust_log(&format!("DEBUG: 返回 notetypes 数量: {}", notetypes.len()));
     Ok(DeckNotesResult { notes, notetypes, fields, cards })
 }

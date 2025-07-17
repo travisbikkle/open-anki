@@ -5,16 +5,6 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'dart:async';
-
-final rustLogStream = StreamController<String>.broadcast();
-void rustLogCallback(String msg) {
-  print('[RUST] $msg');
-  rustLogStream.add(msg);
-}
-Future<void> initRustLog() async {
-  RustLib.instance.api.crateApiSimpleRegisterLogCallback().listen(rustLogCallback);
-}
 
 // These functions are ignored because they are not marked as `pub`: `rust_log`, `table_has_columns`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `LOG_SINK`, `Note`

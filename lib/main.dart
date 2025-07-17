@@ -6,7 +6,7 @@ import 'src/pages/notes_page.dart';
 import 'src/pages/profile_page.dart';
 import 'src/pages/debug_page.dart';
 import 'package:open_anki/src/rust/frb_generated.dart';
-import 'package:open_anki/src/rust/api/simple.dart' show initRustLog, rustLogStream;
+import 'package:open_anki/src/rust/api/simple.manual.dart';
 import 'dart:async';
 
 Future<void> main() async {
