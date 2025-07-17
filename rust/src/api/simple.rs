@@ -227,7 +227,7 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
                             for (key, value) in obj.iter() {
                                 if let Some(filename) = value.as_str() {
                                     media_map.insert(filename.to_string(), key.clone());
-                                    rust_log(&format!("DEBUG: 媒体映射: {} -> {}", filename, key));
+                                    //rust_log(&format!("DEBUG: 媒体映射: {} -> {}", filename, key));
                                 } else {
                                     rust_log(&format!("DEBUG: 跳过非字符串值: key={}, value={:?}", key, value));
                                 }
@@ -339,8 +339,8 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
             rust_log(&format!("DEBUG: 表名: {}", name));
         }
     }
-    // 判断 fields 表结构
-    let has_fields = table_has_columns(&conn, "fields", &["id", "notetype_id", "name", "ord"]);
+    // 判断 fields 表结构（兼容 ntid/ord/name/config）
+    let has_fields = table_has_columns(&conn, "fields", &["ntid", "ord", "name"]);
     let mut notetypes = Vec::new();
     let mut fields = Vec::new();
     if has_notetypes {
@@ -354,6 +354,7 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
             Ok(r) => r,
             Err(e) => { rust_log(&format!("DEBUG: notetypes 查询SQL失败: {e}")); return Err(format!("查询SQL失败: {e}")); }
         };
+        let mut row_count = 0;
         while let Some(row) = match rows.next() {
             Ok(opt) => opt,
             Err(e) => { rust_log(&format!("DEBUG: notetypes 遍历SQL失败: {e}")); return Err(format!("遍历SQL失败: {e}")); }
@@ -366,22 +367,37 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
                 Ok(v) => v,
                 Err(e) => { rust_log(&format!("DEBUG: notetypes 读取name失败: {e}")); continue; }
             };
-            let config: Option<String> = row.get(2).ok();
+            // config 字段允许为 NULL，但为 None 时强制 Some("")
+            let config: Option<String> = match row.get::<_, Option<String>>(2) {
+                Ok(val) => val.or(Some(String::new())),
+                Err(_) => Some(String::new()),
+            };
             rust_log(&format!("DEBUG: notetype 行: id={}, name={}, config={:?}", id, name, config));
             notetypes.push(NotetypeExt { id, name, config });
+            row_count += 1;
         }
+        rust_log(&format!("DEBUG: notetypes 遍历完成，共 {} 行", row_count));
+        // 遍历完所有 notetypes 后，手动 push 一个测试类型
+        notetypes.push(NotetypeExt { id: 999, name: "测试类型".to_string(), config: Some("test".to_string()) });
+        rust_log(&format!("DEBUG: notetypes push 测试类型后长度: {}", notetypes.len()));
         if has_fields {
-            let mut stmt = conn.prepare("SELECT id, notetype_id, name, ord FROM fields").map_err(|e| format!("准备SQL失败: {e}"))?;
+            // 兼容 ntid/ord 字段名
+            let mut stmt = conn.prepare("SELECT ntid, ord, name FROM fields").map_err(|e| format!("准备SQL失败: {e}"))?;
             let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            let mut field_row_count = 0;
             while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-                let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
-                let notetype_id: i64 = row.get(1).map_err(|e| format!("读取notetype_id失败: {e}"))?;
+                let notetype_id: i64 = row.get(0).map_err(|e| format!("读取ntid失败: {e}"))?;
+                let ord: i64 = row.get(1).map_err(|e| format!("读取ord失败: {e}"))?;
                 let name: String = row.get(2).map_err(|e| format!("读取name失败: {e}"))?;
-                let ord: i64 = row.get(3).map_err(|e| format!("读取ord失败: {e}"))?;
+                // id 字段用 (ntid*1000+ord) 生成唯一id
+                let id = notetype_id * 1000 + ord;
                 fields.push(FieldExt { id, notetype_id, name, ord });
+                field_row_count += 1;
             }
+            rust_log(&format!("DEBUG: fields 遍历完成，共 {} 行", field_row_count));
         }
     }
+    rust_log(&format!("DEBUG: notetypes 最终长度: {}", notetypes.len()));
     if !has_notetypes || !has_fields {
         // 兼容老版结构：col.models 字段
         let mut stmt = conn.prepare("SELECT models FROM col").map_err(|e| format!("准备SQL失败: {e}"))?;
@@ -390,11 +406,13 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
         if let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
             models_json = row.get(0).map_err(|e| format!("读取models失败: {e}"))?;
         }
+        rust_log(&format!("DEBUG: col.models 字段内容长度: {}", models_json.len()));
         if models_json.trim().is_empty() {
             // fallback: 只读 notes 表，字段名和模板名设为 None/空
             let mut notes = Vec::new();
             let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes").map_err(|e| format!("准备SQL失败: {e}"))?;
             let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            let mut note_row_count = 0;
             while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
                 let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
                 let guid: String = row.get(1).map_err(|e| format!("读取guid失败: {e}"))?;
@@ -409,7 +427,9 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
                     notetype_name: "".to_string(),
                     field_names: vec![],
                 });
+                note_row_count += 1;
             }
+            rust_log(&format!("DEBUG: notes 遍历完成，共 {} 行，return 432", note_row_count));
             return Ok(DeckNotesResult {
                 notes,
                 notetypes: vec![],
@@ -417,8 +437,10 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
                 cards: vec![],
             });
         }
+        rust_log(&format!("DEBUG: col.models JSON 解析开始"));
         let models: serde_json::Value = serde_json::from_str(&models_json).map_err(|e| format!("解析models JSON失败: {e}"))?;
         if let Some(obj) = models.as_object() {
+            rust_log(&format!("DEBUG: col.models 解析到 {} 个模型", obj.len()));
             for (id_str, model) in obj.iter() {
                 let id = id_str.parse::<i64>().unwrap_or(0);
                 let name = model.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -443,10 +465,12 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
             }
         }
     }
+    rust_log(&format!("DEBUG: notetypes 返回前长度: {}", notetypes.len()));
     // 3. 读取 notes
     let mut notes = Vec::new();
     let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes").map_err(|e| format!("准备SQL失败: {e}"))?;
     let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+    let mut note_row_count = 0;
     while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
         let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
         let guid: String = row.get(1).map_err(|e| format!("读取guid失败: {e}"))?;
@@ -457,11 +481,14 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
         let notetype_name = notetype.map(|n| n.name.clone()).unwrap_or_default();
         let field_names: Vec<String> = fields.iter().filter(|f| f.notetype_id == mid).sorted_by_key(|f| f.ord).map(|f| f.name.clone()).collect();
         notes.push(NoteExt { id, guid, mid, flds: flds_vec, notetype_name, field_names });
+        note_row_count += 1;
     }
+    rust_log(&format!("DEBUG: notes 遍历完成，共 {} 行", note_row_count));
     // 4. 读取 cards
     let mut cards = Vec::new();
     let mut stmt = conn.prepare("SELECT id, nid, ord, type, queue, due FROM cards").map_err(|e| format!("准备SQL失败: {e}"))?;
     let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+    let mut card_row_count = 0;
     while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
         let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
         let nid: i64 = row.get(1).map_err(|e| format!("读取nid失败: {e}"))?;
@@ -470,7 +497,17 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
         let queue: i64 = row.get(4).map_err(|e| format!("读取queue失败: {e}"))?;
         let due: i64 = row.get(5).map_err(|e| format!("读取due失败: {e}"))?;
         cards.push(CardExt { id, nid, ord, type_, queue, due });
+        card_row_count += 1;
     }
+    rust_log(&format!("DEBUG: cards 遍历完成，共 {} 行", card_row_count));
     rust_log(&format!("DEBUG: 返回 notetypes 数量: {}", notetypes.len()));
+    rust_log(&format!("DEBUG: 返回 notes 数量: {}", notes.len()));
+    rust_log(&format!("DEBUG: 返回 fields 数量: {}", fields.len()));
+    rust_log(&format!("DEBUG: 返回 cards 数量: {}", cards.len()));
+    // 返回前打印完整 notetypes 内容
+    rust_log(&format!("DEBUG: notetypes length: {}", notetypes.len()));
+    for (i, nt) in notetypes.iter().enumerate() {
+        rust_log(&format!("DEBUG: notetypes[{}]: id={}, name={}, config={:?}", i, nt.id, nt.name, nt.config));
+    }
     Ok(DeckNotesResult { notes, notetypes, fields, cards })
 }
