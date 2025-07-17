@@ -377,9 +377,6 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
             row_count += 1;
         }
         rust_log(&format!("DEBUG: notetypes 遍历完成，共 {} 行", row_count));
-        // 遍历完所有 notetypes 后，手动 push 一个测试类型
-        notetypes.push(NotetypeExt { id: 999, name: "测试类型".to_string(), config: Some("test".to_string()) });
-        rust_log(&format!("DEBUG: notetypes push 测试类型后长度: {}", notetypes.len()));
         if has_fields {
             // 兼容 ntid/ord 字段名
             let mut stmt = conn.prepare("SELECT ntid, ord, name FROM fields").map_err(|e| format!("准备SQL失败: {e}"))?;
