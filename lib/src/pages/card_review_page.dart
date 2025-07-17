@@ -27,6 +27,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _loading = true;
   List<NoteExt> _notes = [];
   List<NotetypeExt> _cardNotetypes = [];
+  List<FieldExt> _fields = [];
   int _currentIndex = 0;
   String? _mediaDir;
   late WebViewController _controller;
@@ -76,6 +77,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       setState(() {
         _notes = result.notes.cast<NoteExt>();
         _cardNotetypes = result.notetypes.cast<NotetypeExt>();
+        _fields = result.fields.cast<FieldExt>();
         if (_mediaDir != newMediaDir) {
           _mediaDir = newMediaDir;
           _controller = WebViewController()
@@ -121,8 +123,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   String _composeCardHtml(NoteExt note) {
-    String content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
-    // 获取 notetype
     NotetypeExt? notetype;
     try {
       notetype = _cardNotetypes.firstWhere(
@@ -132,7 +132,61 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     } catch (e) {
       notetype = null;
     }
-    // 只拼接模板和内容，交给模板JS渲染
+    // 获取当前 notetype 的所有字段，按 ord 排序
+    final fieldsForType = _fields
+        .where((f) => f.notetypeId == note.mid)
+        .toList()
+      ..sort((a, b) => a.ord.compareTo(b.ord));
+    // 组装字段名与内容映射
+    final fieldMap = <String, String>{};
+    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
+      fieldMap[fieldsForType[i].name] = note.flds[i];
+    }
+    // 自动匹配-选择题模板专用渲染
+    if (notetype != null && notetype.name == '自动匹配-选择题模板') {
+      // 题干、选项、答案、remark 字段名自动识别
+      String stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
+      String optionsRaw = fieldMap['Options'] ?? '';
+      // 选项用 <br> 或 \n 分割
+      final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
+      final answer = fieldMap['Answer'] ?? fieldMap['答案'] ?? '';
+      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? fieldMap['解析'] ?? '';
+      
+      // 渲染选项，自动高亮答案
+      String optionsHtml = '';
+      for (int i = 0; i < options.length; i++) {
+        final label = String.fromCharCode('A'.codeUnitAt(0) + i);
+        final value = options[i];
+        final isCorrect = answer.contains(label);
+        optionsHtml += '<div style="margin:4px 0;padding:6px;border-radius:6px;${isCorrect ? 'background:#d0ffd0;font-weight:bold;' : 'background:#f8f8f8;'}">'
+          '<b>$label.</b> $value'
+          '${isCorrect ? ' <span style="color:green;">✔</span>' : ''}'
+          '</div>';
+      }
+      // 题干、remark渲染
+      String remarkHtml = remark.isNotEmpty ? '<div style="margin-top:16px;padding:8px;background:#f0f0ff;border-radius:6px;color:#333;"><b>解析：</b>$remark</div>' : '';
+      return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 18px; padding: 16px; }
+    .stem { margin-bottom: 16px; }
+    .options { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="stem">$stem</div>
+  <div class="options">$optionsHtml</div>
+  $remarkHtml
+</body>
+</html>
+''';
+    }
+    // 其它类型保持原有逻辑
+    String content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
     String template = notetype?.config ?? '';
     if (content.trim().isEmpty) content = '（无内容）';
     debugPrint('【composeCardHtml】content: $content');
