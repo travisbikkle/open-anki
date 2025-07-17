@@ -40,37 +40,55 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     super.dispose();
   }
 
+  Future<String?> _getDeckDir() async {
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final allDecks = await AppDb.getAllDecks();
+    final deck = allDecks.firstWhere(
+      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (deck.isEmpty) return null;
+    final md5 = deck['md5'] as String;
+    return '${appDocDir.path}/anki_data/$md5';
+  }
+
+  Future<String?> _getMediaDir() async {
+    final deckDir = await _getDeckDir();
+    if (deckDir == null) return null;
+    final unarchivedMedia = '$deckDir/unarchived_media';
+    if (await Directory(unarchivedMedia).exists()) {
+      return unarchivedMedia;
+    } else {
+      return null;
+    }
+  }
+
   Future<void> _loadDeck() async {
-    // 通过 Rust FFI 读取 collection.sqlite 卡片
     setState(() { _loading = true; });
     try {
-      // 假设 deckId 即为 md5，AppDb 可查到 apkg 路径
+      final appDocDir = await getApplicationDocumentsDirectory();
       final allDecks = await AppDb.getAllDecks();
       final deck = allDecks.firstWhere(
         (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
         orElse: () => <String, dynamic>{},
       );
       if (deck.isEmpty) throw Exception('题库未找到');
-      final apkgPath = deck['apkg_path'] as String;
-      // collection.sqlite 路径
-      final sqlitePath = '$apkgPath/collection.sqlite';
-      print('DEBUG: apkgPath: $apkgPath');
+      final md5 = deck['md5'] as String;
+      final deckDir = '${appDocDir.path}/anki_data/$md5';
+      final sqlitePath = '$deckDir/collection.sqlite';
+      print('DEBUG: deckDir: $deckDir');
       print('DEBUG: sqlitePath: $sqlitePath');
-      // 1. 调用 Rust FFI 获取卡片
       final result = await getDeckNotes(sqlitePath: sqlitePath);
-      // 2. 获取 media_map
       final mediaMap = await AppDb.getDeckMediaMap(widget.deckId);
       print('DEBUG: 获取到 media_map: ${mediaMap?.length ?? 0} 个映射');
       setState(() {
         _notes = result.notes;
         _mediaMap = mediaMap ?? {};
       });
-      // 2. 进度管理
       final progress = await AppDb.getProgress(deck['id'] as int);
       final idx = progress?['current_card_id'] ?? 0;
       ref.read(currentIndexProvider.notifier).state = idx;
     } catch (e) {
-      // 错误处理
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
     } finally {
       setState(() { _loading = false; });
@@ -91,23 +109,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     // 刷新 UI
     ref.invalidate(allDecksProvider);
     ref.invalidate(recentDecksProvider);
-  }
-
-  Future<String?> _getMediaDir() async {
-    // 通过 AppDb 获取 apkg 路径
-    final allDecks = await AppDb.getAllDecks();
-    final deck = allDecks.firstWhere(
-      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (deck.isEmpty) return null;
-    final apkgPath = deck['apkg_path'] as String;
-    final unarchivedMedia = '$apkgPath/unarchived_media';
-    if (await Directory(unarchivedMedia).exists()) {
-      return unarchivedMedia;
-    } else {
-      return null;
-    }
   }
 
   Future<Uint8List?> _findMedia(String fname) async {

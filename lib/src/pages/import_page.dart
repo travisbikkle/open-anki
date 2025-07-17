@@ -91,8 +91,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         }
         // 调用Rust端解压
         final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
-        // 在AppDb登记索引
-        await AppDb.insertDeck(result.dir, deckName, result.md5, mediaMap: result.mediaMap);
+        // 在AppDb登记索引，只存md5
+        await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap);
         print('DEBUG: 导入完成，media_map 大小: ${result.mediaMap.length}');
       }
       // 强制刷新 provider

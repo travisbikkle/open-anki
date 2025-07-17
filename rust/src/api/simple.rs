@@ -237,7 +237,7 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     }
     println!("DEBUG: media 映射解析完成，共 {} 个文件", media_map.len());
     
-    Ok(ExtractResult { dir: deck_dir.to_string_lossy().to_string(), md5: md5str, media_map })
+    Ok(ExtractResult { dir: md5str.clone(), md5: md5str, media_map })
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
