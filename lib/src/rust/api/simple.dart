@@ -5,13 +5,26 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'dart:async';
 
-// These functions are ignored because they are not marked as `pub`: `table_has_columns`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `Note`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+final rustLogStream = StreamController<String>.broadcast();
+void rustLogCallback(String msg) {
+  print('[RUST] $msg');
+  rustLogStream.add(msg);
+}
+Future<void> initRustLog() async {
+  RustLib.instance.api.crateApiSimpleRegisterLogCallback().listen(rustLogCallback);
+}
+
+// These functions are ignored because they are not marked as `pub`: `rust_log`, `table_has_columns`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `LOG_SINK`, `Note`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
+
+Stream<String> registerLogCallback() =>
+    RustLib.instance.api.crateApiSimpleRegisterLogCallback();
 
 Future<ExtractResult> extractApkg({
   required String apkgPath,

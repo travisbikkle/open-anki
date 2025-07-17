@@ -6,10 +6,20 @@ import 'src/pages/notes_page.dart';
 import 'src/pages/profile_page.dart';
 import 'src/pages/debug_page.dart';
 import 'package:open_anki/src/rust/frb_generated.dart';
+import 'package:open_anki/src/rust/api/simple.dart' show initRustLog, rustLogStream;
+import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await RustLib.init();
+  try {
+    await RustLib.init();
+    await initRustLog();
+  } catch (e, st) {
+    print('init error: $e\n$st');
+  }
+  rustLogStream.stream.listen((msg) {
+    print('[RUST] $msg');
+  });
   runApp(const ProviderScope(child: MyApp()));
 }
 

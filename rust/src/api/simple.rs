@@ -21,6 +21,24 @@ use zstd::stream::decode_all;
 use md5::compute;
 use std::io::Write;
 use itertools::Itertools;
+use crate::frb_generated::StreamSink;
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref LOG_SINK: Mutex<Option<StreamSink<String>>> = Mutex::new(None);
+}
+
+#[flutter_rust_bridge::frb]
+pub fn register_log_callback(sink: StreamSink<String>) {
+    *LOG_SINK.lock().unwrap() = Some(sink);
+}
+
+fn rust_log(msg: &str) {
+    if let Some(sink) = &*LOG_SINK.lock().unwrap() {
+        let _ = sink.add(msg.to_string());
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Note {
@@ -49,6 +67,7 @@ pub struct ExtractResult {
 
 #[flutter_rust_bridge::frb]
 pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult, String> {
+    rust_log(&format!("DEBUG: extract_apkg 被调用"));
     // 1. 计算md5
     let mut file = File::open(&apkg_path).map_err(|e| format!("无法打开apkg文件: {e}"))?;
     let mut buf = Vec::new();
@@ -58,7 +77,7 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     let deck_dir = PathBuf::from(&base_dir).join(&md5str);
     // 如果目录已存在，递归删除
     if deck_dir.exists() {
-        println!("DEBUG: 递归删除已存在的deck目录: {}", deck_dir.display());
+        rust_log(&format!("DEBUG: 递归删除已存在的deck目录: {}", deck_dir.display()));
         fs::remove_dir_all(&deck_dir).map_err(|e| format!("递归删除deck目录失败: {} - {}", deck_dir.display(), e))?;
     }
     fs::create_dir_all(&deck_dir).map_err(|e| format!("创建目录失败: {e}"))?;
@@ -83,43 +102,43 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     let anki2 = deck_dir.join("collection.anki2");
     let sqlite_path = deck_dir.join("collection.sqlite");
 
-    println!("DEBUG: 检查 collection 文件");
-    println!("DEBUG: anki21b 路径: {}", anki21b.display());
-    println!("DEBUG: anki2 路径: {}", anki2.display());
-    println!("DEBUG: sqlite 目标路径: {}", sqlite_path.display());
-    println!("DEBUG: anki21b 存在: {}", anki21b.exists());
-    println!("DEBUG: anki2 存在: {}", anki2.exists());
+    rust_log(&format!("DEBUG: 检查 collection 文件"));
+    rust_log(&format!("DEBUG: anki21b 路径: {}", anki21b.display()));
+    rust_log(&format!("DEBUG: anki2 路径: {}", anki2.display()));
+    rust_log(&format!("DEBUG: sqlite 目标路径: {}", sqlite_path.display()));
+    rust_log(&format!("DEBUG: anki21b 存在: {}", anki21b.exists()));
+    rust_log(&format!("DEBUG: anki2 存在: {}", anki2.exists()));
 
     if anki21b.exists() {
         // 新版：zstd 解压
-        println!("DEBUG: 开始处理 anki21b");
+        rust_log(&format!("DEBUG: 开始处理 anki21b"));
         let mut zstd_file = File::open(&anki21b).map_err(|e| format!("打开anki21b失败: {e}"))?;
         let mut zstd_bytes = Vec::new();
         zstd_file.read_to_end(&mut zstd_bytes).map_err(|e| format!("读取anki21b失败: {e}"))?;
-        println!("DEBUG: anki21b 大小: {} bytes", zstd_bytes.len());
+        rust_log(&format!("DEBUG: anki21b 大小: {} bytes", zstd_bytes.len()));
         let sqlite_bytes = decode_all(&zstd_bytes[..]).map_err(|e| format!("zstd解压失败: {e}"))?;
-        println!("DEBUG: 解压后大小: {} bytes", sqlite_bytes.len());
+        rust_log(&format!("DEBUG: 解压后大小: {} bytes", sqlite_bytes.len()));
         let mut out = File::create(&sqlite_path).map_err(|e| format!("创建sqlite文件失败: {e}"))?;
         out.write_all(&sqlite_bytes).map_err(|e| format!("写入sqlite失败: {e}"))?;
-        println!("DEBUG: anki21b 处理完成");
+        rust_log(&format!("DEBUG: anki21b 处理完成"));
     } else if anki2.exists() {
         // 老版：直接复制
-        println!("DEBUG: 开始处理 anki2");
+        rust_log(&format!("DEBUG: 开始处理 anki2"));
         fs::copy(&anki2, &sqlite_path).map_err(|e| format!("复制anki2失败: {e}"))?;
-        println!("DEBUG: anki2 复制完成");
+        rust_log(&format!("DEBUG: anki2 复制完成"));
     } else {
-        println!("DEBUG: 警告：未找到 collection.anki21b 或 collection.anki2");
+        rust_log(&format!("DEBUG: 警告：未找到 collection.anki21b 或 collection.anki2"));
     }
 
-    println!("DEBUG: 最终 sqlite 文件存在: {}", sqlite_path.exists());
+    rust_log(&format!("DEBUG: 最终 sqlite 文件存在: {}", sqlite_path.exists()));
     if sqlite_path.exists() {
         if let Ok(metadata) = fs::metadata(&sqlite_path) {
-            println!("DEBUG: sqlite 文件大小: {} bytes", metadata.len());
+            rust_log(&format!("DEBUG: sqlite 文件大小: {} bytes", metadata.len()));
         }
     }
 
     // 5. 解压媒体文件
-    println!("DEBUG: 开始解压媒体文件");
+    rust_log(&format!("DEBUG: 开始解压媒体文件"));
     let media_dir = deck_dir.join("unarchived_media");
     
     // 检查 unarchived_media 路径是否存在
@@ -127,11 +146,11 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
         if media_dir.is_file() {
             // 如果是文件，删除它
             fs::remove_file(&media_dir).map_err(|e| format!("删除已存在的unarchived_media文件失败: {e}"))?;
-            println!("DEBUG: 删除了已存在的unarchived_media文件");
+            rust_log(&format!("DEBUG: 删除了已存在的unarchived_media文件"));
         } else {
             // 如果是目录，清空它
             fs::remove_dir_all(&media_dir).map_err(|e| format!("清空已存在的unarchived_media目录失败: {e}"))?;
-            println!("DEBUG: 清空了已存在的unarchived_media目录");
+            rust_log(&format!("DEBUG: 清空了已存在的unarchived_media目录"));
         }
     }
     
@@ -178,54 +197,54 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
             std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入媒体文件失败: {} - {}", outpath.display(), e))?;
         }
     }
-    println!("DEBUG: 媒体文件解压完成");
+    rust_log(&format!("DEBUG: 媒体文件解压完成"));
     
     // 6. 解析 media 映射文件
     
 
-    println!("DEBUG: 媒体文件解压完成");
+    rust_log(&format!("DEBUG: 媒体文件解压完成"));
     
     // 6. 解析 media 映射文件
-    println!("DEBUG: 开始解析 media 映射");
+    rust_log(&format!("DEBUG: 开始解析 media 映射"));
     let mut media_map: HashMap<String, String> = HashMap::new();
     let media_mapping_file = deck_dir.join("media");
-    println!("DEBUG: media 映射文件路径: {}", media_mapping_file.display());
-    println!("DEBUG: media 映射文件存在: {}", media_mapping_file.exists());
-    println!("DEBUG: media 映射文件是文件: {}", media_mapping_file.is_file());
+    rust_log(&format!("DEBUG: media 映射文件路径: {}", media_mapping_file.display()));
+    rust_log(&format!("DEBUG: media 映射文件存在: {}", media_mapping_file.exists()));
+    rust_log(&format!("DEBUG: media 映射文件是文件: {}", media_mapping_file.is_file()));
     
     if media_mapping_file.exists() && media_mapping_file.is_file() {
-        println!("DEBUG: 尝试读取 media 映射文件");
+        rust_log(&format!("DEBUG: 尝试读取 media 映射文件"));
         match fs::read_to_string(&media_mapping_file) {
             Ok(media_content) => {
-                println!("DEBUG: media 文件内容长度: {}", media_content.len());
-                println!("DEBUG: media 文件内容前100字符: {}", &media_content[..media_content.len().min(100)]);
+                rust_log(&format!("DEBUG: media 文件内容长度: {}", media_content.len()));
+                rust_log(&format!("DEBUG: media 文件内容前100字符: {}", &media_content[..media_content.len().min(100)]));
                 
                 match serde_json::from_str::<serde_json::Value>(&media_content) {
                     Ok(media_json) => {
-                        println!("DEBUG: JSON 解析成功");
+                        rust_log(&format!("DEBUG: JSON 解析成功"));
                         if let Some(obj) = media_json.as_object() {
-                            println!("DEBUG: JSON 对象键数量: {}", obj.len());
+                            rust_log(&format!("DEBUG: JSON 对象键数量: {}", obj.len()));
                             for (key, value) in obj.iter() {
                                 if let Some(filename) = value.as_str() {
                                     media_map.insert(filename.to_string(), key.clone());
-                                    println!("DEBUG: 媒体映射: {} -> {}", filename, key);
+                                    rust_log(&format!("DEBUG: 媒体映射: {} -> {}", filename, key));
                                 } else {
-                                    println!("DEBUG: 跳过非字符串值: key={}, value={:?}", key, value);
+                                    rust_log(&format!("DEBUG: 跳过非字符串值: key={}, value={:?}", key, value));
                                 }
                             }
                         } else {
-                            println!("DEBUG: JSON 不是对象类型");
+                            rust_log(&format!("DEBUG: JSON 不是对象类型"));
                         }
                     }
-                    Err(e) => println!("DEBUG: JSON 解析失败: {}", e),
+                    Err(e) => rust_log(&format!("DEBUG: JSON 解析失败: {}", e)),
                 }
             }
-            Err(e) => println!("DEBUG: 读取 media 文件失败: {}", e),
+            Err(e) => rust_log(&format!("DEBUG: 读取 media 文件失败: {}", e)),
         }
     } else {
-        println!("DEBUG: media 映射文件不存在或不是文件");
+        rust_log(&format!("DEBUG: media 映射文件不存在或不是文件"));
     }
-    println!("DEBUG: media 映射解析完成，共 {} 个文件", media_map.len());
+    rust_log(&format!("DEBUG: media 映射解析完成，共 {} 个文件", media_map.len()));
     
     Ok(ExtractResult { dir: md5str.clone(), md5: md5str, media_map })
 }
@@ -291,37 +310,64 @@ fn table_has_columns(conn: &rusqlite::Connection, table: &str, columns: &[&str])
 
 #[flutter_rust_bridge::frb]
 pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
-    println!("DEBUG: get_deck_notes 被调用");
-    println!("DEBUG: 传入的 sqlite_path: {}", sqlite_path);
+    rust_log(&format!("DEBUG: get_deck_notes 被调用"));
+    rust_log(&format!("DEBUG: 传入的 sqlite_path: {}", sqlite_path));
     
     // 调试：先判断文件是否存在
     if !std::path::Path::new(&sqlite_path).exists() {
-        println!("DEBUG: 文件不存在: {}", sqlite_path);
+        rust_log(&format!("DEBUG: 文件不存在: {}", sqlite_path));
         return Err(format!("文件不存在: {sqlite_path}"));
     }
-    println!("DEBUG: 文件存在，尝试打开");
+    rust_log(&format!("DEBUG: 文件存在，尝试打开"));
     let f = std::fs::File::open(&sqlite_path);
     if let Err(e) = &f {
-        println!("DEBUG: 文件无法打开: {:?}", e);
+        rust_log(&format!("DEBUG: 文件无法打开: {:?}", e));
         return Err(format!("文件无法打开: {sqlite_path}, err={:?}", e));
     }
-    println!("DEBUG: 文件可以打开，继续处理");
+    rust_log(&format!("DEBUG: 文件可以打开，继续处理"));
     let conn = Connection::open(&sqlite_path).map_err(|e| format!("打开sqlite失败: {e}"))?;
     // 判断是否有 notetypes 表
     let has_notetypes = conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='notetypes'")
         .and_then(|mut stmt| stmt.exists([])).unwrap_or(false);
+    rust_log(&format!("DEBUG: has_notetypes = {}", has_notetypes));
+    if !has_notetypes {
+        let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='table'").unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        rust_log(&format!("DEBUG: 当前所有表名:"));
+        while let Some(row) = rows.next().unwrap() {
+            let name: String = row.get(0).unwrap_or_default();
+            rust_log(&format!("DEBUG: 表名: {}", name));
+        }
+    }
     // 判断 fields 表结构
     let has_fields = table_has_columns(&conn, "fields", &["id", "notetype_id", "name", "ord"]);
     let mut notetypes = Vec::new();
     let mut fields = Vec::new();
     if has_notetypes {
         // 新版结构
-        let mut stmt = conn.prepare("SELECT id, name, config FROM notetypes").map_err(|e| format!("准备SQL失败: {e}"))?;
-        let mut rows = stmt.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
-        while let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-            let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
-            let name: String = row.get(1).map_err(|e| format!("读取name失败: {e}"))?;
+        rust_log(&format!("DEBUG: notetypes 表存在，开始遍历"));
+        let mut stmt = match conn.prepare("SELECT id, name, config FROM notetypes") {
+            Ok(s) => s,
+            Err(e) => { rust_log(&format!("DEBUG: notetypes 准备SQL失败: {e}")); return Err(format!("准备SQL失败: {e}")); }
+        };
+        let mut rows = match stmt.query([]) {
+            Ok(r) => r,
+            Err(e) => { rust_log(&format!("DEBUG: notetypes 查询SQL失败: {e}")); return Err(format!("查询SQL失败: {e}")); }
+        };
+        while let Some(row) = match rows.next() {
+            Ok(opt) => opt,
+            Err(e) => { rust_log(&format!("DEBUG: notetypes 遍历SQL失败: {e}")); return Err(format!("遍历SQL失败: {e}")); }
+        } {
+            let id: i64 = match row.get(0) {
+                Ok(v) => v,
+                Err(e) => { rust_log(&format!("DEBUG: notetypes 读取id失败: {e}")); continue; }
+            };
+            let name: String = match row.get(1) {
+                Ok(v) => v,
+                Err(e) => { rust_log(&format!("DEBUG: notetypes 读取name失败: {e}")); continue; }
+            };
             let config: Option<String> = row.get(2).ok();
+            rust_log(&format!("DEBUG: notetype 行: id={}, name={}, config={:?}", id, name, config));
             notetypes.push(NotetypeExt { id, name, config });
         }
         if has_fields {

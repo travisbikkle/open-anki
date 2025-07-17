@@ -71,6 +71,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       final deckDir = '${appDocDir.path}/anki_data/$md5';
       final sqlitePath = '$deckDir/collection.sqlite';
       final result = await getDeckNotes(sqlitePath: sqlitePath);
+      debugPrint('【_loadDeck】result.notetypes: ${result.notetypes}');
       final newMediaDir = '$deckDir/unarchived_media';
       setState(() {
         _notes = result.notes.cast<NoteExt>();
@@ -121,29 +122,18 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
   String _composeCardHtml(NoteExt note) {
     String content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
-    // 替换 [sound:xxx.mp3] 为 <audio src="xxx.mp3" controls></audio>
-    content = content.replaceAllMapped(
-      RegExp(r'\[sound:([^\]]+)\]'),
-      (m) => '<audio src="${m[1]}" controls></audio>'
-    );
-    // 再用更宽松的正则，防止未被替换
-    content = content.replaceAllMapped(
-      RegExp(r'\[sound:([^\]]+)\]'),
-      (m) => '<audio src="${m[1]}" controls></audio>'
-    );
-    content = content.replaceAllMapped(
-      RegExp(r'\[sound:([^.\]]+\.mp3)\]'),
-      (m) => '<audio src="${m[1]}" controls></audio>'
-    );
-    content = content.replaceAllMapped(
-      RegExp(r'\[sound:([^.\]]+\.wav)\]'),
-      (m) => '<audio src="${m[1]}" controls></audio>'
-    );
-    // 给 <img> 标签加上样式
-    content = content.replaceAllMapped(
-      RegExp(r'<img ([^>]*?)src="([^"]+)"([^>]*)>'),
-      (m) => '<img ${m[1]}src="${m[2]}"${m[3]} style="max-width:100%;border:1px solid red;">'
-    );
+    // 获取 notetype
+    NotetypeExt? notetype;
+    try {
+      notetype = _cardNotetypes.firstWhere(
+        (n) => n.id == note.mid,
+        orElse: () => NotetypeExt(id: -1, name: '', config: ''),
+      );
+    } catch (e) {
+      notetype = null;
+    }
+    // 只拼接模板和内容，交给模板JS渲染
+    String template = notetype?.config ?? '';
     if (content.trim().isEmpty) content = '（无内容）';
     debugPrint('【composeCardHtml】content: $content');
     return '''
@@ -151,7 +141,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 <html>
 <head>
   <meta charset="utf-8">
-  <style>body{background:#222;color:#fff;font-size:18px;}</style>
+  $template
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
@@ -192,6 +182,21 @@ $content
     }
     final note = _notes[_currentIndex];
     final html = _composeCardHtml(note);
+    // 获取当前卡片的 notetype 名称
+    String notetypeName = '';
+    String noteMidStr = note.mid.toString().trim();
+    String allNotetypeIds = _cardNotetypes.map((n) => n.id.toString().trim()).join(',');
+    bool notetypeFound = false;
+    try {
+      final notetype = _cardNotetypes.firstWhere(
+        (n) => n.id.toString().trim() == noteMidStr,
+        orElse: () => NotetypeExt(id: -1, name: '', config: ''),
+      );
+      if (notetype.id != -1 && notetype.name != null) {
+        notetypeName = notetype.name.toString();
+        notetypeFound = true;
+      }
+    } catch (e) {}
     return Scaffold(
       appBar: AppBar(
         title: Text('刷卡 ( ${_currentIndex + 1}/${_notes.length})'),
@@ -206,7 +211,9 @@ $content
             color: Colors.black12,
             padding: const EdgeInsets.all(8),
             child: Text(
-              '调试信息：mediaDir=${_mediaDir ?? "null"}\nHTML为空: ${html.trim().isEmpty}',
+              notetypeFound
+                ? '调试信息：mediaDir=${_mediaDir ?? "null"}\nHTML为空: ${html.trim().isEmpty}\nnotetype: $notetypeName\nnote.mid: $noteMidStr\nall notetype ids: $allNotetypeIds'
+                : '调试信息：mediaDir=${_mediaDir ?? "null"}\nHTML为空: ${html.trim().isEmpty}\n未找到notetype，note.mid: $noteMidStr\nall notetype ids: $allNotetypeIds',
               style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
           ),

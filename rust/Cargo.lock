@@ -871,6 +871,7 @@ version = "0.1.0"
 dependencies = [
  "flutter_rust_bridge",
  "itertools",
+ "lazy_static",
  "md5",
  "regex",
  "rusqlite",
