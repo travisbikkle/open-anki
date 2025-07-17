@@ -175,16 +175,6 @@ $content
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.navigate_before),
-            onPressed: _prevCard,
-          ),
-          IconButton(
-            icon: const Icon(Icons.navigate_next),
-            onPressed: _nextCard,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -196,7 +186,26 @@ $content
               style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
           ),
-         Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
+          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.navigate_before),
+                  label: const Text('上一题'),
+                  onPressed: _prevCard,
+                ),
+                const SizedBox(width: 24),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.navigate_next),
+                  label: const Text('下一题'),
+                  onPressed: _nextCard,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
