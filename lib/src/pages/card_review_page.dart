@@ -295,6 +295,7 @@ $content
       final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
       final answer = fieldMap['Answer'] ?? fieldMap['答案'] ?? '';
       final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? fieldMap['解析'] ?? '';
+      final screenHeight = MediaQuery.of(context).size.height;
       return Scaffold(
         appBar: AppBar(
           title: Text('刷卡 ( ${_currentIndex + 1}/${_notes.length})'),
@@ -303,88 +304,74 @@ $content
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: SingleChildScrollView(
+        body: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Container(
-              //   color: Colors.black12,
-              //   padding: const EdgeInsets.all(8),
-              //   child: Text(
-              //     'mediaDir= {_mediaDir ?? "null"}\nnotetype:  {notetype.name}\nnote.mid:  {note.mid}\n',
-              //     style: const TextStyle(fontSize: 12, color: Colors.red),
-              //   ),
-              // ),
-              // 题干
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: SizedBox(
-                    height: 100,
+              // 1. 题干区（美化：外层Padding+Container+圆角阴影+ClipRRect）
+              Flexible(
+                flex: 4,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      // borderRadius: BorderRadius.circular(12),
+                      // boxShadow: [
+                      //   BoxShadow(
+                      //     color: Colors.black12,
+                      //     blurRadius: 6,
+                      //     offset: Offset(0, 2),
+                      //   ),
+                      // ],
+                    ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       child: WebViewWidget(controller: _stemController),
                     ),
                   ),
                 ),
               ),
-              // 选项
-              ...List.generate(options.length, (i) {
-                final label = String.fromCharCode('A'.codeUnitAt(0) + i);
-                final value = options[i];
-                final isCorrect = answer.contains(label);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                  child: RadioListTile<int>(
-                    value: i,
-                    groupValue: _selectedIndex,
-                    onChanged: _showAnswer ? null : (v) => setState(() => _selectedIndex = v),
-                    title: Text(
-                      '$label. $value',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: _showAnswer
+              // 2. 选项区（ListView，Flexible分配空间，超出可滚动）
+              Flexible(
+                flex: 4,
+                child: ListView.builder(
+                  itemCount: options.length,
+                  itemBuilder: (context, i) {
+                    final label = String.fromCharCode('A'.codeUnitAt(0) + i);
+                    final value = options[i];
+                    final isCorrect = answer.contains(label);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      child: RadioListTile<int>(
+                        value: i,
+                        groupValue: _selectedIndex,
+                        onChanged: _showAnswer ? null : (v) => setState(() => _selectedIndex = v),
+                        title: Text(
+                          '$label. $value',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _showAnswer
+                                ? (isCorrect
+                                    ? Colors.green[800]
+                                    : (_selectedIndex == i ? Colors.red[800] : null))
+                                : null,
+                          ),
+                          softWrap: true,
+                          maxLines: null,
+                          overflow: TextOverflow.visible,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+                        tileColor: _showAnswer
                             ? (isCorrect
-                                ? Colors.green[800]
-                                : (_selectedIndex == i ? Colors.red[800] : null))
+                                ? Colors.green.withOpacity(0.10)
+                                : (_selectedIndex == i ? Colors.red.withOpacity(0.10) : null))
                             : null,
                       ),
-                      softWrap: true,
-                      maxLines: null,
-                      overflow: TextOverflow.visible,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-                    tileColor: _showAnswer
-                        ? (isCorrect
-                            ? Colors.green.withOpacity(0.10)
-                            : (_selectedIndex == i ? Colors.red.withOpacity(0.10) : null))
-                        : null,
-                  ),
-                );
-              }),
-              // 显示答案按钮
-              if (!_showAnswer)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: ElevatedButton(
-                    onPressed: _selectedIndex != null
-                        ? () => setState(() => _showAnswer = true)
-                        : null,
-                    child: const Text('显示答案'),
-                  ),
+                    );
+                  },
                 ),
-              // 解析
+              ),
+              // 3. 答案/解析区（隐藏/显示，约2行高）
               if (_showAnswer && remark.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -393,16 +380,32 @@ $content
                       color: Colors.blue[50],
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    height: 100,
+                    height: 64,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: WebViewWidget(controller: _remarkController),
                     ),
                   ),
                 ),
-              // 底部按钮
+              // 4. 操作按钮区（显示答案等，居中）
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _selectedIndex != null && !_showAnswer
+                          ? () => setState(() => _showAnswer = true)
+                          : null,
+                      child: const Text('显示答案'),
+                    ),
+                    // 这里可添加更多操作按钮
+                  ],
+                ),
+              ),
+              // 5. 底部按钮区（上一题/下一题，固定底部）
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
