@@ -138,55 +138,44 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     // 先解压所有文件，包括media映射文件
     let file = File::open(&apkg_path).map_err(|e| format!("无法打开apkg文件: {e}"))?;
     let mut zip = ZipArchive::new(file).map_err(|e| format!("不是有效的apkg/zip文件: {e}"))?;
-    
+    // 先解析 media 映射
+    let mut media_map: HashMap<String, String> = HashMap::new();
     for i in 0..zip.len() {
         let mut entry = zip.by_index(i).map_err(|e| format!("读取zip entry失败: {e}"))?;
         let name = entry.name().to_string();
-        
-        // 跳过目录和collection文件
-        if name.ends_with('/') || name.starts_with("collection.") || name == "meta" {
-            continue;
-        }
-        
-        // 如果是media映射文件，解压到deck根目录
-        if name == "media" {
-            let outpath = deck_dir.join(&name);
-            println!("DEBUG: 处理media映射文件，目标路径: {}", outpath.display());
-            
-            // 确保media映射文件路径没有冲突
-            if outpath.exists() {
-                println!("DEBUG: 目标路径已存在，检查类型");
-                if outpath.is_dir() {
-                    println!("DEBUG: 目标是目录，删除目录: {}", outpath.display());
-                    fs::remove_dir_all(&outpath).map_err(|e| format!("删除已存在的media目录失败: {} - {}", outpath.display(), e))?;
-                    println!("DEBUG: 删除了已存在的media目录");
-                } else {
-                    println!("DEBUG: 目标是文件，删除文件: {}", outpath.display());
-                    fs::remove_file(&outpath).map_err(|e| format!("删除已存在的media文件失败: {} - {}", outpath.display(), e))?;
-                    println!("DEBUG: 删除了已存在的media文件");
+        if name == "media" && entry.is_file() {
+            let mut buf = String::new();
+            entry.read_to_string(&mut buf).map_err(|e| format!("读取media映射文件失败: {e}"))?;
+            if let Ok(media_json) = serde_json::from_str::<serde_json::Value>(&buf) {
+                if let Some(obj) = media_json.as_object() {
+                    for (key, value) in obj.iter() {
+                        if let Some(filename) = value.as_str() {
+                            media_map.insert(key.clone(), filename.to_string());
+                        }
+                    }
                 }
             }
-            
-            println!("DEBUG: 创建media映射文件: {}", outpath.display());
-            let mut outfile = File::create(&outpath).map_err(|e| format!("创建media映射文件失败: {} - {}", outpath.display(), e))?;
-            std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入media映射文件失败: {} - {}", outpath.display(), e))?;
-            println!("DEBUG: 解压media映射文件成功: {}", name);
+        }
+    }
+    // 再次遍历解压媒体文件（数字编号文件），用真实文件名存储
+    let file = File::open(&apkg_path).map_err(|e| format!("无法打开apkg文件: {e}"))?;
+    let mut zip = ZipArchive::new(file).map_err(|e| format!("不是有效的apkg/zip文件: {e}"))?;
+    for i in 0..zip.len() {
+        let mut entry = zip.by_index(i).map_err(|e| format!("读取zip entry失败: {e}"))?;
+        let name = entry.name().to_string();
+        // 跳过目录和collection文件和media映射文件
+        if name.ends_with('/') || name.starts_with("collection.") || name == "meta" || name == "media" {
             continue;
         }
-        
-        // 解压媒体文件（数字编号文件）到unarchived_media目录
-        let outpath = media_dir.join(&name);
-        println!("DEBUG: 解压媒体文件: {} -> {}", name, outpath.display());
-        
-        if let Some(parent) = outpath.parent() {
-            println!("DEBUG: 确保父目录存在: {}", parent.display());
-            fs::create_dir_all(parent).map_err(|e| format!("创建父目录失败: {} - {}", parent.display(), e))?;
+        // 只处理数字编号文件
+        if let Some(real_name) = media_map.get(&name) {
+            let outpath = media_dir.join(real_name);
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).map_err(|e| format!("创建父目录失败: {} - {}", parent.display(), e))?;
+            }
+            let mut outfile = File::create(&outpath).map_err(|e| format!("创建媒体文件失败: {} - {}", outpath.display(), e))?;
+            std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入媒体文件失败: {} - {}", outpath.display(), e))?;
         }
-        
-        println!("DEBUG: 创建媒体文件: {}", outpath.display());
-        let mut outfile = File::create(&outpath).map_err(|e| format!("创建媒体文件失败: {} - {}", outpath.display(), e))?;
-        std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入媒体文件失败: {} - {}", outpath.display(), e))?;
-        println!("DEBUG: 解压媒体文件成功: {}", name);
     }
     println!("DEBUG: 媒体文件解压完成");
     

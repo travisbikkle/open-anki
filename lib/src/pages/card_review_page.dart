@@ -114,42 +114,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   Future<Uint8List?> _findMedia(String fname) async {
     final mediaDir = await _getMediaDir();
     if (mediaDir == null) return null;
-    
-    // 如果有 media_map，先查找映射的数字编号
-    String? mediaNumber;
-    if (_mediaMap != null) {
-      mediaNumber = _mediaMap![fname];
-      if (mediaNumber != null) {
-        final f = File('$mediaDir/$mediaNumber');
-        if (await f.exists()) {
-          print('DEBUG: 找到媒体文件: $fname -> $mediaNumber');
-          return await f.readAsBytes();
-        }
-      }
+    final f = File('$mediaDir/$fname');
+    if (await f.exists()) {
+      print('DEBUG: 直接找到媒体文件: $fname');
+      return await f.readAsBytes();
     }
-    
-    // 如果没有映射或映射失败，尝试直接查找
-    final tryNames = <String>{
-      fname,
-      fname.trim(),
-      fname.toLowerCase(),
-      fname.trim().toLowerCase(),
-    };
-    try {
-      final decoded = Uri.decodeComponent(fname);
-      tryNames.add(decoded);
-      tryNames.add(decoded.trim());
-      tryNames.add(decoded.toLowerCase());
-      tryNames.add(decoded.trim().toLowerCase());
-    } catch (_) {}
-    for (final name in tryNames) {
-      final f = File('$mediaDir/$name');
-      if (await f.exists()) {
-        print('DEBUG: 直接找到媒体文件: $name');
-        return await f.readAsBytes();
-      }
-    }
-    print('DEBUG: 未找到媒体文件: $fname, mediaDir: $mediaDir, mediaNumber: $mediaNumber');
+    print('DEBUG: 未找到媒体文件: $fname, mediaDir: $mediaDir');
     return null;
   }
 
