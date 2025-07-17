@@ -144,8 +144,9 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
         let mut entry = zip.by_index(i).map_err(|e| format!("读取zip entry失败: {e}"))?;
         let name = entry.name().to_string();
         if name == "media" && entry.is_file() {
-            let mut buf = String::new();
-            entry.read_to_string(&mut buf).map_err(|e| format!("读取media映射文件失败: {e}"))?;
+            let mut bytes = Vec::new();
+            entry.read_to_end(&mut bytes).map_err(|e| format!("读取media映射文件失败: {e}"))?;
+            let buf = String::from_utf8_lossy(&bytes);
             if let Ok(media_json) = serde_json::from_str::<serde_json::Value>(&buf) {
                 if let Some(obj) = media_json.as_object() {
                     for (key, value) in obj.iter() {
