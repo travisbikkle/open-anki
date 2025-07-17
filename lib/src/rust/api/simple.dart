@@ -94,11 +94,16 @@ class DeckNotesResult {
 class ExtractResult {
   final String dir;
   final String md5;
+  final Map<String, String> mediaMap;
 
-  const ExtractResult({required this.dir, required this.md5});
+  const ExtractResult({
+    required this.dir,
+    required this.md5,
+    required this.mediaMap,
+  });
 
   @override
-  int get hashCode => dir.hashCode ^ md5.hashCode;
+  int get hashCode => dir.hashCode ^ md5.hashCode ^ mediaMap.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -106,7 +111,8 @@ class ExtractResult {
       other is ExtractResult &&
           runtimeType == other.runtimeType &&
           dir == other.dir &&
-          md5 == other.md5;
+          md5 == other.md5 &&
+          mediaMap == other.mediaMap;
 }
 
 class FieldExt {

@@ -44,6 +44,7 @@ pub struct ApkgParseResult {
 pub struct ExtractResult {
     pub dir: String,
     pub md5: String,
+    pub media_map: HashMap<String, String>, // 文件名 -> 数字编号的映射
 }
 
 #[flutter_rust_bridge::frb]
@@ -55,6 +56,11 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     let md5str = format!("{:x}", compute(&buf));
     // 2. 建立目录
     let deck_dir = PathBuf::from(&base_dir).join(&md5str);
+    // 如果目录已存在，递归删除
+    if deck_dir.exists() {
+        println!("DEBUG: 递归删除已存在的deck目录: {}", deck_dir.display());
+        fs::remove_dir_all(&deck_dir).map_err(|e| format!("递归删除deck目录失败: {} - {}", deck_dir.display(), e))?;
+    }
     fs::create_dir_all(&deck_dir).map_err(|e| format!("创建目录失败: {e}"))?;
     // 3. 解压apkg
     let file = File::open(&apkg_path).map_err(|e| format!("无法打开apkg文件: {e}"))?;
@@ -111,7 +117,127 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
             println!("DEBUG: sqlite 文件大小: {} bytes", metadata.len());
         }
     }
-    Ok(ExtractResult { dir: deck_dir.to_string_lossy().to_string(), md5: md5str })
+
+    // 5. 解压媒体文件
+    println!("DEBUG: 开始解压媒体文件");
+    let media_dir = deck_dir.join("unarchived_media");
+    
+    // 检查 unarchived_media 路径是否存在
+    if media_dir.exists() {
+        if media_dir.is_file() {
+            // 如果是文件，删除它
+            fs::remove_file(&media_dir).map_err(|e| format!("删除已存在的unarchived_media文件失败: {e}"))?;
+            println!("DEBUG: 删除了已存在的unarchived_media文件");
+        } else {
+            // 如果是目录，清空它
+            fs::remove_dir_all(&media_dir).map_err(|e| format!("清空已存在的unarchived_media目录失败: {e}"))?;
+            println!("DEBUG: 清空了已存在的unarchived_media目录");
+        }
+    }
+    
+    // 先解压所有文件，包括media映射文件
+    let file = File::open(&apkg_path).map_err(|e| format!("无法打开apkg文件: {e}"))?;
+    let mut zip = ZipArchive::new(file).map_err(|e| format!("不是有效的apkg/zip文件: {e}"))?;
+    
+    for i in 0..zip.len() {
+        let mut entry = zip.by_index(i).map_err(|e| format!("读取zip entry失败: {e}"))?;
+        let name = entry.name().to_string();
+        
+        // 跳过目录和collection文件
+        if name.ends_with('/') || name.starts_with("collection.") || name == "meta" {
+            continue;
+        }
+        
+        // 如果是media映射文件，解压到deck根目录
+        if name == "media" {
+            let outpath = deck_dir.join(&name);
+            println!("DEBUG: 处理media映射文件，目标路径: {}", outpath.display());
+            
+            // 确保media映射文件路径没有冲突
+            if outpath.exists() {
+                println!("DEBUG: 目标路径已存在，检查类型");
+                if outpath.is_dir() {
+                    println!("DEBUG: 目标是目录，删除目录: {}", outpath.display());
+                    fs::remove_dir_all(&outpath).map_err(|e| format!("删除已存在的media目录失败: {} - {}", outpath.display(), e))?;
+                    println!("DEBUG: 删除了已存在的media目录");
+                } else {
+                    println!("DEBUG: 目标是文件，删除文件: {}", outpath.display());
+                    fs::remove_file(&outpath).map_err(|e| format!("删除已存在的media文件失败: {} - {}", outpath.display(), e))?;
+                    println!("DEBUG: 删除了已存在的media文件");
+                }
+            }
+            
+            println!("DEBUG: 创建media映射文件: {}", outpath.display());
+            let mut outfile = File::create(&outpath).map_err(|e| format!("创建media映射文件失败: {} - {}", outpath.display(), e))?;
+            std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入media映射文件失败: {} - {}", outpath.display(), e))?;
+            println!("DEBUG: 解压media映射文件成功: {}", name);
+            continue;
+        }
+        
+        // 解压媒体文件（数字编号文件）到unarchived_media目录
+        let outpath = media_dir.join(&name);
+        println!("DEBUG: 解压媒体文件: {} -> {}", name, outpath.display());
+        
+        if let Some(parent) = outpath.parent() {
+            println!("DEBUG: 确保父目录存在: {}", parent.display());
+            fs::create_dir_all(parent).map_err(|e| format!("创建父目录失败: {} - {}", parent.display(), e))?;
+        }
+        
+        println!("DEBUG: 创建媒体文件: {}", outpath.display());
+        let mut outfile = File::create(&outpath).map_err(|e| format!("创建媒体文件失败: {} - {}", outpath.display(), e))?;
+        std::io::copy(&mut entry, &mut outfile).map_err(|e| format!("写入媒体文件失败: {} - {}", outpath.display(), e))?;
+        println!("DEBUG: 解压媒体文件成功: {}", name);
+    }
+    println!("DEBUG: 媒体文件解压完成");
+    
+    // 6. 解析 media 映射文件
+    
+
+    println!("DEBUG: 媒体文件解压完成");
+    
+    // 6. 解析 media 映射文件
+    println!("DEBUG: 开始解析 media 映射");
+    let mut media_map: HashMap<String, String> = HashMap::new();
+    let media_mapping_file = deck_dir.join("media");
+    println!("DEBUG: media 映射文件路径: {}", media_mapping_file.display());
+    println!("DEBUG: media 映射文件存在: {}", media_mapping_file.exists());
+    println!("DEBUG: media 映射文件是文件: {}", media_mapping_file.is_file());
+    
+    if media_mapping_file.exists() && media_mapping_file.is_file() {
+        println!("DEBUG: 尝试读取 media 映射文件");
+        match fs::read_to_string(&media_mapping_file) {
+            Ok(media_content) => {
+                println!("DEBUG: media 文件内容长度: {}", media_content.len());
+                println!("DEBUG: media 文件内容前100字符: {}", &media_content[..media_content.len().min(100)]);
+                
+                match serde_json::from_str::<serde_json::Value>(&media_content) {
+                    Ok(media_json) => {
+                        println!("DEBUG: JSON 解析成功");
+                        if let Some(obj) = media_json.as_object() {
+                            println!("DEBUG: JSON 对象键数量: {}", obj.len());
+                            for (key, value) in obj.iter() {
+                                if let Some(filename) = value.as_str() {
+                                    media_map.insert(filename.to_string(), key.clone());
+                                    println!("DEBUG: 媒体映射: {} -> {}", filename, key);
+                                } else {
+                                    println!("DEBUG: 跳过非字符串值: key={}, value={:?}", key, value);
+                                }
+                            }
+                        } else {
+                            println!("DEBUG: JSON 不是对象类型");
+                        }
+                    }
+                    Err(e) => println!("DEBUG: JSON 解析失败: {}", e),
+                }
+            }
+            Err(e) => println!("DEBUG: 读取 media 文件失败: {}", e),
+        }
+    } else {
+        println!("DEBUG: media 映射文件不存在或不是文件");
+    }
+    println!("DEBUG: media 映射解析完成，共 {} 个文件", media_map.len());
+    
+    Ok(ExtractResult { dir: deck_dir.to_string_lossy().to_string(), md5: md5str, media_map })
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert'; // Added for jsonEncode and jsonDecode
 
 class AppDb {
   static Database? _db;
@@ -15,7 +16,7 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2, // Updated version
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE decks (
@@ -23,7 +24,8 @@ class AppDb {
             apkg_path TEXT NOT NULL,
             user_deck_name TEXT,
             md5 TEXT,
-            import_time INTEGER
+            import_time INTEGER,
+            media_map TEXT
           )
         ''');
         await db.execute('''
@@ -47,21 +49,25 @@ class AppDb {
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Add media_map column to existing decks table
+          await db.execute('ALTER TABLE decks ADD COLUMN media_map TEXT');
+        }
+      },
     );
   }
 
   // 题库索引操作
-  static Future<int> insertDeck(String apkgPath, String? userDeckName, String? md5) async {
+  static Future<void> insertDeck(String apkgPath, String userDeckName, String md5, {Map<String, String>? mediaMap}) async {
     final dbClient = await db;
-    print('insertDeck: $apkgPath, $userDeckName, $md5');
-    final id = await dbClient.insert('decks', {
+    await dbClient.insert('decks', {
       'apkg_path': apkgPath,
       'user_deck_name': userDeckName,
       'md5': md5,
       'import_time': DateTime.now().millisecondsSinceEpoch,
+      'media_map': mediaMap != null ? jsonEncode(mediaMap) : null,
     });
-    print('insertDeck done, id=$id');
-    return id;
   }
 
   static Future<int> deleteDeck({String? md5, int? id}) async {
@@ -130,5 +136,21 @@ class AppDb {
     final dbClient = await db;
     final res = await dbClient.query('user_settings', where: 'key = ?', whereArgs: [key]);
     return res.isNotEmpty ? res.first['value'] as String : null;
+  }
+
+  static Future<Map<String, String>?> getDeckMediaMap(String md5) async {
+    final dbClient = await db;
+    final result = await dbClient.query(
+      'decks',
+      columns: ['media_map'],
+      where: 'md5 = ?',
+      whereArgs: [md5],
+    );
+    if (result.isNotEmpty && result.first['media_map'] != null) {
+      final mediaMapJson = result.first['media_map'] as String;
+      final Map<String, dynamic> decoded = jsonDecode(mediaMapJson);
+      return decoded.map((key, value) => MapEntry(key, value.toString()));
+    }
+    return null;
   }
 } 

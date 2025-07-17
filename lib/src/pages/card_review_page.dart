@@ -9,11 +9,13 @@ import 'package:open_anki/src/rust/api/simple.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter_html/flutter_html.dart';
+import 'dart:convert'; // for base64Encode
 
 class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
   final Map<String, Uint8List>? mediaFiles;
-  const CardReviewPage({required this.deckId, this.mediaFiles, super.key});
+  final Map<String, String>? mediaMap; // 文件名 -> 数字编号的映射
+  const CardReviewPage({required this.deckId, this.mediaFiles, this.mediaMap, super.key});
   @override
   ConsumerState<CardReviewPage> createState() => _CardReviewPageState();
 }
@@ -23,6 +25,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   late Map<String, Uint8List> _mediaFiles;
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<dynamic> _notes = [];
+  Map<String, String>? _mediaMap; // 新增：用于存储 media_map
 
   @override
   void initState() {
@@ -55,8 +58,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       print('DEBUG: sqlitePath: $sqlitePath');
       // 1. 调用 Rust FFI 获取卡片
       final result = await getDeckNotes(sqlitePath: sqlitePath);
+      // 2. 获取 media_map
+      final mediaMap = await AppDb.getDeckMediaMap(widget.deckId);
+      print('DEBUG: 获取到 media_map: ${mediaMap?.length ?? 0} 个映射');
       setState(() {
         _notes = result.notes;
+        _mediaMap = mediaMap ?? {};
       });
       // 2. 进度管理
       final progress = await AppDb.getProgress(deck['id'] as int);
@@ -87,13 +94,40 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   Future<String?> _getMediaDir() async {
-    final appDocDir = await getApplicationDocumentsDirectory();
-    return '${appDocDir.path}/media/${widget.deckId}';
+    // 通过 AppDb 获取 apkg 路径
+    final allDecks = await AppDb.getAllDecks();
+    final deck = allDecks.firstWhere(
+      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (deck.isEmpty) return null;
+    final apkgPath = deck['apkg_path'] as String;
+    final unarchivedMedia = '$apkgPath/unarchived_media';
+    if (await Directory(unarchivedMedia).exists()) {
+      return unarchivedMedia;
+    } else {
+      return null;
+    }
   }
 
   Future<Uint8List?> _findMedia(String fname) async {
     final mediaDir = await _getMediaDir();
     if (mediaDir == null) return null;
+    
+    // 如果有 media_map，先查找映射的数字编号
+    String? mediaNumber;
+    if (_mediaMap != null) {
+      mediaNumber = _mediaMap![fname];
+      if (mediaNumber != null) {
+        final f = File('$mediaDir/$mediaNumber');
+        if (await f.exists()) {
+          print('DEBUG: 找到媒体文件: $fname -> $mediaNumber');
+          return await f.readAsBytes();
+        }
+      }
+    }
+    
+    // 如果没有映射或映射失败，尝试直接查找
     final tryNames = <String>{
       fname,
       fname.trim(),
@@ -110,9 +144,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     for (final name in tryNames) {
       final f = File('$mediaDir/$name');
       if (await f.exists()) {
+        print('DEBUG: 直接找到媒体文件: $name');
         return await f.readAsBytes();
       }
     }
+    print('DEBUG: 未找到媒体文件: $fname, mediaDir: $mediaDir, mediaNumber: $mediaNumber');
     return null;
   }
 
@@ -168,11 +204,33 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                           try {
                             final mediaDir = await _getMediaDir();
                             final filePath = '$mediaDir/$src';
+                            final file = File(filePath);
+                            final exists = await file.exists();
+                            final length = exists ? await file.length() : 0;
+                            String headBase64 = '';
+                            if (exists && length > 0) {
+                              final headBytes = await file.openRead(0, 16).first;
+                              headBase64 = base64Encode(headBytes);
+                            }
+                            final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
+                            print(debugInfo);
                             await _audioPlayer.setFilePath(filePath);
                             await _audioPlayer.play();
                           } catch (e) {
+                            final mediaDir = await _getMediaDir();
+                            final filePath = '$mediaDir/$src';
+                            final file = File(filePath);
+                            final exists = await file.exists();
+                            final length = exists ? await file.length() : 0;
+                            String headBase64 = '';
+                            if (exists && length > 0) {
+                              final headBytes = await file.openRead(0, 16).first;
+                              headBase64 = base64Encode(headBytes);
+                            }
+                            final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
+                            print('音频播放失败: $e\n$debugInfo');
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('音频播放失败: $e')),
+                              SnackBar(content: Text('音频播放失败: $e\n$debugInfo')),
                             );
                           }
                         },
@@ -229,11 +287,33 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                       try {
                         final mediaDir = await _getMediaDir();
                         final filePath = '$mediaDir/$src';
+                        final file = File(filePath);
+                        final exists = await file.exists();
+                        final length = exists ? await file.length() : 0;
+                        String headBase64 = '';
+                        if (exists && length > 0) {
+                          final headBytes = await file.openRead(0, 16).first;
+                          headBase64 = base64Encode(headBytes);
+                        }
+                        final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
+                        print(debugInfo);
                         await _audioPlayer.setFilePath(filePath);
                         await _audioPlayer.play();
                       } catch (e) {
+                        final mediaDir = await _getMediaDir();
+                        final filePath = '$mediaDir/$src';
+                        final file = File(filePath);
+                        final exists = await file.exists();
+                        final length = exists ? await file.length() : 0;
+                        String headBase64 = '';
+                        if (exists && length > 0) {
+                          final headBytes = await file.openRead(0, 16).first;
+                          headBase64 = base64Encode(headBytes);
+                        }
+                        final debugInfo = '音频文件路径: $filePath\n存在: $exists\n大小: $length\n头部16字节(base64): $headBase64';
+                        print('音频播放失败: $e\n$debugInfo');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('音频播放失败: $e')),
+                          SnackBar(content: Text('音频播放失败: $e\n$debugInfo')),
                         );
                       }
                     },

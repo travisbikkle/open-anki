@@ -92,7 +92,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         // 调用Rust端解压
         final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
         // 在AppDb登记索引
-        await AppDb.insertDeck(result.dir, deckName, result.md5);
+        await AppDb.insertDeck(result.dir, deckName, result.md5, mediaMap: result.mediaMap);
+        print('DEBUG: 导入完成，media_map 大小: ${result.mediaMap.length}');
       }
       // 强制刷新 provider
       ref.invalidate(allDecksProvider);
@@ -191,12 +192,16 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               );
                             },
                           ),
-                          onTap: () {
+                          onTap: () async {
                             ref.read(currentIndexProvider.notifier).state = 0;
+                            // 获取 media_map（暂时传 null，后续可以从 AppDb 获取）
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => CardReviewPage(deckId: deck.deckId),
+                                builder: (_) => CardReviewPage(
+                                  deckId: deck.deckId,
+                                  mediaMap: null, // TODO: 从 AppDb 获取 media_map
+                                ),
                               ),
                             );
                           },

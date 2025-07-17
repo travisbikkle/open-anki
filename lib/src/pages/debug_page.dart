@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../db.dart';
+import 'package:path/path.dart' as p;
 
 class DebugPage extends StatefulWidget {
   const DebugPage({super.key});
@@ -51,44 +52,100 @@ class _DebugPageState extends State<DebugPage> {
     });
   }
 
-  Widget _buildTree(FileSystemEntity entity) {
-    if (entity is Directory) {
-      return FutureBuilder<List<FileSystemEntity>>(
-        future: entity.list().toList(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return ListTile(title: Text(entity.path.split('/').last + '/'), leading: const Icon(Icons.folder));
-          }
-          final children = snapshot.data!;
-          // 过滤只显示 collection.sqlite 文件
-          final sqliteFiles = children.where((e) => 
-            e is File && e.path.endsWith('collection.sqlite')
-          ).toList();
-          if (sqliteFiles.isEmpty) {
-            return ListTile(title: Text(entity.path.split('/').last + '/'), leading: const Icon(Icons.folder));
-          }
-          return ExpansionTile(
-            leading: const Icon(Icons.folder),
-            title: Text(entity.path.split('/').last + '/'),
-            children: sqliteFiles.map((e) => ListTile(
-              leading: const Icon(Icons.insert_drive_file, color: Colors.green),
-              title: Text('collection.sqlite'),
-              subtitle: Text(e.path, style: const TextStyle(fontSize: 12)),
-            )).toList(),
-          );
-        },
-      );
-    } else {
-      // 只显示 collection.sqlite 文件
-      if (entity.path.endsWith('collection.sqlite')) {
-        return ListTile(
-          leading: const Icon(Icons.insert_drive_file, color: Colors.green),
-          title: Text('collection.sqlite'),
-          subtitle: Text(entity.path, style: const TextStyle(fontSize: 12)),
+  Widget _buildDeckDirView(Directory deckDir) {
+    return FutureBuilder<List<FileSystemEntity>>(
+      future: deckDir.list().toList(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const ListTile(title: Text('加载中...'));
+        }
+        final entities = snapshot.data!;
+        // 1. 只保留 collection.sqlite、collection.anki2、unarchived_media/media 文件夹和其他文件
+        final collectionFiles = entities.where((e) => e is File && (e.path.endsWith('collection.sqlite') || e.path.endsWith('collection.anki2'))).toList();
+        final mediaDirs = entities.where((e) => e is Directory && (p.basename(e.path) == 'unarchived_media' )).toList();
+        final otherDirs = entities.where((e) => e is Directory && !(p.basename(e.path) == 'unarchived_media')).toList();
+        final otherFiles = entities.where((e) => e is File && !(e.path.endsWith('collection.sqlite') || e.path.endsWith('collection.anki2'))).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // collection.sqlite/anki2优先
+            for (final f in collectionFiles)
+              ListTile(
+                leading: const Icon(Icons.insert_drive_file),
+                title: Text(p.basename(f.path)),
+                subtitle: Text(f.path, style: const TextStyle(fontSize: 12)),
+                contentPadding: const EdgeInsets.only(left: 16),
+              ),
+            // media文件夹优先
+            for (final mediaDir in mediaDirs)
+              FutureBuilder<List<FileSystemEntity>>(
+                future: Directory(mediaDir.path).list().toList(),
+                builder: (context, snap) {
+                  if (!snap.hasData) {
+                    return ListTile(title: Text('${mediaDir.path.split('/').last}/ (加载中...)'), leading: const Icon(Icons.folder), contentPadding: const EdgeInsets.only(left: 16));
+                  }
+                  final files = snap.data!;
+                  // 纯数字文件在后，文件夹在前
+                  final subDirs = files.where((e) => e is Directory).toList();
+                  final specialFiles = files.where((e) => e is File && (p.basename(e.path) == 'unarchived_media' || p.basename(e.path) == 'collection.sqlite' || p.basename(e.path) == 'collection.anki2')).toList();
+                  final normalFiles = files.where((e) => e is File && !RegExp(r'^\d+ ?$').hasMatch(p.basename(e.path)) && !specialFiles.contains(e)).toList();
+                  final digitFiles = files.where((e) => e is File && RegExp(r'^\d+$').hasMatch(p.basename(e.path))).toList();
+                  return ExpansionTile(
+                    leading: const Icon(Icons.folder),
+                    title: Text('unarchived_media/'),
+                    children: [
+                      for (final d in subDirs)
+                        ListTile(
+                          leading: const Icon(Icons.folder),
+                          title: Text(p.basename(d.path) + '/'),
+                          subtitle: Text(d.path, style: const TextStyle(fontSize: 12)),
+                          contentPadding: const EdgeInsets.only(left: 32),
+                        ),
+                      for (final f in specialFiles)
+                        ListTile(
+                          leading: const Icon(Icons.insert_drive_file),
+                          title: Text(p.basename(f.path)),
+                          subtitle: Text(f.path, style: const TextStyle(fontSize: 12)),
+                          contentPadding: const EdgeInsets.only(left: 32),
+                        ),
+                      for (final f in normalFiles)
+                        ListTile(
+                          leading: const Icon(Icons.insert_drive_file),
+                          title: Text(p.basename(f.path)),
+                          subtitle: Text(f.path, style: const TextStyle(fontSize: 12)),
+                          contentPadding: const EdgeInsets.only(left: 32),
+                        ),
+                      for (final f in digitFiles)
+                        ListTile(
+                          leading: const Icon(Icons.confirmation_number),
+                          title: Text(p.basename(f.path)),
+                          subtitle: Text(f.path, style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                          contentPadding: const EdgeInsets.only(left: 32),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            // 其他文件夹
+            for (final d in otherDirs)
+              ListTile(
+                leading: const Icon(Icons.folder),
+                title: Text(p.basename(d.path) + '/'),
+                subtitle: Text(d.path, style: const TextStyle(fontSize: 12)),
+                contentPadding: const EdgeInsets.only(left: 16),
+              ),
+            // 其他文件
+            for (final f in otherFiles)
+              ListTile(
+                leading: const Icon(Icons.insert_drive_file),
+                title: Text(p.basename(f.path)),
+                subtitle: Text(f.path, style: const TextStyle(fontSize: 12)),
+                contentPadding: const EdgeInsets.only(left: 16),
+              ),
+          ],
         );
-      }
-      return const SizedBox.shrink();
-    }
+      },
+    );
   }
 
   @override
@@ -102,6 +159,18 @@ class _DebugPageState extends State<DebugPage> {
               ElevatedButton(
                 onPressed: _loadDbDecks,
                 child: const Text('显示题库索引(AppDb.getAllDecks)'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  final scrollController = PrimaryScrollController.of(context);
+                  scrollController?.animateTo(
+                    scrollController.position.maxScrollExtent,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: const Text('跳转到底部'),
               ),
             ],
           ),
@@ -128,7 +197,16 @@ class _DebugPageState extends State<DebugPage> {
                                   leading: const Icon(Icons.sd_storage),
                                   title: Text(_ankiDataDir!.path),
                                 ),
-                                ..._rootEntities.map(_buildTree),
+                                // 只展示每个deck目录下的collection.sqlite和media
+                                for (final entity in _rootEntities)
+                                  if (entity is Directory)
+                                    ExpansionTile(
+                                      leading: const Icon(Icons.folder),
+                                      title: Text(entity.path.split('/').last + '/'),
+                                      children: [
+                                        _buildDeckDirView(entity),
+                                      ],
+                                    ),
                               ],
                             ),
             ),
