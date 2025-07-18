@@ -825,29 +825,11 @@ CREATE INDEX idx_graves_pending ON graves (usn);
 
 ## 整改方案
 1. 数据结构与版本兼容
-[ ] 1.1 导入 apkg 时记录 anki 版本
-目标：导入时判断是 anki2/anki21b，并在 decks 表中记录版本字段，便于后续兼容。
-涉及文件：
-rust/src/api/simple.rs（Rust 端 extract_apkg 增加版本判断与返回）
-lib/src/db.dart（decks 表增加 version 字段，插入/查询时处理）
-lib/src/pages/import_page.dart（导入时保存版本信息）
-[ ] 1.2 decks 表结构升级
-目标：decks 表增加 version 字段，必要时迁移历史数据。
-涉及文件：
-lib/src/db.dart（表结构升级、数据迁移逻辑）
+[x] 1.1 导入 apkg 时记录 anki 版本
+[x] 1.2 decks 表结构升级
 2. 数据访问与加载逻辑优化
-[ ] 2.1 getDeckNotes 拆分为 getDeckNote(id) 单卡加载
-目标：Rust 端和 Dart 端都支持按需加载单个卡片，避免一次性全部加载。
-涉及文件：
-rust/src/api/simple.rs（新增 get_deck_note(sqlite_path, id, version)）
-lib/src/rust/api/simple.dart（FFI 新接口）
-lib/src/pages/card_review_page.dart（刷题流程调整为单卡加载）
-[ ] 2.2 加载卡片时传递 anki 版本参数
-目标：getDeckNote(id) 时传递版本参数，Rust 端根据版本查不同表。
-涉及文件：
-lib/src/pages/card_review_page.dart
-lib/src/rust/api/simple.dart
-rust/src/api/simple.rs
+[x] 2.1 getDeckNotes 拆分为 getDeckNote(id) 单卡加载
+[x] 2.2 加载卡片时传递 anki 版本参数
 3. 模板与渲染机制重构
 [ ] 3.1 完善模板解析与字段填充
 目标：支持自定义模板、字段映射、FrontSide、样式等，兼容 anki2/anki21b。

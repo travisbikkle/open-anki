@@ -12,6 +12,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'dart:convert'; // for base64Encode
 import 'package:collection/collection.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:sqflite/sqflite.dart'; // 新增导入
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -27,11 +28,14 @@ class CardReviewPage extends ConsumerStatefulWidget {
 
 class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _loading = true;
-  List<NoteExt> _notes = [];
-  List<NotetypeExt> _cardNotetypes = [];
-  List<FieldExt> _fields = [];
+  List<int> _noteIds = [];
   int _currentIndex = 0;
   String? _mediaDir;
+  String? _sqlitePath;
+  String? _deckVersion;
+  NoteExt? _currentNote;
+  NotetypeExt? _currentNotetype;
+  List<FieldExt> _currentFields = [];
   late WebViewController _controller;
   // 新增交互状态
   int? _selectedIndex;
@@ -84,30 +88,18 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       final md5 = deck['md5'] as String;
       final deckDir = '${appDocDir.path}/anki_data/$md5';
       final sqlitePath = '$deckDir/$kSqliteDBFileName';
-      final result = await getDeckNotes(sqlitePath: sqlitePath);
-      debugPrint('【_loadDeck】result.notetypes: ${result.notetypes}');
-      final newMediaDir = '$deckDir/unarchived_media';
-      setState(() {
-        _notes = result.notes.cast<NoteExt>();
-        _cardNotetypes = result.notetypes.cast<NotetypeExt>();
-        _fields = result.fields.cast<FieldExt>();
-        if (_mediaDir != newMediaDir) {
-          _mediaDir = newMediaDir;
-          _controller = WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(const Color(0x00000000));
-          _stemController = WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(const Color(0x00000000));
-          _remarkController = WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(const Color(0x00000000));
-        }
-      });
+      _sqlitePath = sqlitePath;
+      _mediaDir = '$deckDir/unarchived_media';
+      _deckVersion = deck['version'] as String? ?? 'anki2';
+      // 只查ID列表
+      final db = await openDatabase(sqlitePath);
+      final idRows = await db.rawQuery('SELECT id FROM notes');
+      _noteIds = idRows.map((e) => e['id'] as int).toList();
+      await db.close();
       final progress = await AppDb.getProgress(deck['id'] as int);
       final idx = progress?['current_card_id'] ?? 0;
       _currentIndex = idx;
-      _loadCurrentCard();
+      await _loadCurrentCard();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
     } finally {
@@ -125,46 +117,58 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     final deckId = deck['id'] as int;
     await AppDb.saveProgress(deckId, idx);
     await AppDb.upsertRecentDeck(deckId);
-    ref.invalidate(allDecksProvider);
-    ref.invalidate(recentDecksProvider);
+    // 不再每次切题刷新 provider
+    // ref.invalidate(allDecksProvider);
+    // ref.invalidate(recentDecksProvider);
   }
 
-  void _loadCurrentCard() {
-    if (_notes.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _notes.length) return;
+  Future<void> _loadCurrentCard() async {
+    if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
+      debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
+      return;
+    }
     setState(() {
       _selectedIndex = null;
       _showAnswer = false;
+      _currentNote = null;
+      _currentNotetype = null;
+      _currentFields = [];
     });
-    final note = _notes[_currentIndex];
-    final notetype = _cardNotetypes.firstWhereOrNull((n) => n.id == note.mid);
-    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
-      final fieldsForType = _fields.where((f) => f.notetypeId == note.mid).toList()..sort((a, b) => a.ord.compareTo(b.ord));
+    final noteId = _noteIds[_currentIndex];
+    final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
+    setState(() {
+      _currentNote = result.note;
+      _currentNotetype = result.notetype;
+      _currentFields = result.fields;
+    });
+    // 渲染
+    if (_currentNotetype == null) {
+      debugPrint('[_loadCurrentCard] _currentNotetype is null');
+      return;
+    }
+    if (_currentNote == null) {
+      debugPrint('[_loadCurrentCard] _currentNote is null');
+      return;
+    }
+    if (_currentNotetype!.name == kAutoMatchChoiceTemplate) {
+      final fieldsForType = _currentFields;
       final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
-        fieldMap[fieldsForType[i].name] = note.flds[i];
+      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
+        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
       }
       final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
       final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
-      _stemController.loadHtmlString(_wrapHtml(stem), baseUrl: 'file://${_mediaDir!}/');
-      _remarkController.loadHtmlString(_wrapHtml(remark), baseUrl: 'file://${_mediaDir!}/');
+      _stemController.loadHtmlString(_wrapHtml(stem), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+      _remarkController.loadHtmlString(_wrapHtml(remark), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
     } else {
-      final html = _composeCardHtml(note);
-      _controller.loadHtmlString(html, baseUrl: 'file://${_mediaDir!}/');
+      final html = _composeCardHtml(_currentNote!);
+      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
     }
   }
 
   String _composeCardHtml(NoteExt note) {
-    NotetypeExt? notetype;
-    try {
-      notetype = _cardNotetypes.firstWhere(
-        (n) => n.id == note.mid,
-        orElse: () => NotetypeExt(id: -1, name: '', config: ''),
-      );
-    } catch (e) {
-      notetype = null;
-    }
     // 获取当前 notetype 的所有字段，按 ord 排序
-    final fieldsForType = _fields
+    final fieldsForType = _currentFields
         .where((f) => f.notetypeId == note.mid)
         .toList()
       ..sort((a, b) => a.ord.compareTo(b.ord));
@@ -174,7 +178,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
     // 自动匹配-选择题模板专用渲染（必须保留！）
-    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
+    if (_currentNotetype != null && _currentNotetype!.name == kAutoMatchChoiceTemplate) {
       // 题干、选项、答案、remark 字段名自动识别
       String stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
       String options = fieldMap['Options'] ?? '';
@@ -221,7 +225,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       }
     }
     if (content.trim().isEmpty) content = '（无内容）';
-    String template = notetype?.config ?? '';
+    String template = _currentNotetype?.config ?? '';
     return '''
 <!DOCTYPE html>
 <html>
@@ -257,21 +261,21 @@ $content
   }
 
   void _nextCard() {
-    if (_notes.isEmpty) return;
+    if (_noteIds.isEmpty) return;
     setState(() {
-      _currentIndex = (_currentIndex + 1) % _notes.length;
-      _saveProgress(_currentIndex);
-      _loadCurrentCard();
+      _currentIndex = (_currentIndex + 1) % _noteIds.length;
     });
+    _saveProgress(_currentIndex);
+    _loadCurrentCard();
   }
 
   void _prevCard() {
-    if (_notes.isEmpty) return;
+    if (_noteIds.isEmpty) return;
     setState(() {
-      _currentIndex = (_currentIndex - 1 + _notes.length) % _notes.length;
-      _saveProgress(_currentIndex);
-      _loadCurrentCard();
+      _currentIndex = (_currentIndex - 1 + _noteIds.length) % _noteIds.length;
     });
+    _saveProgress(_currentIndex);
+    _loadCurrentCard();
   }
 
   @override
@@ -279,18 +283,26 @@ $content
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (_notes.isEmpty) {
+    if (_noteIds.isEmpty) {
+      debugPrint('[build] _noteIds 为空');
       return Scaffold(
         appBar: AppBar(title: const Text('刷卡')),
         body: const Center(child: Text('无卡片')),
       );
     }
-    final note = _notes[_currentIndex];
-    final notetype = _cardNotetypes.firstWhereOrNull((n) => n.id == note.mid);
+    if (_currentNote == null) {
+      debugPrint('[build] _currentNote 为空');
+      return Scaffold(
+        appBar: AppBar(title: const Text('刷卡')),
+        body: const Center(child: Text('卡片加载失败')),
+      );
+    }
+    final note = _currentNote;
+    final notetype = _currentNotetype;
     if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
-      final fieldsForType = _fields.where((f) => f.notetypeId == note.mid).toList()..sort((a, b) => a.ord.compareTo(b.ord));
+      final fieldsForType = _currentFields;
       final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
+      for (int i = 0; i < fieldsForType.length && i < note!.flds.length; i++) {
         fieldMap[fieldsForType[i].name] = note.flds[i];
       }
       final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
@@ -301,7 +313,7 @@ $content
       final screenHeight = MediaQuery.of(context).size.height;
       return Scaffold(
         appBar: AppBar(
-          title: Text('刷卡 ( ${_currentIndex + 1}/${_notes.length})'),
+          title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
@@ -432,10 +444,10 @@ $content
       );
     }
     // 其它类型保持原有逻辑
-    final html = _composeCardHtml(note);
+    final html = _composeCardHtml(note!);
     return Scaffold(
       appBar: AppBar(
-        title: Text('刷卡 ( ${_currentIndex + 1}/${_notes.length})'),
+        title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),

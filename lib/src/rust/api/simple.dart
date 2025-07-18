@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `rust_log`, `table_has_columns`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `LOG_SINK`, `Note`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
@@ -26,6 +26,16 @@ Future<ExtractResult> extractApkg({
 
 Future<DeckNotesResult> getDeckNotes({required String sqlitePath}) =>
     RustLib.instance.api.crateApiSimpleGetDeckNotes(sqlitePath: sqlitePath);
+
+Future<SingleNoteResult> getDeckNote({
+  required String sqlitePath,
+  required PlatformInt64 noteId,
+  required String version,
+}) => RustLib.instance.api.crateApiSimpleGetDeckNote(
+  sqlitePath: sqlitePath,
+  noteId: noteId,
+  version: version,
+);
 
 class CardExt {
   final PlatformInt64 id;
@@ -207,4 +217,28 @@ class NotetypeExt {
           id == other.id &&
           name == other.name &&
           config == other.config;
+}
+
+class SingleNoteResult {
+  final NoteExt note;
+  final NotetypeExt? notetype;
+  final List<FieldExt> fields;
+
+  const SingleNoteResult({
+    required this.note,
+    this.notetype,
+    required this.fields,
+  });
+
+  @override
+  int get hashCode => note.hashCode ^ notetype.hashCode ^ fields.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SingleNoteResult &&
+          runtimeType == other.runtimeType &&
+          note == other.note &&
+          notetype == other.notetype &&
+          fields == other.fields;
 }

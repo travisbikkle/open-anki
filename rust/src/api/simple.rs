@@ -302,6 +302,13 @@ pub struct CardExt {
     pub due: i64,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SingleNoteResult {
+    pub note: NoteExt,
+    pub notetype: Option<NotetypeExt>,
+    pub fields: Vec<FieldExt>,
+}
+
 // 辅助函数：判断表是否包含所有指定字段
 fn table_has_columns(conn: &rusqlite::Connection, table: &str, columns: &[&str]) -> bool {
     let sql = format!("PRAGMA table_info({})", table);
@@ -517,4 +524,101 @@ pub fn get_deck_notes(sqlite_path: String) -> Result<DeckNotesResult, String> {
         rust_log(&format!("DEBUG: notetypes[{}]: id={}, name={}, config={:?}", i, nt.id, nt.name, nt.config));
     }
     Ok(DeckNotesResult { notes, notetypes, fields, cards })
+}
+
+#[flutter_rust_bridge::frb]
+pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Result<SingleNoteResult, String> {
+    rust_log(&format!("DEBUG: get_deck_note 被调用, note_id={}, version={}", note_id, version));
+    if !std::path::Path::new(&sqlite_path).exists() {
+        return Err(format!("文件不存在: {sqlite_path}"));
+    }
+    let conn = Connection::open(&sqlite_path).map_err(|e| format!("打开sqlite失败: {e}"))?;
+    let mut note: Option<NoteExt> = None;
+    let mut notetype: Option<NotetypeExt> = None;
+    let mut fields: Vec<FieldExt> = vec![];
+    if version == "anki21b" {
+        // 新版表结构
+        let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+        let mut rows = stmt.query([note_id]).map_err(|e| format!("查询SQL失败: {e}"))?;
+        if let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+            let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
+            let guid: String = row.get(1).map_err(|e| format!("读取guid失败: {e}"))?;
+            let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
+            let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
+            let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
+            // notetype
+            let mut stmt2 = conn.prepare("SELECT id, name, config FROM notetypes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows2 = stmt2.query([mid]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            if let Some(row2) = rows2.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                let nid: i64 = row2.get(0).map_err(|e| format!("读取id失败: {e}"))?;
+                let name: String = row2.get(1).map_err(|e| format!("读取name失败: {e}"))?;
+                let config: Option<String> = row2.get::<_, Option<String>>(2).unwrap_or(Some(String::new()));
+                notetype = Some(NotetypeExt { id: nid, name, config });
+            }
+            // fields
+            let mut stmt3 = conn.prepare("SELECT ntid, ord, name FROM fields WHERE ntid = ? ORDER BY ord ASC").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows3 = stmt3.query([mid]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            let mut field_vec = vec![];
+            while let Some(row3) = rows3.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                let notetype_id: i64 = row3.get(0).map_err(|e| format!("读取ntid失败: {e}"))?;
+                let ord: i64 = row3.get(1).map_err(|e| format!("读取ord失败: {e}"))?;
+                let name: String = row3.get(2).map_err(|e| format!("读取name失败: {e}"))?;
+                let id = notetype_id * 1000 + ord;
+                field_vec.push(FieldExt { id, notetype_id, name, ord });
+            }
+            let field_names: Vec<String> = field_vec.iter().map(|f| f.name.clone()).collect();
+            note = Some(NoteExt { id, guid, mid, flds: flds_vec, notetype_name: notetype.as_ref().map(|n| n.name.clone()).unwrap_or_default(), field_names });
+            fields = field_vec;
+        }
+    } else {
+        // anki2 或其他老版本
+        let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+        let mut rows = stmt.query([note_id]).map_err(|e| format!("查询SQL失败: {e}"))?;
+        if let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+            let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
+            let guid: String = row.get(1).map_err(|e| format!("读取guid失败: {e}"))?;
+            let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
+            let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
+            let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
+            // 解析 col.models
+            let mut stmt2 = conn.prepare("SELECT models FROM col").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows2 = stmt2.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            let mut models_json = String::new();
+            if let Some(row2) = rows2.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                models_json = row2.get(0).map_err(|e| format!("读取models失败: {e}"))?;
+            }
+            let mut notetype_name = String::new();
+            let mut field_names = vec![];
+            if !models_json.trim().is_empty() {
+                let models: serde_json::Value = serde_json::from_str(&models_json).map_err(|e| format!("解析models JSON失败: {e}"))?;
+                if let Some(obj) = models.as_object() {
+                    for (id_str, model) in obj.iter() {
+                        let mid_i64 = id_str.parse::<i64>().unwrap_or(0);
+                        if mid_i64 == mid {
+                            notetype_name = model.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            if let Some(flds) = model.get("flds").and_then(|v| v.as_array()) {
+                                for (ord, f) in flds.iter().enumerate() {
+                                    let fname = f.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                    field_names.push(fname.clone());
+                                    fields.push(FieldExt {
+                                        id: ord as i64,
+                                        notetype_id: mid,
+                                        name: fname,
+                                        ord: ord as i64,
+                                    });
+                                }
+                            }
+                            notetype = Some(NotetypeExt { id: mid, name: notetype_name.clone(), config: Some(model.to_string()) });
+                        }
+                    }
+                }
+            }
+            note = Some(NoteExt { id, guid, mid, flds: flds_vec, notetype_name, field_names });
+        }
+    }
+    if let Some(note) = note {
+        Ok(SingleNoteResult { note, notetype, fields })
+    } else {
+        Err("未找到指定id的note".to_string())
+    }
 }
