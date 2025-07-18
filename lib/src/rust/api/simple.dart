@@ -223,15 +223,30 @@ class SingleNoteResult {
   final NoteExt note;
   final NotetypeExt? notetype;
   final List<FieldExt> fields;
+  final PlatformInt64 ord;
+  final String front;
+  final String back;
+  final String css;
 
   const SingleNoteResult({
     required this.note,
     this.notetype,
     required this.fields,
+    required this.ord,
+    required this.front,
+    required this.back,
+    required this.css,
   });
 
   @override
-  int get hashCode => note.hashCode ^ notetype.hashCode ^ fields.hashCode;
+  int get hashCode =>
+      note.hashCode ^
+      notetype.hashCode ^
+      fields.hashCode ^
+      ord.hashCode ^
+      front.hashCode ^
+      back.hashCode ^
+      css.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -240,5 +255,9 @@ class SingleNoteResult {
           runtimeType == other.runtimeType &&
           note == other.note &&
           notetype == other.notetype &&
-          fields == other.fields;
+          fields == other.fields &&
+          ord == other.ord &&
+          front == other.front &&
+          back == other.back &&
+          css == other.css;
 }

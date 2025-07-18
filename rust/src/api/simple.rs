@@ -307,6 +307,10 @@ pub struct SingleNoteResult {
     pub note: NoteExt,
     pub notetype: Option<NotetypeExt>,
     pub fields: Vec<FieldExt>,
+    pub ord: i64,
+    pub front: String, // 正面模板
+    pub back: String,  // 反面模板
+    pub css: String,
 }
 
 // 辅助函数：判断表是否包含所有指定字段
@@ -536,6 +540,10 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
     let mut note: Option<NoteExt> = None;
     let mut notetype: Option<NotetypeExt> = None;
     let mut fields: Vec<FieldExt> = vec![];
+    let mut ord: i64 = 0;
+    let mut front = String::new();
+    let mut back = String::new();
+    let mut css = String::new();
     if version == "anki21b" {
         // 新版表结构
         let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
@@ -546,6 +554,12 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
             let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
             let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
             let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
+            // 查找卡片ord
+            let mut stmt_card = conn.prepare("SELECT ord FROM cards WHERE nid = ? LIMIT 1").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows_card = stmt_card.query([id]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            if let Some(row_card) = rows_card.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                ord = row_card.get(0).map_err(|e| format!("读取ord失败: {e}"))?;
+            }
             // notetype
             let mut stmt2 = conn.prepare("SELECT id, name, config FROM notetypes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
             let mut rows2 = stmt2.query([mid]).map_err(|e| format!("查询SQL失败: {e}"))?;
@@ -561,14 +575,44 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
             let mut field_vec = vec![];
             while let Some(row3) = rows3.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
                 let notetype_id: i64 = row3.get(0).map_err(|e| format!("读取ntid失败: {e}"))?;
-                let ord: i64 = row3.get(1).map_err(|e| format!("读取ord失败: {e}"))?;
+                let ord_f: i64 = row3.get(1).map_err(|e| format!("读取ord失败: {e}"))?;
                 let name: String = row3.get(2).map_err(|e| format!("读取name失败: {e}"))?;
-                let id = notetype_id * 1000 + ord;
-                field_vec.push(FieldExt { id, notetype_id, name, ord });
+                let id = notetype_id * 1000 + ord_f;
+                field_vec.push(FieldExt { id, notetype_id, name, ord: ord_f });
             }
             let field_names: Vec<String> = field_vec.iter().map(|f| f.name.clone()).collect();
             note = Some(NoteExt { id, guid, mid, flds: flds_vec, notetype_name: notetype.as_ref().map(|n| n.name.clone()).unwrap_or_default(), field_names });
             fields = field_vec;
+            // 查模板
+            let mut stmt_tpl = conn.prepare("SELECT config FROM templates WHERE ntid = ? AND ord = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows_tpl = stmt_tpl.query([mid, ord]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            if let Some(row_tpl) = rows_tpl.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                let config_bytes: Vec<u8> = row_tpl.get(0).map_err(|e| format!("读取config失败: {e}"))?;
+                let config = String::from_utf8_lossy(&config_bytes).to_string();
+                // 分割正反面，优先用 <hr id=answer>，否则用两个换行
+                if let Some(idx) = config.find("<hr id=answer>") {
+                    front = config[..idx].to_string();
+                    back = config[idx + "<hr id=answer>".len()..].to_string();
+                } else if let Some(idx) = config.find("\n\n") {
+                    front = config[..idx].to_string();
+                    back = config[idx + 2..].to_string();
+                } else {
+                    front = config.clone();
+                    back = String::new();
+                }
+            }
+            // 查样式
+            let mut stmt_css = conn.prepare("SELECT config FROM notetypes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows_css = stmt_css.query([mid]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            if let Some(row_css) = rows_css.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                if let Ok(Some(config_str)) = row_css.get::<_, Option<String>>(0) {
+                    if let Ok(model) = serde_json::from_str::<serde_json::Value>(&config_str) {
+                        if let Some(css_val) = model.get("css").and_then(|v| v.as_str()) {
+                            css = css_val.to_string();
+                        }
+                    }
+                }
+            }
         }
     } else {
         // anki2 或其他老版本
@@ -580,6 +624,12 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
             let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
             let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
             let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
+            // 查找卡片ord
+            let mut stmt_card = conn.prepare("SELECT ord FROM cards WHERE nid = ? LIMIT 1").map_err(|e| format!("准备SQL失败: {e}"))?;
+            let mut rows_card = stmt_card.query([id]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            if let Some(row_card) = rows_card.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+                ord = row_card.get(0).map_err(|e| format!("读取ord失败: {e}"))?;
+            }
             // 解析 col.models
             let mut stmt2 = conn.prepare("SELECT models FROM col").map_err(|e| format!("准备SQL失败: {e}"))?;
             let mut rows2 = stmt2.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
@@ -597,14 +647,14 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
                         if mid_i64 == mid {
                             notetype_name = model.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
                             if let Some(flds) = model.get("flds").and_then(|v| v.as_array()) {
-                                for (ord, f) in flds.iter().enumerate() {
+                                for (ord_f, f) in flds.iter().enumerate() {
                                     let fname = f.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
                                     field_names.push(fname.clone());
                                     fields.push(FieldExt {
-                                        id: ord as i64,
+                                        id: ord_f as i64,
                                         notetype_id: mid,
                                         name: fname,
-                                        ord: ord as i64,
+                                        ord: ord_f as i64,
                                     });
                                 }
                             }
@@ -617,7 +667,24 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
         }
     }
     if let Some(note) = note {
-        Ok(SingleNoteResult { note, notetype, fields })
+        // 查模板和样式同上，直接从 notetype.config 解析
+        if let Some(nt) = &notetype {
+            if let Some(config_str) = &nt.config {
+                if let Ok(model) = serde_json::from_str::<serde_json::Value>(config_str) {
+                    if let Some(tpls) = model.get("tpls").and_then(|v| v.as_array()) {
+                        let tpl = tpls.get(ord as usize).or_else(|| tpls.get(0));
+                        if let Some(tpl) = tpl {
+                            front = tpl.get("qfmt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            back = tpl.get("afmt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        }
+                    }
+                    if let Some(css_val) = model.get("css").and_then(|v| v.as_str()) {
+                        css = css_val.to_string();
+                    }
+                }
+            }
+        }
+        Ok(SingleNoteResult { note, notetype, fields, ord, front, back, css })
     } else {
         Err("未找到指定id的note".to_string())
     }

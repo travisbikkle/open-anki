@@ -519,10 +519,18 @@ impl SseDecode for crate::api::simple::SingleNoteResult {
         let mut var_note = <crate::api::simple::NoteExt>::sse_decode(deserializer);
         let mut var_notetype = <Option<crate::api::simple::NotetypeExt>>::sse_decode(deserializer);
         let mut var_fields = <Vec<crate::api::simple::FieldExt>>::sse_decode(deserializer);
+        let mut var_ord = <i64>::sse_decode(deserializer);
+        let mut var_front = <String>::sse_decode(deserializer);
+        let mut var_back = <String>::sse_decode(deserializer);
+        let mut var_css = <String>::sse_decode(deserializer);
         return crate::api::simple::SingleNoteResult {
             note: var_note,
             notetype: var_notetype,
             fields: var_fields,
+            ord: var_ord,
+            front: var_front,
+            back: var_back,
+            css: var_css,
         };
     }
 }
@@ -727,6 +735,10 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::SingleNoteResult {
             self.note.into_into_dart().into_dart(),
             self.notetype.into_into_dart().into_dart(),
             self.fields.into_into_dart().into_dart(),
+            self.ord.into_into_dart().into_dart(),
+            self.front.into_into_dart().into_dart(),
+            self.back.into_into_dart().into_dart(),
+            self.css.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -945,6 +957,10 @@ impl SseEncode for crate::api::simple::SingleNoteResult {
         <crate::api::simple::NoteExt>::sse_encode(self.note, serializer);
         <Option<crate::api::simple::NotetypeExt>>::sse_encode(self.notetype, serializer);
         <Vec<crate::api::simple::FieldExt>>::sse_encode(self.fields, serializer);
+        <i64>::sse_encode(self.ord, serializer);
+        <String>::sse_encode(self.front, serializer);
+        <String>::sse_encode(self.back, serializer);
+        <String>::sse_encode(self.css, serializer);
     }
 }
 

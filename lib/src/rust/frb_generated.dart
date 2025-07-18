@@ -489,12 +489,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SingleNoteResult dco_decode_single_note_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return SingleNoteResult(
       note: dco_decode_note_ext(arr[0]),
       notetype: dco_decode_opt_box_autoadd_notetype_ext(arr[1]),
       fields: dco_decode_list_field_ext(arr[2]),
+      ord: dco_decode_i_64(arr[3]),
+      front: dco_decode_String(arr[4]),
+      back: dco_decode_String(arr[5]),
+      css: dco_decode_String(arr[6]),
     );
   }
 
@@ -768,10 +772,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_note = sse_decode_note_ext(deserializer);
     var var_notetype = sse_decode_opt_box_autoadd_notetype_ext(deserializer);
     var var_fields = sse_decode_list_field_ext(deserializer);
+    var var_ord = sse_decode_i_64(deserializer);
+    var var_front = sse_decode_String(deserializer);
+    var var_back = sse_decode_String(deserializer);
+    var var_css = sse_decode_String(deserializer);
     return SingleNoteResult(
       note: var_note,
       notetype: var_notetype,
       fields: var_fields,
+      ord: var_ord,
+      front: var_front,
+      back: var_back,
+      css: var_css,
     );
   }
 
@@ -1032,6 +1044,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_note_ext(self.note, serializer);
     sse_encode_opt_box_autoadd_notetype_ext(self.notetype, serializer);
     sse_encode_list_field_ext(self.fields, serializer);
+    sse_encode_i_64(self.ord, serializer);
+    sse_encode_String(self.front, serializer);
+    sse_encode_String(self.back, serializer);
+    sse_encode_String(self.css, serializer);
   }
 
   @protected

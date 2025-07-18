@@ -13,6 +13,7 @@ import 'dart:convert'; // for base64Encode
 import 'package:collection/collection.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:sqflite/sqflite.dart'; // 新增导入
+import 'package:open_anki/src/widgets/anki_template_renderer.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -42,6 +43,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _showAnswer = false;
   late WebViewController _stemController;
   late WebViewController _remarkController;
+  int? _currentCardOrd;
+  String? _currentQfmt;
+  String? _currentAfmt;
+  String? _currentCss;
+  String? _currentFront;
+  String? _currentBack;
 
   @override
   void initState() {
@@ -133,6 +140,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentNote = null;
       _currentNotetype = null;
       _currentFields = [];
+      _currentCardOrd = null;
+      _currentQfmt = null;
+      _currentAfmt = null;
+      _currentCss = null;
+      _currentFront = null;
+      _currentBack = null;
     });
     final noteId = _noteIds[_currentIndex];
     final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
@@ -140,6 +153,10 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentNote = result.note;
       _currentNotetype = result.notetype;
       _currentFields = result.fields;
+      _currentCardOrd = result.ord;
+      _currentFront = result.front;
+      _currentBack = result.back;
+      _currentCss = result.css;
     });
     // 渲染
     if (_currentNotetype == null) {
@@ -167,78 +184,34 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   String _composeCardHtml(NoteExt note) {
-    // 获取当前 notetype 的所有字段，按 ord 排序
-    final fieldsForType = _currentFields
-        .where((f) => f.notetypeId == note.mid)
-        .toList()
-      ..sort((a, b) => a.ord.compareTo(b.ord));
-    // 组装字段名与内容映射
+    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
     final fieldMap = <String, String>{};
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    // 自动匹配-选择题模板专用渲染（必须保留！）
-    if (_currentNotetype != null && _currentNotetype!.name == kAutoMatchChoiceTemplate) {
-      // 题干、选项、答案、remark 字段名自动识别
-      String stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
-      String options = fieldMap['Options'] ?? '';
-      final answer = fieldMap['Answer'] ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
-      // 渲染选项，自动高亮答案
-      String optionsHtml = '';
-      for (int i = 0; i < options.length; i++) {
-        final label = String.fromCharCode('A'.codeUnitAt(0) + i);
-        final value = options[i];
-        final isCorrect = answer.contains(label);
-        optionsHtml += '<div style="margin:4px 0;padding:6px;border-radius:6px;${isCorrect ? 'background:#d0ffd0;font-weight:bold;' : 'background:#f8f8f8;'}">'
-          '<b>$label.</b> $value'
-          '${isCorrect ? ' <span style="color:green;">✔</span>' : ''}'
-          '</div>';
-      }
-      String remarkHtml = remark.isNotEmpty ? '<div style="margin-top:16px;padding:8px;background:#f0f0ff;border-radius:6px;color:#333;"><b>解析：</b>$remark</div>' : '';
-      return '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <style>
-    body { font-family: system-ui, sans-serif; font-size: 18px; padding: 16px; }
-    .stem { margin-bottom: 16px; }
-    .options { margin-bottom: 16px; }
-  </style>
-</head>
-<body>
-  <div class="stem">$stem</div>
-  <div class="r">$optionsHtml</div>
-  $remarkHtml
-</body>
-</html>
-''';
+    final isAnki2 = _deckVersion == 'anki2';
+    String front = '', back = '', css = '';
+    if (isAnki2) {
+      front = _currentFront ?? '';
+      back = _currentBack ?? '';
+      css = _currentCss ?? '';
+      debugPrint('[composeCardHtml] anki2分支 front.length=${front.length}, back.length=${back.length}, css.length=${css.length}');
+    } else {
+      front = _currentFront ?? '';
+      back = _currentBack ?? '';
+      css = _currentCss ?? '';
+      debugPrint('[composeCardHtml] anki21b分支 front.length=${front.length}, back.length=${back.length}, css.length=${css.length}');
     }
-    // 其它类型卡片渲染（只渲染主要字段）
-    final displayFields = ['Expression', 'Reading', 'Meaning', 'Audio', 'Image_URI'];
-    String content = '';
-    for (final key in displayFields) {
-      if (fieldMap.containsKey(key) && fieldMap[key]!.trim().isNotEmpty) {
-        content += '<div style="margin-bottom:8px;"><b>' + key + ':</b><br>' + fieldMap[key]! + '</div>';
-      }
-    }
-    if (content.trim().isEmpty) content = '（无内容）';
-    String template = _currentNotetype?.config ?? '';
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  $template
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-</head>
-<body>
-$content
-</body>
-</html>
-''';
+    final renderer = AnkiTemplateRenderer(
+      front: front,
+      back: back,
+      css: css,
+      fieldMap: fieldMap,
+      js: null,
+    );
+    final frontHtml = renderer.renderFront();
+    debugPrint('[composeCardHtml] frontHtml.length: ${frontHtml.length}');
+    return frontHtml;
   }
 
   String _wrapHtml(String content) {
@@ -280,7 +253,9 @@ $content
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[build] _loading=$_loading, _noteIds=${_noteIds.length}, _currentIndex=$_currentIndex, _currentNote=${_currentNote != null}, _currentNotetype=${_currentNotetype != null}');
     if (_loading) {
+      debugPrint('[build] 正在加载...');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_noteIds.isEmpty) {
@@ -299,7 +274,9 @@ $content
     }
     final note = _currentNote;
     final notetype = _currentNotetype;
+    debugPrint('[build] 渲染卡片: note.id=${note?.id}, notetype=${notetype?.name}');
     if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
+      debugPrint('[build] 使用自动匹配选择题模板');
       final fieldsForType = _currentFields;
       final fieldMap = <String, String>{};
       for (int i = 0; i < fieldsForType.length && i < note!.flds.length; i++) {
@@ -310,6 +287,7 @@ $content
       final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
       final answer = fieldMap['Answer'] ?? '';
       final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
+      debugPrint('[build] stem=$stem, options=${options.length}, answer=$answer, remark=$remark');
       final screenHeight = MediaQuery.of(context).size.height;
       return Scaffold(
         appBar: AppBar(
@@ -444,7 +422,9 @@ $content
       );
     }
     // 其它类型保持原有逻辑
+    debugPrint('[build] 使用自定义模板渲染');
     final html = _composeCardHtml(note!);
+    debugPrint('[build] 渲染HTML长度: ${html.length}');
     return Scaffold(
       appBar: AppBar(
         title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
@@ -459,7 +439,7 @@ $content
             color: Colors.black12,
             padding: const EdgeInsets.all(8),
             child: Text(
-              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}',
+              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
               style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
           ),
