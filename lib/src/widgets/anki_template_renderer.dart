@@ -87,7 +87,15 @@ $html
     final reg = RegExp(r'\[sound:([\w\d\-_\.]+)\]');
     return html.replaceAllMapped(reg, (m) {
       final file = m.group(1)!;
-      return '<audio controls src="${mediaDir!}/$file"></audio>';
+      final audioId = 'audio_${file.hashCode}';
+      
+      return '''
+<span style="cursor:pointer;vertical-align:middle;" onclick="var a=document.getElementById('$audioId');a.currentTime=0;a.play();">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="#666"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
+</span>
+<audio id="$audioId" src="${mediaDir!}/$file" style="display:none"></audio>
+''';
+
     });
   }
 } 
