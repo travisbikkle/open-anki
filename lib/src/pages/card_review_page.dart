@@ -389,13 +389,17 @@ $content
                 ),
                 const SizedBox(width: 24),
                 ElevatedButton(
-                  onPressed: !_showBack ? () {
+                  onPressed: () {
                     setState(() {
-                      _showBack = true;
-                      _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                      _showBack = !_showBack;
+                      if (_showBack) {
+                        _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                      } else {
+                        _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                      }
                     });
-                  } : null,
-                  child: const Text('显示答案'),
+                  },
+                  child: Text(_showBack ? '返回正面' : '显示答案'),
                 ),
                 const SizedBox(width: 24),
                 ElevatedButton.icon(
