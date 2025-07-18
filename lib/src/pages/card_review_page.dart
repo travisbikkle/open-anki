@@ -221,7 +221,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   <style>
     body { font-family: system-ui, sans-serif; font-size: 50px; padding: 8; margin: 0; }
     .stem { font-size: 20px; font-weight: bold; line-height: 2; }
-  </style>
+  </style>r
 </head>
 <body>
 $content
@@ -270,70 +270,6 @@ $content
       );
     }
     final note = _currentNote;
-    final notetype = _currentNotetype;
-    debugPrint('[build] 渲染卡片: note.id=${note?.id}, notetype=${notetype?.name}');
-    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
-      debugPrint('[build] 使用自定义模板渲染');
-      final html = _showBack
-          ? _composeCardBackHtml(note!)
-          : _composeCardFrontHtml(note!);
-      debugPrint('[build] 渲染HTML长度: ${html.length}');
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Column(
-          children: [
-            Container(
-              color: Colors.black12,
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
-                style: const TextStyle(fontSize: 12, color: Colors.red),
-              ),
-            ),
-            Expanded(child: WebViewWidget(key: ValueKey(_currentIndex * 2 + (_showBack ? 1 : 0)), controller: _controller)),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.navigate_before),
-                    label: const Text('上一题'),
-                    onPressed: _prevCard,
-                  ),
-                  const SizedBox(width: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showBack = !_showBack;
-                        if (_showBack) {
-                          _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-                        } else {
-                          _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-                        }
-                      });
-                    },
-                    child: Text(_showBack ? '返回正面' : '显示答案'),
-                  ),
-                  const SizedBox(width: 24),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.navigate_next),
-                    label: const Text('下一题'),
-                    onPressed: _nextCard,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
     debugPrint('[build] 使用自定义模板渲染');
     final html = _showBack
         ? _composeCardBackHtml(note!)
@@ -346,16 +282,82 @@ $content
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  final allDecks = AppDb.getAllDecks();
+                  return FutureBuilder<List<Map<String, dynamic>>>(
+                    future: allDecks,
+                    builder: (context, snapshot) {
+                      String deckId = widget.deckId;
+                      String apkgPath = '';
+                      if (snapshot.hasData) {
+                        final deck = snapshot.data!.firstWhere(
+                          (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
+                          orElse: () => <String, dynamic>{},
+                        );
+                      }
+                      final cardId = note?.id.toString() ?? '';
+                      final version = _deckVersion ?? '';
+                      final flds = note?.fieldNames.join(' | ') ?? '';
+                      final notetype = note?.notetypeName ?? '';
+                      return Dialog(
+                        backgroundColor: Colors.white.withOpacity(0.7),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: 400,
+                            maxHeight: MediaQuery.of(context).size.height * 0.7,
+                            minWidth: 200,
+                            minHeight: 100,
+                          ),
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: DefaultTextStyle(
+                                style: const TextStyle(color: Colors.black, fontSize: 14),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('调试信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 12),
+                                    Text('牌组ID: $deckId'),
+                                    Text('模板名称: $notetype'),
+                                    const SizedBox(height: 8),
+                                    Text('卡片ID: $cardId'),
+                                    Text('版本: $version'),
+                                    Text('flds: $flds'),
+                                    const SizedBox(height: 12),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('关闭', style: TextStyle(color: Colors.black)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
           Container(
-            color: Colors.black12,
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
-              style: const TextStyle(fontSize: 12, color: Colors.red),
-            ),
+            // 原debug信息已移入弹窗，这里可去除或保留空白
+            height: 0,
           ),
           Expanded(child: WebViewWidget(key: ValueKey(_currentIndex * 2 + (_showBack ? 1 : 0)), controller: _controller)),
           Padding(
