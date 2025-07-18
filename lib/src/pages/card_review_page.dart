@@ -135,6 +135,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     // ref.invalidate(recentDecksProvider);
   }
 
+    void printLongHtml(String html) {
+      // Flutter 的 print 会截断超长字符串，这里分段输出
+      const int chunkSize = 800;
+      for (int i = 0; i < html.length; i += chunkSize) {
+        final end = (i + chunkSize < html.length) ? i + chunkSize : html.length;
+        print(html.substring(i, end));
+      }
+    }
+
   Future<void> _loadCurrentCard() async {
     if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
       debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
@@ -176,6 +185,9 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
     if (_useMergedHtml) {
       final html = _composeMergedHtml(_currentNote!);
+      print("=" * 80 + "\n");
+      printLongHtml(html);
+      print("=" * 80 + "\n");
       _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
     } else {
       final html = _composeCardFrontHtml(_currentNote!);
@@ -203,17 +215,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       minFontSize: _minFontSize,
     );
     String html = renderer.renderFront();
-    // printLongHtml
-    void printLongHtml(String html) {
-      // Flutter 的 print 会截断超长字符串，这里分段输出
-      const int chunkSize = 800;
-      for (int i = 0; i < html.length; i += chunkSize) {
-        final end = (i + chunkSize < html.length) ? i + chunkSize : html.length;
-        print(html.substring(i, end));
-      }
-    }
-
-    //printLongHtml(html);
     return html;
   }
 
