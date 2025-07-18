@@ -189,19 +189,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    final isAnki2 = _deckVersion == 'anki2';
     String front = '', back = '', css = '';
-    if (isAnki2) {
-      front = _currentFront ?? '';
-      back = _currentBack ?? '';
-      css = _currentCss ?? '';
-      debugPrint('[composeCardHtml] anki2分支 front.length=${front.length}, back.length=${back.length}, css.length=${css.length}');
-    } else {
-      front = _currentFront ?? '';
-      back = _currentBack ?? '';
-      css = _currentCss ?? '';
-      debugPrint('[composeCardHtml] anki21b分支 front.length=${front.length}, back.length=${back.length}, css.length=${css.length}');
-    }
+    front = _currentFront ?? '';
+    back = _currentBack ?? '';
+    css = _currentCss ?? '';
+    debugPrint('[composeCardHtml] anki_version: $_deckVersion, front=-->[$front]<--, back=-->[$back]<--, css=-->[$css]<--');
+    debugPrint('[composeCardHtml] fieldMap: $fieldMap');
     final renderer = AnkiTemplateRenderer(
       front: front,
       back: back,
@@ -210,7 +203,17 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       js: null,
     );
     final frontHtml = renderer.renderFront();
-    debugPrint('[composeCardHtml] frontHtml.length: ${frontHtml.length}');
+    final backHtml = renderer.renderBack(frontHtml);
+    print("=" * 40 + "\n");
+    const int chunk = 800;
+    for (var i = 0; i < frontHtml.length; i += chunk) {
+      print(frontHtml.substring(i, i + chunk > frontHtml.length ? frontHtml.length : i + chunk));
+    }
+
+     for (var i = 0; i < backHtml.length; i += chunk) {
+      print(backHtml.substring(i, i + chunk > backHtml.length ? backHtml.length : i + chunk));
+    }
+    print("=" * 40 + "\n");
     return frontHtml;
   }
 
@@ -219,8 +222,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; font-size: 50px; padding: 8; margin: 0; }
     .stem { font-size: 20px; font-weight: bold; line-height: 2; }
@@ -275,154 +276,6 @@ $content
     final note = _currentNote;
     final notetype = _currentNotetype;
     debugPrint('[build] 渲染卡片: note.id=${note?.id}, notetype=${notetype?.name}');
-    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
-      debugPrint('[build] 使用自动匹配选择题模板');
-      final fieldsForType = _currentFields;
-      final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < note!.flds.length; i++) {
-        fieldMap[fieldsForType[i].name] = note.flds[i];
-      }
-      final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
-      final optionsRaw = fieldMap['Options'] ?? '';
-      final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
-      final answer = fieldMap['Answer'] ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
-      debugPrint('[build] stem=$stem, options=${options.length}, answer=$answer, remark=$remark');
-      final screenHeight = MediaQuery.of(context).size.height;
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // 1. 题干区（美化：外层Padding+Container+圆角阴影+ClipRRect）
-              Flexible(
-                flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      // borderRadius: BorderRadius.circular(12),
-                      // boxShadow: [
-                      //   BoxShadow(
-                      //     color: Colors.black12,
-                      //     blurRadius: 6,
-                      //     offset: Offset(0, 2),
-                      //   ),
-                      // ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: WebViewWidget(controller: _stemController),
-                    ),
-                  ),
-                ),
-              ),
-              // 2. 选项区（ListView，Flexible分配空间，超出可滚动）
-              Flexible(
-                flex: 4,
-                child: ListView.builder(
-                  itemCount: options.length,
-                  itemBuilder: (context, i) {
-                    final label = String.fromCharCode('A'.codeUnitAt(0) + i);
-                    final value = options[i];
-                    final isCorrect = answer.contains(label);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      child: RadioListTile<int>(
-                        value: i,
-                        groupValue: _selectedIndex,
-                        onChanged: _showAnswer ? null : (v) => setState(() => _selectedIndex = v),
-                        title: Text(
-                          '$label. $value',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: _showAnswer
-                                ? (isCorrect
-                                    ? Colors.green[800]
-                                    : (_selectedIndex == i ? Colors.red[800] : null))
-                                : null,
-                          ),
-                          softWrap: true,
-                          maxLines: null,
-                          overflow: TextOverflow.visible,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-                        tileColor: _showAnswer
-                            ? (isCorrect
-                                ? Colors.green.withOpacity(0.10)
-                                : (_selectedIndex == i ? Colors.red.withOpacity(0.10) : null))
-                            : null,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // 3. 答案/解析区（隐藏/显示，约2行高）
-              if (_showAnswer && remark.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    height: 64,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: WebViewWidget(controller: _remarkController),
-                    ),
-                  ),
-                ),
-              // 4. 操作按钮区（显示答案等，居中）
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _selectedIndex != null && !_showAnswer
-                          ? () => setState(() => _showAnswer = true)
-                          : null,
-                      child: const Text('显示答案'),
-                    ),
-                    // 这里可添加更多操作按钮
-                  ],
-                ),
-              ),
-              // 5. 底部按钮区（上一题/下一题，固定底部）
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.navigate_before),
-                      label: const Text('上一题'),
-                      onPressed: _prevCard,
-                    ),
-                    const SizedBox(width: 24),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.navigate_next),
-                      label: const Text('下一题'),
-                      onPressed: _nextCard,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    // 其它类型保持原有逻辑
-    debugPrint('[build] 使用自定义模板渲染');
     final html = _composeCardHtml(note!);
     debugPrint('[build] 渲染HTML长度: ${html.length}');
     return Scaffold(

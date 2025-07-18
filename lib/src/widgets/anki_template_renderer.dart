@@ -10,12 +10,24 @@ class AnkiTemplateRenderer {
   final String? js;
 
   AnkiTemplateRenderer({
-    required this.front,
-    required this.back,
+    required String front,
+    required String back,
     required this.fieldMap,
-    this.css,
+    String? css,
     this.js,
-  });
+  })  : front = _cleanHtml(front),
+        back = _cleanHtml(back),
+        css = css != null ? _cleanHtml(css) : null;
+
+  static String _cleanHtml(String input) {
+    // 去除 BOM、不可见控制字符（保留常用换行/制表符）
+    return input
+        .replaceAll('  ', '') // BOM
+        .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '') // 控制字符
+        .replaceAll('  ', '') // 垂直制表符
+        .replaceAll('  ', '') // 换页符
+        ;
+  }
 
   /// 渲染正面
   String renderFront() {
@@ -60,7 +72,6 @@ class AnkiTemplateRenderer {
   <meta charset="utf-8">
   $style
   $script
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 $html
