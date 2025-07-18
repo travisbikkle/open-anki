@@ -831,40 +831,15 @@ CREATE INDEX idx_graves_pending ON graves (usn);
 [x] 2.1 getDeckNotes 拆分为 getDeckNote(id) 单卡加载
 [x] 2.2 加载卡片时传递 anki 版本参数
 3. 模板与渲染机制重构
-[ ] 3.1 完善模板解析与字段填充
-目标：支持自定义模板、字段映射、FrontSide、样式等，兼容 anki2/anki21b。
-涉及文件：
-lib/src/pages/card_review_page.dart（模板渲染逻辑重构，支持自定义模板）
-lib/src/model.dart（如需扩展 Note/Notetype/Field 结构）
-rust/src/api/simple.rs（如需后端辅助解析）
-[ ] 3.2 支持模板样式与 JS 注入
-目标：模板渲染时注入 CSS/JS，兼容原生 anki 行为。
-涉及文件：
-lib/src/pages/card_review_page.dart（HTML 组装逻辑完善）
+[x] 3.1 完善模板解析与字段填充
+[x] 3.2 支持模板样式与 JS 注入
 4. 业务流程与 UI 优化
 [ ] 4.1 刷题流程优化
 目标：只在需要时加载卡片，支持“下一题”“预加载”等，提升性能。
 涉及文件：
 lib/src/pages/card_review_page.dart（刷题流程重构）
-[ ] 4.2 Provider 层与 UI 解耦
-目标：Provider 层只负责数据，UI 只负责展示，便于维护和测试。
-涉及文件：
-lib/src/providers.dart
-lib/src/pages/card_review_page.dart
-5. 其他与维护
-[ ] 5.1 单元测试与文档
-目标：为重构后的数据访问、模板渲染等模块补充单元测试和开发文档。
-涉及文件：
-test/（新增/完善测试）
-dev.md（补充整改后设计说明）
-6. 可选：Rust 端结构优化
+5. 可选：Rust 端结构优化
 [ ] 6.1 Rust 端数据访问与模板解析解耦
 目标：如有必要，将 Rust 端的表访问、模板解析等逻辑模块化，便于后续扩展。
 涉及文件：
 rust/src/api/simple.rs（结构优化）
-总结
-优先级建议
-先完成 apkg 导入与版本记录、decks 表结构升级。
-再实现 getDeckNote(id) 单卡加载与版本分流。
-随后重构模板渲染与字段填充逻辑。
-最后优化 UI 流程与 Provider 层解耦，并补充测试与文档。

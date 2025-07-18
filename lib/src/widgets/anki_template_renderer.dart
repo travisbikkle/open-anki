@@ -9,6 +9,7 @@ class AnkiTemplateRenderer {
   final Map<String, String> fieldMap;
   final String? js;
   final String? mediaDir;
+  final double minFontSize;
 
   AnkiTemplateRenderer({
     required String front,
@@ -17,6 +18,7 @@ class AnkiTemplateRenderer {
     String? config,
     this.js,
     this.mediaDir,
+    this.minFontSize = 18,
   })  : front = _cleanHtml(front),
         back = _cleanHtml(back),
         config = config != null ? _cleanHtml(config) : null;
@@ -64,7 +66,14 @@ class AnkiTemplateRenderer {
         return '';
       }
     });
-    // 4. 注入样式和 JS
+    // 兜底最小字体CSS
+    final fallbackFontCss = '''
+<style>
+body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
+  font-size: min(max(1em, ${minFontSize.toInt()}px), 100vw);
+}
+</style>
+''';
     String configBlock = '';
     if (config != null && config!.trim().isNotEmpty) {
       if (config!.contains('<style')) {
@@ -79,6 +88,7 @@ class AnkiTemplateRenderer {
 <html>
 <head>
   <meta charset="utf-8">
+  $fallbackFontCss
   $configBlock
   $script
 </head>

@@ -46,6 +46,7 @@ dependencies:
   just_audio: ^0.10.4
   flutter_html: ^3.0.0
   webview_flutter: ^4.13.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

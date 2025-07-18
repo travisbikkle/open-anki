@@ -15,6 +15,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:sqflite/sqflite.dart'; // 新增导入
 import 'package:open_anki/src/widgets/anki_template_renderer.dart';
 import 'package:open_anki/src/pages/html_source_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -51,13 +52,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   String? _currentFront;
   String? _currentBack;
   bool _showBack = false;
+  double _minFontSize = 18;
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted);
-    _loadDeck();
+    _loadFontSizeAndDeck();
   }
 
   @override
@@ -75,6 +77,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     if (deck.isEmpty) return null;
     final md5 = deck['md5'] as String;
     return '${appDocDir.path}/anki_data/$md5';
+  }
+
+  Future<void> _loadFontSizeAndDeck() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _minFontSize = prefs.getDouble('minFontSize') ?? 18;
+    });
+    _loadDeck();
   }
 
   Future<void> _loadDeck() async {
@@ -186,6 +196,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       fieldMap: fieldMap,
       js: null,
       mediaDir: _mediaDir,
+      minFontSize: _minFontSize,
     );
     String html = renderer.renderFront();
     // printLongHtml
@@ -219,6 +230,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       fieldMap: fieldMap,
       js: null,
       mediaDir: _mediaDir,
+      minFontSize: _minFontSize,
     );
     return renderer.renderBack(renderer.renderFront());
   }
