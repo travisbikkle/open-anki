@@ -13,6 +13,8 @@ import 'dart:convert'; // for base64Encode
 import 'package:collection/collection.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
+const String kSqliteDBFileName = 'collection.sqlite';
 
 class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
@@ -81,7 +83,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       if (deck.isEmpty) throw Exception('题库未找到');
       final md5 = deck['md5'] as String;
       final deckDir = '${appDocDir.path}/anki_data/$md5';
-      final sqlitePath = '$deckDir/collection.sqlite';
+      final sqlitePath = '$deckDir/$kSqliteDBFileName';
       final result = await getDeckNotes(sqlitePath: sqlitePath);
       debugPrint('【_loadDeck】result.notetypes: ${result.notetypes}');
       final newMediaDir = '$deckDir/unarchived_media';
@@ -135,14 +137,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     });
     final note = _notes[_currentIndex];
     final notetype = _cardNotetypes.firstWhereOrNull((n) => n.id == note.mid);
-    if (notetype != null && notetype.name == '自动匹配-选择题模板') {
+    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
       final fieldsForType = _fields.where((f) => f.notetypeId == note.mid).toList()..sort((a, b) => a.ord.compareTo(b.ord));
       final fieldMap = <String, String>{};
       for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
         fieldMap[fieldsForType[i].name] = note.flds[i];
       }
       final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? fieldMap['解析'] ?? '';
+      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
       _stemController.loadHtmlString(_wrapHtml(stem), baseUrl: 'file://${_mediaDir!}/');
       _remarkController.loadHtmlString(_wrapHtml(remark), baseUrl: 'file://${_mediaDir!}/');
     } else {
@@ -171,16 +173,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    // 自动匹配-选择题模板专用渲染
-    if (notetype != null && notetype.name == '自动匹配-选择题模板') {
+    // 自动匹配-选择题模板专用渲染（必须保留！）
+    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
       // 题干、选项、答案、remark 字段名自动识别
       String stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
-      String optionsRaw = fieldMap['Options'] ?? '';
-      // 选项用 <br> 或 \n 分割
-      final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
-      final answer = fieldMap['Answer'] ?? fieldMap['答案'] ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? fieldMap['解析'] ?? '';
-      
+      String options = fieldMap['Options'] ?? '';
+      final answer = fieldMap['Answer'] ?? '';
+      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
       // 渲染选项，自动高亮答案
       String optionsHtml = '';
       for (int i = 0; i < options.length; i++) {
@@ -192,7 +191,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           '${isCorrect ? ' <span style="color:green;">✔</span>' : ''}'
           '</div>';
       }
-      // 题干、remark渲染
       String remarkHtml = remark.isNotEmpty ? '<div style="margin-top:16px;padding:8px;background:#f0f0ff;border-radius:6px;color:#333;"><b>解析：</b>$remark</div>' : '';
       return '''
 <!DOCTYPE html>
@@ -214,11 +212,16 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 </html>
 ''';
     }
-    // 其它类型保持原有逻辑
-    String content = note.flds is List ? (note.flds as List).join('<br>') : note.flds.toString();
-    String template = notetype?.config ?? '';
+    // 其它类型卡片渲染（只渲染主要字段）
+    final displayFields = ['Expression', 'Reading', 'Meaning', 'Audio', 'Image_URI'];
+    String content = '';
+    for (final key in displayFields) {
+      if (fieldMap.containsKey(key) && fieldMap[key]!.trim().isNotEmpty) {
+        content += '<div style="margin-bottom:8px;"><b>' + key + ':</b><br>' + fieldMap[key]! + '</div>';
+      }
+    }
     if (content.trim().isEmpty) content = '（无内容）';
-    debugPrint('【composeCardHtml】content: $content');
+    String template = notetype?.config ?? '';
     return '''
 <!DOCTYPE html>
 <html>
@@ -284,7 +287,7 @@ $content
     }
     final note = _notes[_currentIndex];
     final notetype = _cardNotetypes.firstWhereOrNull((n) => n.id == note.mid);
-    if (notetype != null && notetype.name == '自动匹配-选择题模板') {
+    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
       final fieldsForType = _fields.where((f) => f.notetypeId == note.mid).toList()..sort((a, b) => a.ord.compareTo(b.ord));
       final fieldMap = <String, String>{};
       for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
@@ -293,8 +296,8 @@ $content
       final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
       final optionsRaw = fieldMap['Options'] ?? '';
       final options = optionsRaw.split(RegExp(r'<br>|\n')).where((s) => s.trim().isNotEmpty).toList();
-      final answer = fieldMap['Answer'] ?? fieldMap['答案'] ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? fieldMap['解析'] ?? '';
+      final answer = fieldMap['Answer'] ?? '';
+      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
       final screenHeight = MediaQuery.of(context).size.height;
       return Scaffold(
         appBar: AppBar(
