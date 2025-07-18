@@ -699,7 +699,7 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
                 }
             }
         }
-        rust_log(&format!("[DEBUG]: css内容: {}", css));
+        //rust_log(&format!("[DEBUG]: css内容: {}", css));
         Ok(SingleNoteResult { note, notetype, fields, ord, front, back, css })
     } else {
         Err("未找到指定id的note".to_string())

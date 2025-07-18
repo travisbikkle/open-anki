@@ -89,7 +89,6 @@ class AppDb {
   static Future<List<Map<String, dynamic>>> getAllDecks() async {
     final dbClient = await db;
     final result = await dbClient.query('decks', orderBy: 'import_time DESC');
-    print('getAllDecks: $result');
     return result;
   }
 

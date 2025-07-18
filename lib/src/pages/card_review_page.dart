@@ -53,6 +53,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   String? _currentBack;
   bool _showBack = false;
   double _minFontSize = 18;
+  bool _useMergedHtml = true; // 启用正反面合并渲染
 
   @override
   void initState() {
@@ -155,8 +156,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     });
     final noteId = _noteIds[_currentIndex];
     final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
-    String css = result.css;
-    debugPrint('[_loadCurrentCard] ======================== css is [$css]');
     setState(() {
       _currentNote = result.note;
       _currentNotetype = result.notetype;
@@ -175,8 +174,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       debugPrint('[_loadCurrentCard] _currentNote is null');
       return;
     }
-    final html = _composeCardFrontHtml(_currentNote!);
-    _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+    if (_useMergedHtml) {
+      final html = _composeMergedHtml(_currentNote!);
+      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+    } else {
+      final html = _composeCardFrontHtml(_currentNote!);
+      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+    }
   }
 
   String _composeCardFrontHtml(NoteExt note) {
@@ -209,7 +213,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       }
     }
 
-    printLongHtml(html);
+    //printLongHtml(html);
     return html;
   }
 
@@ -233,6 +237,29 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       minFontSize: _minFontSize,
     );
     return renderer.renderBack(renderer.renderFront());
+  }
+
+  String _composeMergedHtml(NoteExt note) {
+    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
+    final fieldMap = <String, String>{};
+    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
+      fieldMap[fieldsForType[i].name] = note.flds[i];
+    }
+    String front = '', back = '', config = '';
+    front = _currentFront ?? '';
+    back = _currentBack ?? '';
+    config = _currentConfig ?? '';
+    final renderer = AnkiTemplateRenderer(
+      front: front,
+      back: back,
+      config: config,
+      fieldMap: fieldMap,
+      js: null,
+      mediaDir: _mediaDir,
+      minFontSize: _minFontSize,
+      mergeFrontBack: true,
+    );
+    return renderer.renderMerged();
   }
 
   String _wrapHtml(String content) {
@@ -274,7 +301,6 @@ $content
   Widget build(BuildContext context) {
     debugPrint('[build] _loading=$_loading, _noteIds=${_noteIds.length}, _currentIndex=$_currentIndex, _currentNote=${_currentNote != null}, _currentNotetype=${_currentNotetype != null}');
     if (_loading) {
-      debugPrint('[build] 正在加载...');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_noteIds.isEmpty) {
@@ -292,11 +318,7 @@ $content
       );
     }
     final note = _currentNote;
-    debugPrint('[build] 使用自定义模板渲染');
-    final html = _showBack
-        ? _composeCardBackHtml(note!)
-        : _composeCardFrontHtml(note!);
-    debugPrint('[build] 渲染HTML长度: ${html.length}');
+    // 合并模式下，切换正反面用JS，不再重新loadHtmlString
     return Scaffold(
       appBar: AppBar(
         title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
@@ -364,9 +386,15 @@ $content
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
                                         onPressed: () {
-                                          final html = _showBack
+                                          String html;
+                                          if (_useMergedHtml) {
+                                            html = _composeMergedHtml(_currentNote!);
+                                          } else {
+                                            html = _showBack
                                               ? _composeCardBackHtml(note!)
                                               : _composeCardFrontHtml(note!);
+                                          }
+ 
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
                                               builder: (_) => HtmlSourcePage(html: html),
@@ -397,7 +425,7 @@ $content
             // 原debug信息已移入弹窗，这里可去除或保留空白
             height: 0,
           ),
-          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex * 2 + (_showBack ? 1 : 0)), controller: _controller)),
+          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -410,15 +438,26 @@ $content
                 ),
                 const SizedBox(width: 24),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _showBack = !_showBack;
+                  onPressed: () async {
+                    if (_useMergedHtml) {
                       if (_showBack) {
-                        _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        await _controller.runJavaScript('showFront()');
                       } else {
-                        _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        await _controller.runJavaScript('showBack()');
                       }
-                    });
+                      setState(() {
+                        _showBack = !_showBack;
+                      });
+                    } else {
+                      setState(() {
+                        _showBack = !_showBack;
+                        if (_showBack) {
+                          _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        } else {
+                          _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        }
+                      });
+                    }
                   },
                   child: Text(_showBack ? '返回正面' : '显示答案'),
                 ),

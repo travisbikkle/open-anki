@@ -10,6 +10,7 @@ class AnkiTemplateRenderer {
   final String? js;
   final String? mediaDir;
   final double minFontSize;
+  final bool mergeFrontBack;
 
   AnkiTemplateRenderer({
     required String front,
@@ -19,6 +20,7 @@ class AnkiTemplateRenderer {
     this.js,
     this.mediaDir,
     this.minFontSize = 18,
+    this.mergeFrontBack = false,
   })  : front = _cleanHtml(front),
         back = _cleanHtml(back),
         config = config != null ? _cleanHtml(config) : null;
@@ -33,40 +35,8 @@ class AnkiTemplateRenderer {
         ;
   }
 
-  /// 渲染正面
-  String renderFront() {
-    return _addAudioSupport(_render(front, null));
-  }
-
-  /// 渲染反面，支持 {{FrontSide}}
-  String renderBack(String? frontHtml) {
-    return _addAudioSupport(_render(back, frontHtml));
-  }
-
-  /// 主渲染逻辑
-  String _render(String template, String? frontHtml) {
-    String html = template;
-    // 1. 处理 {{FrontSide}}
-    if (frontHtml != null) {
-      html = html.replaceAll('{{FrontSide}}', frontHtml);
-    }
-    // 2. 处理 {{字段}} 和 {{text:字段}}
-    fieldMap.forEach((k, v) {
-      html = html.replaceAll('{{$k}}', v);
-      html = html.replaceAll('{{text:$k}}', v);
-    });
-    // 3. 处理 {{#区域}}...{{/区域}}（简单实现：有值就保留，无值就去掉）
-    final reg = RegExp(r'{{#(\w+)}}([\s\S]*?){{/\1}}');
-    html = html.replaceAllMapped(reg, (m) {
-      final key = m.group(1)!;
-      final content = m.group(2)!;
-      if (fieldMap[key]?.isNotEmpty == true) {
-        return content;
-      } else {
-        return '';
-      }
-    });
-    // 兜底最小字体CSS
+  /// 包裹完整HTML结构
+  String _wrapHtml(String body, {String? extraHead}) {
     final fallbackFontCss = '''
 <style>
 body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
@@ -91,12 +61,49 @@ body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
   $fallbackFontCss
   $configBlock
   $script
+  ${extraHead ?? ''}
 </head>
 <body>
-$html
+$body
 </body>
 </html>
 ''';
+  }
+
+  /// 渲染正面
+  String renderFront() {
+    return _wrapHtml(_render(front, null));
+  }
+
+  /// 渲染反面，支持 {{FrontSide}}
+  String renderBack(String? frontHtml) {
+    return _wrapHtml(_render(back, frontHtml));
+  }
+
+  /// 主渲染逻辑，返回内容片段
+  String _render(String template, String? frontHtml) {
+    String html = template;
+    // 1. 处理 {{FrontSide}}
+    if (frontHtml != null) {
+      html = html.replaceAll('{{FrontSide}}', frontHtml);
+    }
+    // 2. 处理 {{字段}} 和 {{text:字段}}
+    fieldMap.forEach((k, v) {
+      html = html.replaceAll('{{$k}}', v);
+      html = html.replaceAll('{{text:$k}}', v);
+    });
+    // 3. 处理 {{#区域}}...{{/区域}}（简单实现：有值就保留，无值就去掉）
+    final reg = RegExp(r'{{#(\w+)}}([\s\S]*?){{/\1}}');
+    html = html.replaceAllMapped(reg, (m) {
+      final key = m.group(1)!;
+      final content = m.group(2)!;
+      if (fieldMap[key]?.isNotEmpty == true) {
+        return content;
+      } else {
+        return '';
+      }
+    });
+    return _addAudioSupport(html);
   }
 
   String _addAudioSupport(String html) {
@@ -114,5 +121,31 @@ $html
 ''';
 
     });
+  }
+
+  /// 合并正反面渲染，body只包裹一次
+  String renderMerged({String? frontHtml}) {
+    final frontContent = _render(front, null);
+    final backContent = _render(back, frontHtml ?? frontContent);
+    // 切换正反面JS
+    final toggleScript = '''
+<script>
+function showFront() {
+  document.getElementById('anki-front').style.display = 'block';
+  document.getElementById('anki-back').style.display = 'none';
+}
+function showBack() {
+  document.getElementById('anki-front').style.display = 'none';
+  document.getElementById('anki-back').style.display = 'block';
+}
+</script>
+''';
+    final body = '''
+  <!-- 正面 -->
+  <div id="anki-front" style="display:block;">$frontContent</div>
+  <!-- 反面 -->
+  <div id="anki-back" style="display:none;">$backContent</div>
+''';
+    return _wrapHtml(body, extraHead: toggleScript);
   }
 } 
