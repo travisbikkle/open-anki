@@ -167,20 +167,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       debugPrint('[_loadCurrentCard] _currentNote is null');
       return;
     }
-    if (_currentNotetype!.name == kAutoMatchChoiceTemplate) {
-      final fieldsForType = _currentFields;
-      final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
-        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
-      }
-      final stem = fieldMap['Question'] ?? fieldMap.values.firstOrNull ?? '';
-      final remark = fieldMap['remark'] ?? fieldMap['Remark'] ?? '';
-      _stemController.loadHtmlString(_wrapHtml(stem), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-      _remarkController.loadHtmlString(_wrapHtml(remark), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-    } else {
-      final html = _composeCardHtml(_currentNote!);
-      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-    }
+    final html = _composeCardHtml(_currentNote!);
+    _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
   }
 
   String _composeCardHtml(NoteExt note) {
@@ -276,8 +264,6 @@ $content
     final note = _currentNote;
     final notetype = _currentNotetype;
     debugPrint('[build] 渲染卡片: note.id=${note?.id}, notetype=${notetype?.name}');
-    final html = _composeCardHtml(note!);
-    debugPrint('[build] 渲染HTML长度: ${html.length}');
     return Scaffold(
       appBar: AppBar(
         title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
@@ -292,7 +278,7 @@ $content
             color: Colors.black12,
             padding: const EdgeInsets.all(8),
             child: Text(
-              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
+              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note!.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
               style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
           ),
