@@ -22,6 +22,7 @@ class AnkiTemplateRenderer {
   static String _cleanHtml(String input) {
     // 去除 BOM、不可见控制字符（保留常用换行/制表符）
     return input
+        .replaceAll('\u001f', '')
         .replaceAll('  ', '') // BOM
         .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '') // 控制字符
         .replaceAll('  ', '') // 垂直制表符

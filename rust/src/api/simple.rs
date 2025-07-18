@@ -616,55 +616,59 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
         }
     } else {
         // anki2 或其他老版本
-        let mut stmt = conn.prepare("SELECT id, guid, mid, flds FROM notes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
-        let mut rows = stmt.query([note_id]).map_err(|e| format!("查询SQL失败: {e}"))?;
-        if let Some(row) = rows.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-            let id: i64 = row.get(0).map_err(|e| format!("读取id失败: {e}"))?;
-            let guid: String = row.get(1).map_err(|e| format!("读取guid失败: {e}"))?;
-            let mid: i64 = row.get(2).map_err(|e| format!("读取mid失败: {e}"))?;
-            let flds: String = row.get(3).map_err(|e| format!("读取flds失败: {e}"))?;
-            let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
-            // 查找卡片ord
-            let mut stmt_card = conn.prepare("SELECT ord FROM cards WHERE nid = ? LIMIT 1").map_err(|e| format!("准备SQL失败: {e}"))?;
-            let mut rows_card = stmt_card.query([id]).map_err(|e| format!("查询SQL失败: {e}"))?;
-            if let Some(row_card) = rows_card.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-                ord = row_card.get(0).map_err(|e| format!("读取ord失败: {e}"))?;
+        // 1. 通过 card_id 查 cards 表，拿到 nid（note id）和 ord（模板序号）
+        let mut stmt_card = conn.prepare("SELECT nid, ord FROM cards WHERE nid = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+        let mut rows_card = stmt_card.query([note_id]).map_err(|e| format!("查询SQL失败: {e}"))?;
+        let (nid, ord): (i64, i64) = if let Some(row) = rows_card.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+            (row.get(0).map_err(|e| format!("读取nid失败: {e}"))?, row.get(1).map_err(|e| format!("读取ord失败: {e}"))?)
+        } else {
+            return Err("未找到指定id的card".to_string());
+        };
+        // 2. 用 nid 查 notes 表
+        let mut stmt_note = conn.prepare("SELECT id, guid, mid, flds FROM notes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+        let mut rows_note = stmt_note.query([nid]).map_err(|e| format!("查询SQL失败: {e}"))?;
+        let (id, guid, mid, flds): (i64, String, i64, String) = if let Some(row) = rows_note.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+            (row.get(0).map_err(|e| format!("读取id失败: {e}"))?, row.get(1).map_err(|e| format!("读取guid失败: {e}"))?, row.get(2).map_err(|e| format!("读取mid失败: {e}"))?, row.get(3).map_err(|e| format!("读取flds失败: {e}"))?)
+        } else {
+            return Err("未找到指定id的note".to_string());
+        };
+        let flds_vec: Vec<String> = flds.split('\x1f').map(|s| s.to_string()).collect();
+        // 3. 读取 col.models
+        let mut stmt_models = conn.prepare("SELECT models FROM col LIMIT 1").map_err(|e| format!("准备SQL失败: {e}"))?;
+        let mut rows_models = stmt_models.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
+        let models_json: String = if let Some(row) = rows_models.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
+            row.get(0).map_err(|e| format!("读取models失败: {e}"))?
+        } else {
+            return Err("未找到col.models".to_string());
+        };
+        let models: serde_json::Value = serde_json::from_str(&models_json).map_err(|e| format!("解析models JSON失败: {e}"))?;
+        // 4. 用 mid 关联模型
+        let model = models.get(mid.to_string()).ok_or("未找到模型")?;
+        // 5. 取 tpls[ord]
+        let tpls = model.get("tmpls").and_then(|v| v.as_array()).ok_or("tmpls 字段缺失或不是数组")?;
+        let tpl = tpls.get(ord as usize).or_else(|| tpls.get(0)).ok_or("未找到模板")?;
+        front = tpl.get("qfmt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        back = tpl.get("afmt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        css = model.get("css").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        // 组装 note/ext/fields
+        let mut notetype_name = model.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let mut field_names = vec![];
+        let mut fields_vec = vec![];
+        if let Some(flds_def) = model.get("flds").and_then(|v| v.as_array()) {
+            for (ord_f, f) in flds_def.iter().enumerate() {
+                let fname = f.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                field_names.push(fname.clone());
+                fields_vec.push(FieldExt {
+                    id: ord_f as i64,
+                    notetype_id: mid,
+                    name: fname,
+                    ord: ord_f as i64,
+                });
             }
-            // 解析 col.models
-            let mut stmt2 = conn.prepare("SELECT models FROM col").map_err(|e| format!("准备SQL失败: {e}"))?;
-            let mut rows2 = stmt2.query([]).map_err(|e| format!("查询SQL失败: {e}"))?;
-            let mut models_json = String::new();
-            if let Some(row2) = rows2.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-                models_json = row2.get(0).map_err(|e| format!("读取models失败: {e}"))?;
-            }
-            let mut notetype_name = String::new();
-            let mut field_names = vec![];
-            if !models_json.trim().is_empty() {
-                let models: serde_json::Value = serde_json::from_str(&models_json).map_err(|e| format!("解析models JSON失败: {e}"))?;
-                if let Some(obj) = models.as_object() {
-                    for (id_str, model) in obj.iter() {
-                        let mid_i64 = id_str.parse::<i64>().unwrap_or(0);
-                        if mid_i64 == mid {
-                            notetype_name = model.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            if let Some(flds) = model.get("flds").and_then(|v| v.as_array()) {
-                                for (ord_f, f) in flds.iter().enumerate() {
-                                    let fname = f.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                    field_names.push(fname.clone());
-                                    fields.push(FieldExt {
-                                        id: ord_f as i64,
-                                        notetype_id: mid,
-                                        name: fname,
-                                        ord: ord_f as i64,
-                                    });
-                                }
-                            }
-                            notetype = Some(NotetypeExt { id: mid, name: notetype_name.clone(), config: Some(model.to_string()) });
-                        }
-                    }
-                }
-            }
-            note = Some(NoteExt { id, guid, mid, flds: flds_vec, notetype_name, field_names });
         }
+        notetype = Some(NotetypeExt { id: mid, name: notetype_name.clone(), config: Some(model.to_string()) });
+        note = Some(NoteExt { id, guid, mid, flds: flds_vec, notetype_name, field_names });
+        fields = fields_vec;
     }
     if let Some(note) = note {
         // 查模板和样式同上，直接从 notetype.config 解析

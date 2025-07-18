@@ -198,9 +198,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       print(frontHtml.substring(i, i + chunk > frontHtml.length ? frontHtml.length : i + chunk));
     }
 
-     for (var i = 0; i < backHtml.length; i += chunk) {
+    for (var i = 0; i < backHtml.length; i += chunk) {
       print(backHtml.substring(i, i + chunk > backHtml.length ? backHtml.length : i + chunk));
     }
+    debugPrint('[composeCardHtml] css: $css');
+    
     print("=" * 40 + "\n");
     return frontHtml;
   }
