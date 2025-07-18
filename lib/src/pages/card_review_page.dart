@@ -49,6 +49,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   String? _currentCss;
   String? _currentFront;
   String? _currentBack;
+  bool _showBack = false;
 
   @override
   void initState() {
@@ -146,6 +147,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentCss = null;
       _currentFront = null;
       _currentBack = null;
+      _showBack = false;
     });
     final noteId = _noteIds[_currentIndex];
     final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
@@ -167,11 +169,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       debugPrint('[_loadCurrentCard] _currentNote is null');
       return;
     }
-    final html = _composeCardHtml(_currentNote!);
+    final html = _composeCardFrontHtml(_currentNote!);
     _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
   }
 
-  String _composeCardHtml(NoteExt note) {
+  String _composeCardFrontHtml(NoteExt note) {
     final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
     final fieldMap = <String, String>{};
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
@@ -181,8 +183,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     front = _currentFront ?? '';
     back = _currentBack ?? '';
     css = _currentCss ?? '';
-    debugPrint('[composeCardHtml] anki_version: $_deckVersion, front=-->[$front]<--, back=-->[$back]<--, css=-->[$css]<--');
-    debugPrint('[composeCardHtml] fieldMap: $fieldMap');
     final renderer = AnkiTemplateRenderer(
       front: front,
       back: back,
@@ -190,21 +190,27 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       fieldMap: fieldMap,
       js: null,
     );
-    final frontHtml = renderer.renderFront();
-    final backHtml = renderer.renderBack(frontHtml);
-    print("=" * 40 + "\n");
-    const int chunk = 800;
-    for (var i = 0; i < frontHtml.length; i += chunk) {
-      print(frontHtml.substring(i, i + chunk > frontHtml.length ? frontHtml.length : i + chunk));
-    }
+    return renderer.renderFront();
+  }
 
-    for (var i = 0; i < backHtml.length; i += chunk) {
-      print(backHtml.substring(i, i + chunk > backHtml.length ? backHtml.length : i + chunk));
+  String _composeCardBackHtml(NoteExt note) {
+    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
+    final fieldMap = <String, String>{};
+    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
+      fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    debugPrint('[composeCardHtml] css: $css');
-    
-    print("=" * 40 + "\n");
-    return frontHtml;
+    String front = '', back = '', css = '';
+    front = _currentFront ?? '';
+    back = _currentBack ?? '';
+    css = _currentCss ?? '';
+    final renderer = AnkiTemplateRenderer(
+      front: front,
+      back: back,
+      css: css,
+      fieldMap: fieldMap,
+      js: null,
+    );
+    return renderer.renderBack(renderer.renderFront());
   }
 
   String _wrapHtml(String content) {
@@ -266,6 +272,73 @@ $content
     final note = _currentNote;
     final notetype = _currentNotetype;
     debugPrint('[build] 渲染卡片: note.id=${note?.id}, notetype=${notetype?.name}');
+    if (notetype != null && notetype.name == kAutoMatchChoiceTemplate) {
+      debugPrint('[build] 使用自定义模板渲染');
+      final html = _showBack
+          ? _composeCardBackHtml(note!)
+          : _composeCardFrontHtml(note!);
+      debugPrint('[build] 渲染HTML长度: ${html.length}');
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Column(
+          children: [
+            Container(
+              color: Colors.black12,
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
+                style: const TextStyle(fontSize: 12, color: Colors.red),
+              ),
+            ),
+            Expanded(child: WebViewWidget(key: ValueKey(_currentIndex * 2 + (_showBack ? 1 : 0)), controller: _controller)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_before),
+                    label: const Text('上一题'),
+                    onPressed: _prevCard,
+                  ),
+                  const SizedBox(width: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _showBack = !_showBack;
+                        if (_showBack) {
+                          _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        } else {
+                          _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                        }
+                      });
+                    },
+                    child: Text(_showBack ? '返回正面' : '显示答案'),
+                  ),
+                  const SizedBox(width: 24),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_next),
+                    label: const Text('下一题'),
+                    onPressed: _nextCard,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    debugPrint('[build] 使用自定义模板渲染');
+    final html = _showBack
+        ? _composeCardBackHtml(note!)
+        : _composeCardFrontHtml(note!);
+    debugPrint('[build] 渲染HTML长度: ${html.length}');
     return Scaffold(
       appBar: AppBar(
         title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
@@ -280,11 +353,11 @@ $content
             color: Colors.black12,
             padding: const EdgeInsets.all(8),
             child: Text(
-              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note!.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
+              'mediaDir=${_mediaDir ?? "null"}\nnote.mid: ${note.mid}\nnotetype: ${notetype?.name}\nfields: ${_currentFields.map((f) => f.name).join(", ")}',
               style: const TextStyle(fontSize: 12, color: Colors.red),
             ),
           ),
-          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
+          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex * 2 + (_showBack ? 1 : 0)), controller: _controller)),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -294,6 +367,16 @@ $content
                   icon: const Icon(Icons.navigate_before),
                   label: const Text('上一题'),
                   onPressed: _prevCard,
+                ),
+                const SizedBox(width: 24),
+                ElevatedButton(
+                  onPressed: !_showBack ? () {
+                    setState(() {
+                      _showBack = true;
+                      _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+                    });
+                  } : null,
+                  child: const Text('显示答案'),
                 ),
                 const SizedBox(width: 24),
                 ElevatedButton.icon(
