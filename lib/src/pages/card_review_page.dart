@@ -54,6 +54,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   bool _showBack = false;
   double _minFontSize = 18;
   bool _useMergedHtml = true; // 启用正反面合并渲染
+  String? _frontHtmlPath;
+  String? _backHtmlPath;
 
   @override
   void initState() {
@@ -174,26 +176,71 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentBack = result.back;
       _currentConfig = result.css;
     });
-    // 渲染
-    if (_currentNotetype == null) {
-      debugPrint('[_loadCurrentCard] _currentNotetype is null');
-      return;
-    }
-    if (_currentNote == null) {
-      debugPrint('[_loadCurrentCard] _currentNote is null');
-      return;
-    }
+    if (_currentNotetype == null || _currentNote == null) return;
     if (_useMergedHtml) {
-      final html = _composeMergedHtml(_currentNote!);
-      print("=" * 80 + "\n");
-      printLongHtml(html);
-      print("=" * 80 + "\n");
-      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
+      final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
+      final fieldMap = <String, String>{};
+      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
+        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
+      }
+      final (frontPath, backPath) = await AnkiTemplateRenderer.writeMergedToFiles(
+        front: _currentFront ?? '',
+        back: _currentBack ?? '',
+        config: _currentConfig ?? '',
+        fieldMap: fieldMap,
+        js: null,
+        mediaDir: _mediaDir,
+        minFontSize: _minFontSize,
+      );
+      _frontHtmlPath = frontPath;
+      _backHtmlPath = backPath;
+
+      // 获取 test.html 路径
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final testHtmlPath = '${appDocDir.path}/test2.html';
+      final testHtmlUrl = 'file://$testHtmlPath';
+      bool testHtmlExist = File(testHtmlPath).existsSync();
+      print("----------------------------------------------------$testHtmlExist");
+      final debugHtml = AnkiTemplateRenderer.composeIframeHtml(frontPath, backPath, testHtmlPath);
+      // 写入 main_anki.html
+      final mainHtmlPath = '${appDocDir.path}/main_anki.html';
+      await File(mainHtmlPath).writeAsString(debugHtml);
+      _controller.loadRequest(Uri.parse('file://$mainHtmlPath'));
     } else {
       final html = _composeCardFrontHtml(_currentNote!);
       _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
     }
   }
+
+  Future<List<String>> _writeFrontBackHtml(NoteExt note) async {
+    final dir = await getTemporaryDirectory();
+    final frontPath = '${dir.path}/anki_front.html';
+    final backPath = '${dir.path}/anki_back.html';
+    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
+    final fieldMap = <String, String>{};
+    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
+      fieldMap[fieldsForType[i].name] = note.flds[i];
+    }
+    String front = _currentFront ?? '';
+    String back = _currentBack ?? '';
+    String config = _currentConfig ?? '';
+    final renderer = AnkiTemplateRenderer(
+      front: front,
+      back: back,
+      config: config,
+      fieldMap: fieldMap,
+      js: null,
+      mediaDir: _mediaDir,
+      minFontSize: _minFontSize,
+      mergeFrontBack: false,
+    );
+    final frontHtml = renderer.renderFront();
+    final backHtml = renderer.renderBack(renderer.renderFront());
+    await File(frontPath).writeAsString(frontHtml);
+    await File(backPath).writeAsString(backHtml);
+    return [frontPath, backPath];
+  }
+
 
   String _composeCardFrontHtml(NoteExt note) {
     final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
@@ -238,29 +285,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       minFontSize: _minFontSize,
     );
     return renderer.renderBack(renderer.renderFront());
-  }
-
-  String _composeMergedHtml(NoteExt note) {
-    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-    final fieldMap = <String, String>{};
-    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
-      fieldMap[fieldsForType[i].name] = note.flds[i];
-    }
-    String front = '', back = '', config = '';
-    front = _currentFront ?? '';
-    back = _currentBack ?? '';
-    config = _currentConfig ?? '';
-    final renderer = AnkiTemplateRenderer(
-      front: front,
-      back: back,
-      config: config,
-      fieldMap: fieldMap,
-      js: null,
-      mediaDir: _mediaDir,
-      minFontSize: _minFontSize,
-      mergeFrontBack: true,
-    );
-    return renderer.renderMerged();
   }
 
   String _wrapHtml(String content) {
@@ -330,13 +354,13 @@ $content
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
-            onPressed: () {
+            onPressed: () async {
+              final allDecks = await AppDb.getAllDecks();
               showDialog(
                 context: context,
                 builder: (context) {
-                  final allDecks = AppDb.getAllDecks();
                   return FutureBuilder<List<Map<String, dynamic>>>(
-                    future: allDecks,
+                    future: AppDb.getAllDecks(),
                     builder: (context, snapshot) {
                       String deckId = widget.deckId;
                       String apkgPath = '';
@@ -386,21 +410,28 @@ $content
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
-                                        onPressed: () {
-                                          String html;
-                                          if (_useMergedHtml) {
-                                            html = _composeMergedHtml(_currentNote!);
+                                        onPressed: () async {
+                                          if (_useMergedHtml && _frontHtmlPath != null && _backHtmlPath != null) {
+                                            // 获取 test.html 路径
+                                            final appDocDir = await getApplicationDocumentsDirectory();
+                                            final testHtmlPath = '${appDocDir.path}/test.html';
+                                            final testHtmlUrl = 'file://$testHtmlPath';
+                                            final mainHtml = AnkiTemplateRenderer.composeIframeHtml(_frontHtmlPath!, _backHtmlPath!, testHtmlUrl);
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => HtmlSourcePage(html: mainHtml),
+                                              ),
+                                            );
                                           } else {
-                                            html = _showBack
-                                              ? _composeCardBackHtml(note!)
-                                              : _composeCardFrontHtml(note!);
+                                            final html = _showBack
+                                                ? _composeCardBackHtml(note!)
+                                                : _composeCardFrontHtml(note!);
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => HtmlSourcePage(html: html),
+                                              ),
+                                            );
                                           }
- 
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) => HtmlSourcePage(html: html),
-                                            ),
-                                          );
                                         },
                                         child: const Text('查看卡片源码', style: TextStyle(color: Colors.blue)),
                                       ),
@@ -423,7 +454,6 @@ $content
       body: Column(
         children: [
           Container(
-            // 原debug信息已移入弹窗，这里可去除或保留空白
             height: 0,
           ),
           Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),

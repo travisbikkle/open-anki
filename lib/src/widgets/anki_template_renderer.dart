@@ -1,6 +1,8 @@
 // Anki 模板渲染器，支持 anki2/anki21b 的模板渲染（字段映射、FrontSide、样式/JS 注入、区域语法等）
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class AnkiTemplateRenderer {
   final String front;
@@ -123,29 +125,122 @@ $body
     });
   }
 
-  /// 合并正反面渲染，body只包裹一次
+  /// 合并正反面渲染，推荐用writeMergedToFiles+composeIframeHtml，renderMerged仅保留兼容性（不再包含iframe结构）。
   String renderMerged({String? frontHtml}) {
+    // 兼容性保留：直接渲染正反面内容到同一div，不再包含iframe结构
     final frontContent = _render(front, null);
     final backContent = _render(back, frontHtml ?? frontContent);
-    // 切换正反面JS
     final toggleScript = '''
 <script>
 function showFront() {
-  document.getElementById('anki-front').style.display = 'block';
-  document.getElementById('anki-back').style.display = 'none';
+  document.getElementById('anki-main').innerHTML = window.ankiFrontHtml;
 }
 function showBack() {
-  document.getElementById('anki-front').style.display = 'none';
-  document.getElementById('anki-back').style.display = 'block';
+  document.getElementById('anki-main').innerHTML = window.ankiBackHtml;
 }
+window.onload = function() { showFront(); };
 </script>
 ''';
-    final body = '''
-  <!-- 正面 -->
-  <div id="anki-front" style="display:block;">$frontContent</div>
-  <!-- 反面 -->
-  <div id="anki-back" style="display:none;">$backContent</div>
-''';
+    final body = '<div id="anki-main"></div>';
     return _wrapHtml(body, extraHead: toggleScript);
+  }
+
+   static void printLongHtml(String html) {
+      // Flutter 的 print 会截断超长字符串，这里分段输出
+      const int chunkSize = 800;
+      for (int i = 0; i < html.length; i += chunkSize) {
+        final end = (i + chunkSize < html.length) ? i + chunkSize : html.length;
+        print(html.substring(i, end));
+      }
+    }
+
+  /// 写入正反面HTML到本地文件，并返回主页面HTML和文件路径
+  static Future<(String frontPath, String backPath)> writeMergedToFiles({
+    required String front,
+    required String back,
+    required String config,
+    required Map<String, String> fieldMap,
+    String? js,
+    String? mediaDir,
+    double minFontSize = 18,
+  }) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final frontPath = '${dir.path}/anki_front.html';
+    final backPath = '${dir.path}/anki_back.html';
+    final renderer = AnkiTemplateRenderer(
+      front: front,
+      back: back,
+      config: config,
+      fieldMap: fieldMap,
+      js: js,
+      mediaDir: mediaDir,
+      minFontSize: minFontSize,
+      mergeFrontBack: false,
+    );
+    String frontHtml = renderer.renderFront();
+    String backHtml = renderer.renderBack(renderer.renderFront());
+    // 调试：如内容为空则写入简单内容
+    if (frontHtml.trim().isEmpty) {
+      frontHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>Front</h1></body></html>';
+    }
+    if (backHtml.trim().isEmpty) {
+      backHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>Back</h1></body></html>';
+    }
+    await File(frontPath).writeAsString(frontHtml);
+    await File(backPath).writeAsString(backHtml);
+    printLongHtml('Anki frontHtml path: $frontPath');
+    printLongHtml('Anki backHtml path: $backPath');
+    printLongHtml('Anki frontHtml content:\n$frontHtml');
+    printLongHtml('Anki backHtml content:\n$backHtml');
+    
+    return (frontPath, backPath);
+  }
+
+  /// 生成iframe主页面HTML
+  static String composeIframeHtml(String frontPath, String backPath, String testHtmlPath) {
+    final frontUrl = 'file://$frontPath';
+    final backUrl = 'file://$backPath';
+    final testUrl = 'file://$testHtmlPath';
+    final frontFile = File(frontPath);
+    final backFile = File(backPath);
+    final testFile = File(testHtmlPath);
+    final frontExists = frontFile.existsSync();
+    final backExists = backFile.existsSync();
+    final testExists = testFile.existsSync();
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>body,html{margin:0;padding:0;}</style>
+  <script>
+    function showFront() {
+      document.getElementById('anki-front-frame').style.display = 'block';
+      document.getElementById('anki-back-frame').style.display = 'none';
+      if(document.getElementById('test-frame')) document.getElementById('test-frame').style.display = 'block';
+    }
+    function showBack() {
+      document.getElementById('anki-front-frame').style.display = 'none';
+      document.getElementById('anki-back-frame').style.display = 'block';
+      if(document.getElementById('test-frame')) document.getElementById('test-frame').style.display = 'block';
+    }
+    window.onload = function() { showFront(); };
+    window.onerror = function(e) { document.body.innerHTML = 'JS ERROR: ' + e; }
+  </script>
+</head>
+<body style="margin:0;padding:0;">
+  <!--
+      $frontUrl $frontExists<br />
+      $backUrl $backExists<br />
+      $testUrl $testExists<br />
+  -->
+  <iframe id="anki-front-frame" src="$frontUrl" style="width:100vw;height:40vh;border:2px solid #888;display:block" sandbox="allow-scripts allow-same-origin"></iframe>
+  <iframe id="anki-back-frame" src="$backUrl" style="width:100vw;height:40vh;border:2px solid #888;display:none" sandbox="allow-scripts allow-same-origin"></iframe>
+  <!--
+      <iframe id="test-frame" src="$testUrl" style="width:100vw;height:20vh;border:2px solid #f00;display:block" sandbox="allow-scripts allow-same-origin"></iframe>
+  -->
+</body>
+</html>
+''';
   }
 } 

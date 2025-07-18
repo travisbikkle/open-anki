@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../db.dart';
 import 'package:path/path.dart' as p;
+import 'package:webview_flutter/webview_flutter.dart';
 
 class DebugPage extends StatefulWidget {
   const DebugPage({super.key});
@@ -154,25 +155,35 @@ class _DebugPageState extends State<DebugPage> {
       appBar: AppBar(title: const Text('调试-题库文件树浏览')),
       body: Column(
         children: [
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: _loadDbDecks,
-                child: const Text('显示题库索引(AppDb.getAllDecks)'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final scrollController = PrimaryScrollController.of(context);
-                  scrollController?.animateTo(
-                    scrollController.position.maxScrollExtent,
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: const Text('跳转到底部'),
-              ),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _loadDbDecks,
+                  child: const Text('显示题库索引(AppDb.getAllDecks)'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    final scrollController = PrimaryScrollController.of(context);
+                    scrollController?.animateTo(
+                      scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: const Text('跳转到底部'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TestWebViewPage()));
+                  },
+                  child: const Text('测试本地HTML加载'),
+                ),
+              ],
+            ),
           ),
           if (_showDbDecks)
             Expanded(
@@ -212,6 +223,40 @@ class _DebugPageState extends State<DebugPage> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class TestWebViewPage extends StatefulWidget {
+  const TestWebViewPage({super.key});
+  @override
+  State<TestWebViewPage> createState() => _TestWebViewPageState();
+}
+
+class _TestWebViewPageState extends State<TestWebViewPage> {
+  String? _fileUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFileUrl();
+  }
+
+  Future<void> _loadFileUrl() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/test.html');
+    setState(() {
+      _fileUrl = 'file://${file.path}';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Test WebView Local HTML')),
+      body: _fileUrl == null
+          ? const Center(child: CircularProgressIndicator())
+          : WebViewWidget(controller: WebViewController()..loadRequest(Uri.parse(_fileUrl!))),
     );
   }
 } 
