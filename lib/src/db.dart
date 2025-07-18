@@ -16,7 +16,7 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 2, // Updated version
+      version: 3, // 升级版本号
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE decks (
@@ -25,7 +25,8 @@ class AppDb {
             user_deck_name TEXT,
             md5 TEXT,
             import_time INTEGER,
-            media_map TEXT
+            media_map TEXT,
+            version TEXT -- 新增
           )
         ''');
         await db.execute('''
@@ -54,12 +55,15 @@ class AppDb {
           // Add media_map column to existing decks table
           await db.execute('ALTER TABLE decks ADD COLUMN media_map TEXT');
         }
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE decks ADD COLUMN version TEXT');
+        }
       },
     );
   }
 
   // 题库索引操作
-  static Future<void> insertDeck(String apkgPath, String userDeckName, String md5, {Map<String, String>? mediaMap}) async {
+  static Future<void> insertDeck(String apkgPath, String userDeckName, String md5, {Map<String, String>? mediaMap, String? version}) async {
     final dbClient = await db;
     await dbClient.insert('decks', {
       'apkg_path': apkgPath,
@@ -67,6 +71,7 @@ class AppDb {
       'md5': md5,
       'import_time': DateTime.now().millisecondsSinceEpoch,
       'media_map': mediaMap != null ? jsonEncode(mediaMap) : null,
+      'version': version,
     });
   }
 

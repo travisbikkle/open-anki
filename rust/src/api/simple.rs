@@ -63,6 +63,7 @@ pub struct ExtractResult {
     pub dir: String,
     pub md5: String,
     pub media_map: HashMap<String, String>, // 文件名 -> 数字编号的映射
+    pub version: String, // 新增：anki2/anki21b
 }
 
 #[flutter_rust_bridge::frb]
@@ -109,7 +110,7 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     rust_log(&format!("DEBUG: anki21b 存在: {}", anki21b.exists()));
     rust_log(&format!("DEBUG: anki2 存在: {}", anki2.exists()));
 
-    if anki21b.exists() {
+    let version = if anki21b.exists() {
         // 新版：zstd 解压
         rust_log(&format!("DEBUG: 开始处理 anki21b"));
         let mut zstd_file = File::open(&anki21b).map_err(|e| format!("打开anki21b失败: {e}"))?;
@@ -121,14 +122,18 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
         let mut out = File::create(&sqlite_path).map_err(|e| format!("创建sqlite文件失败: {e}"))?;
         out.write_all(&sqlite_bytes).map_err(|e| format!("写入sqlite失败: {e}"))?;
         rust_log(&format!("DEBUG: anki21b 处理完成"));
+        "anki21b"
     } else if anki2.exists() {
         // 老版：直接复制
         rust_log(&format!("DEBUG: 开始处理 anki2"));
         fs::copy(&anki2, &sqlite_path).map_err(|e| format!("复制anki2失败: {e}"))?;
         rust_log(&format!("DEBUG: anki2 复制完成"));
+        "anki2"
     } else {
+        // 警告：未找到 collection.anki21b 或 collection.anki2
         rust_log(&format!("DEBUG: 警告：未找到 collection.anki21b 或 collection.anki2"));
-    }
+        "unknown"
+    };
 
     rust_log(&format!("DEBUG: 最终 sqlite 文件存在: {}", sqlite_path.exists()));
     if sqlite_path.exists() {
@@ -246,7 +251,12 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     }
     rust_log(&format!("DEBUG: media 映射解析完成，共 {} 个文件", media_map.len()));
     
-    Ok(ExtractResult { dir: md5str.clone(), md5: md5str, media_map })
+    Ok(ExtractResult {
+        dir: deck_dir.to_string_lossy().to_string(),
+        md5: md5str,
+        media_map,
+        version: version.to_string(), // 修正类型
+    })
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

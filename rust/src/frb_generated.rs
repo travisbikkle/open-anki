@@ -292,10 +292,12 @@ impl SseDecode for crate::api::simple::ExtractResult {
         let mut var_md5 = <String>::sse_decode(deserializer);
         let mut var_mediaMap =
             <std::collections::HashMap<String, String>>::sse_decode(deserializer);
+        let mut var_version = <String>::sse_decode(deserializer);
         return crate::api::simple::ExtractResult {
             dir: var_dir,
             md5: var_md5,
             media_map: var_mediaMap,
+            version: var_version,
         };
     }
 }
@@ -573,6 +575,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::ExtractResult {
             self.dir.into_into_dart().into_dart(),
             self.md5.into_into_dart().into_dart(),
             self.media_map.into_into_dart().into_dart(),
+            self.version.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -709,6 +712,7 @@ impl SseEncode for crate::api::simple::ExtractResult {
         <String>::sse_encode(self.dir, serializer);
         <String>::sse_encode(self.md5, serializer);
         <std::collections::HashMap<String, String>>::sse_encode(self.media_map, serializer);
+        <String>::sse_encode(self.version, serializer);
     }
 }
 

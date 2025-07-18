@@ -314,12 +314,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ExtractResult dco_decode_extract_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return ExtractResult(
       dir: dco_decode_String(arr[0]),
       md5: dco_decode_String(arr[1]),
       mediaMap: dco_decode_Map_String_String_None(arr[2]),
+      version: dco_decode_String(arr[3]),
     );
   }
 
@@ -513,7 +514,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_dir = sse_decode_String(deserializer);
     var var_md5 = sse_decode_String(deserializer);
     var var_mediaMap = sse_decode_Map_String_String_None(deserializer);
-    return ExtractResult(dir: var_dir, md5: var_md5, mediaMap: var_mediaMap);
+    var var_version = sse_decode_String(deserializer);
+    return ExtractResult(
+      dir: var_dir,
+      md5: var_md5,
+      mediaMap: var_mediaMap,
+      version: var_version,
+    );
   }
 
   @protected
@@ -763,6 +770,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.dir, serializer);
     sse_encode_String(self.md5, serializer);
     sse_encode_Map_String_String_None(self.mediaMap, serializer);
+    sse_encode_String(self.version, serializer);
   }
 
   @protected

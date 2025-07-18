@@ -98,15 +98,18 @@ class ExtractResult {
   final String dir;
   final String md5;
   final Map<String, String> mediaMap;
+  final String version;
 
   const ExtractResult({
     required this.dir,
     required this.md5,
     required this.mediaMap,
+    required this.version,
   });
 
   @override
-  int get hashCode => dir.hashCode ^ md5.hashCode ^ mediaMap.hashCode;
+  int get hashCode =>
+      dir.hashCode ^ md5.hashCode ^ mediaMap.hashCode ^ version.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -115,7 +118,8 @@ class ExtractResult {
           runtimeType == other.runtimeType &&
           dir == other.dir &&
           md5 == other.md5 &&
-          mediaMap == other.mediaMap;
+          mediaMap == other.mediaMap &&
+          version == other.version;
 }
 
 class FieldExt {
