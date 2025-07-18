@@ -14,6 +14,7 @@ import 'package:collection/collection.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:sqflite/sqflite.dart'; // 新增导入
 import 'package:open_anki/src/widgets/anki_template_renderer.dart';
+import 'package:open_anki/src/pages/html_source_page.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -322,20 +323,36 @@ $content
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('调试信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const Text('卡片信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                     const SizedBox(height: 12),
                                     Text('牌组ID: $deckId'),
                                     Text('模板名称: $notetype'),
                                     const SizedBox(height: 8),
                                     Text('卡片ID: $cardId'),
                                     Text('版本: $version'),
-                                    Text('flds: $flds'),
+                                    Text('字段: $flds'),
                                     const SizedBox(height: 12),
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
                                         onPressed: () => Navigator.pop(context),
                                         child: const Text('关闭', style: TextStyle(color: Colors.black)),
+                                      ),
+                                    ),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          final html = _showBack
+                                              ? _composeCardBackHtml(note!)
+                                              : _composeCardFrontHtml(note!);
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => HtmlSourcePage(html: html),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('查看卡片源码', style: TextStyle(color: Colors.blue)),
                                       ),
                                     ),
                                   ],
