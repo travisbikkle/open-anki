@@ -8,6 +8,7 @@ class AnkiTemplateRenderer {
   final String? css;
   final Map<String, String> fieldMap;
   final String? js;
+  final String? mediaDir;
 
   AnkiTemplateRenderer({
     required String front,
@@ -15,6 +16,7 @@ class AnkiTemplateRenderer {
     required this.fieldMap,
     String? css,
     this.js,
+    this.mediaDir,
   })  : front = _cleanHtml(front),
         back = _cleanHtml(back),
         css = css != null ? _cleanHtml(css) : null;
@@ -22,7 +24,6 @@ class AnkiTemplateRenderer {
   static String _cleanHtml(String input) {
     // 去除 BOM、不可见控制字符（保留常用换行/制表符）
     return input
-        .replaceAll('\u001f', '')
         .replaceAll('  ', '') // BOM
         .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '') // 控制字符
         .replaceAll('  ', '') // 垂直制表符
@@ -32,12 +33,12 @@ class AnkiTemplateRenderer {
 
   /// 渲染正面
   String renderFront() {
-    return _render(front, null);
+    return _addAudioSupport(_render(front, null));
   }
 
   /// 渲染反面，支持 {{FrontSide}}
   String renderBack(String? frontHtml) {
-    return _render(back, frontHtml);
+    return _addAudioSupport(_render(back, frontHtml));
   }
 
   /// 主渲染逻辑
@@ -79,5 +80,14 @@ $html
 </body>
 </html>
 ''';
+  }
+
+  String _addAudioSupport(String html) {
+    if (mediaDir == null) return html;
+    final reg = RegExp(r'\[sound:([\w\d\-_\.]+)\]');
+    return html.replaceAllMapped(reg, (m) {
+      final file = m.group(1)!;
+      return '<audio controls src="${mediaDir!}/$file"></audio>';
+    });
   }
 } 

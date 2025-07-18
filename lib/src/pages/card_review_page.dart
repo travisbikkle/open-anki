@@ -190,6 +190,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       css: css,
       fieldMap: fieldMap,
       js: null,
+      mediaDir: _mediaDir,
     );
     return renderer.renderFront();
   }
@@ -210,6 +211,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       css: css,
       fieldMap: fieldMap,
       js: null,
+      mediaDir: _mediaDir,
     );
     return renderer.renderBack(renderer.renderFront());
   }
