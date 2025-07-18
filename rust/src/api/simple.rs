@@ -589,11 +589,9 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
             if let Some(row_tpl) = rows_tpl.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
                 let config_bytes: Vec<u8> = row_tpl.get(0).map_err(|e| format!("读取config失败: {e}"))?;
                 let config = String::from_utf8_lossy(&config_bytes).to_string();
-                // 分割正反面，优先用 <hr id=answer>，否则用两个换行
-                if let Some(idx) = config.find("<hr id=answer>") {
-                    front = config[..idx].to_string();
-                    back = config[idx + "<hr id=answer>".len()..].to_string();
-                } else if let Some(idx) = config.find("\n\n") {
+
+                // 通用分割正反面：优先用 <hr id=answer>，否则用 <hr>，否则用两个换行
+                if let Some(idx) = config.find("\n\n") {
                     front = config[..idx].to_string();
                     back = config[idx + 2..].to_string();
                 } else {
@@ -601,16 +599,29 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
                     back = String::new();
                 }
             }
-            // 查样式
+            // 查样式 1580121962837
             let mut stmt_css = conn.prepare("SELECT config FROM notetypes WHERE id = ?").map_err(|e| format!("准备SQL失败: {e}"))?;
             let mut rows_css = stmt_css.query([mid]).map_err(|e| format!("查询SQL失败: {e}"))?;
+            rust_log(&format!("[DEBUG] begin to query row_css"));
             if let Some(row_css) = rows_css.next().map_err(|e| format!("遍历SQL失败: {e}"))? {
-                if let Ok(Some(config_str)) = row_css.get::<_, Option<String>>(0) {
+                if let Ok(Some(config_bytes)) = row_css.get::<_, Option<Vec<u8>>>(0) {
+                    let config_str = String::from_utf8_lossy(&config_bytes).to_string();
+                    // 先尝试json解析
                     if let Ok(model) = serde_json::from_str::<serde_json::Value>(&config_str) {
                         if let Some(css_val) = model.get("css").and_then(|v| v.as_str()) {
                             css = css_val.to_string();
+                        } else {
+                            rust_log("[DEBUG] JSON中未找到css字段");
                         }
+                    } else if let Some(idx) = config_str.find("\\documentclass") {
+                        rust_log(&format!("[DEBUG] config_str 不是JSON，\\documentclass分割点: {}", idx));
+                        css = config_str[..idx].trim().to_string();
+                    } else {
+                        rust_log("[DEBUG] config_str 不是JSON，也没有\\documentclass分割点，直接trim");
+                        css = config_str.trim().to_string();
                     }
+                } else {
+                    rust_log("[DEBUG] row_css.get::<_, Option<Vec<u8>>>(0) 失败或为None");
                 }
             }
         }
@@ -688,6 +699,7 @@ pub fn get_deck_note(sqlite_path: String, note_id: i64, version: String) -> Resu
                 }
             }
         }
+        rust_log(&format!("[DEBUG]: css内容: {}", css));
         Ok(SingleNoteResult { note, notetype, fields, ord, front, back, css })
     } else {
         Err("未找到指定id的note".to_string())

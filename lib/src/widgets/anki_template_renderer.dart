@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 class AnkiTemplateRenderer {
   final String front;
   final String back;
-  final String? css;
+  final String? config;
   final Map<String, String> fieldMap;
   final String? js;
   final String? mediaDir;
@@ -14,12 +14,12 @@ class AnkiTemplateRenderer {
     required String front,
     required String back,
     required this.fieldMap,
-    String? css,
+    String? config,
     this.js,
     this.mediaDir,
   })  : front = _cleanHtml(front),
         back = _cleanHtml(back),
-        css = css != null ? _cleanHtml(css) : null;
+        config = config != null ? _cleanHtml(config) : null;
 
   static String _cleanHtml(String input) {
     // 去除 BOM、不可见控制字符（保留常用换行/制表符）
@@ -65,14 +65,21 @@ class AnkiTemplateRenderer {
       }
     });
     // 4. 注入样式和 JS
-    final style = css != null && css!.trim().isNotEmpty ? '<style>\n${css!}\n</style>' : '';
+    String configBlock = '';
+    if (config != null && config!.trim().isNotEmpty) {
+      if (config!.contains('<style')) {
+        configBlock = config!;
+      } else {
+        configBlock = '<style>\n${config!}\n</style>';
+      }
+    }
     final script = js != null && js!.trim().isNotEmpty ? '<script>\n${js!}\n</script>' : '';
     return '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  $style
+  $configBlock
   $script
 </head>
 <body>

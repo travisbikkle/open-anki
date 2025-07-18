@@ -47,7 +47,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   int? _currentCardOrd;
   String? _currentQfmt;
   String? _currentAfmt;
-  String? _currentCss;
+  String? _currentConfig;
   String? _currentFront;
   String? _currentBack;
   bool _showBack = false;
@@ -56,14 +56,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   void initState() {
     super.initState();
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000));
-    _stemController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000));
-    _remarkController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000));
+      ..setJavaScriptMode(JavaScriptMode.unrestricted);
     _loadDeck();
   }
 
@@ -145,13 +138,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentCardOrd = null;
       _currentQfmt = null;
       _currentAfmt = null;
-      _currentCss = null;
+      _currentConfig = null;
       _currentFront = null;
       _currentBack = null;
       _showBack = false;
     });
     final noteId = _noteIds[_currentIndex];
     final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
+    String css = result.css;
+    debugPrint('[_loadCurrentCard] ======================== css is [$css]');
     setState(() {
       _currentNote = result.note;
       _currentNotetype = result.notetype;
@@ -159,7 +154,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentCardOrd = result.ord;
       _currentFront = result.front;
       _currentBack = result.back;
-      _currentCss = result.css;
+      _currentConfig = result.css;
     });
     // 渲染
     if (_currentNotetype == null) {
@@ -180,19 +175,31 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    String front = '', back = '', css = '';
+    String front = '', back = '', config = '';
     front = _currentFront ?? '';
     back = _currentBack ?? '';
-    css = _currentCss ?? '';
+    config = _currentConfig ?? '';
     final renderer = AnkiTemplateRenderer(
       front: front,
       back: back,
-      css: css,
+      config: config,
       fieldMap: fieldMap,
       js: null,
       mediaDir: _mediaDir,
     );
-    return renderer.renderFront();
+    String html = renderer.renderFront();
+    // printLongHtml
+    void printLongHtml(String html) {
+      // Flutter 的 print 会截断超长字符串，这里分段输出
+      const int chunkSize = 800;
+      for (int i = 0; i < html.length; i += chunkSize) {
+        final end = (i + chunkSize < html.length) ? i + chunkSize : html.length;
+        print(html.substring(i, end));
+      }
+    }
+
+    printLongHtml(html);
+    return html;
   }
 
   String _composeCardBackHtml(NoteExt note) {
@@ -201,14 +208,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
       fieldMap[fieldsForType[i].name] = note.flds[i];
     }
-    String front = '', back = '', css = '';
+    String front = '', back = '', config = '';
     front = _currentFront ?? '';
     back = _currentBack ?? '';
-    css = _currentCss ?? '';
+    config = _currentConfig ?? '';
     final renderer = AnkiTemplateRenderer(
       front: front,
       back: back,
-      css: css,
+      config: config,
       fieldMap: fieldMap,
       js: null,
       mediaDir: _mediaDir,
