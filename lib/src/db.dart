@@ -16,7 +16,7 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 3, // 升级版本号
+      version: 1, // 首次发布版本
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE decks (
@@ -26,7 +26,7 @@ class AppDb {
             md5 TEXT,
             import_time INTEGER,
             media_map TEXT,
-            version TEXT -- 新增
+            version TEXT
           )
         ''');
         await db.execute('''
@@ -57,15 +57,6 @@ class AppDb {
             timestamp INTEGER NOT NULL
           )
         ''');
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          // Add media_map column to existing decks table
-          await db.execute('ALTER TABLE decks ADD COLUMN media_map TEXT');
-        }
-        if (oldVersion < 3) {
-          await db.execute('ALTER TABLE decks ADD COLUMN version TEXT');
-        }
       },
     );
   }

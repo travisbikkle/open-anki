@@ -116,33 +116,55 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   Widget build(BuildContext context) {
     final allDecksAsync = ref.watch(allDecksProvider);
     return Scaffold(
+      backgroundColor: const Color(0xffeaf6ff),
       body: SafeArea(
         child: Column(
           children: [
-            SizedBox(height: 16),
-            if (loading) const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            if (error != null) Text('错误: $error', style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            if (loading)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  color: Colors.red[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('错误: $error', style: const TextStyle(color: Colors.red)),
+                  ),
+                ),
+              ),
             Expanded(
               child: allDecksAsync.when(
                 data: (decks) {
-                  // 统计题库名出现次数
                   final nameCount = <String, int>{};
                   for (final d in decks) {
                     nameCount[d.deckName] = (nameCount[d.deckName] ?? 0) + 1;
                   }
-                  return ListView.builder(
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     itemCount: decks.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, idx) {
                       final deck = decks[idx];
                       final showCount = (nameCount[deck.deckName] ?? 0) > 1;
                       return Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 1,
                         child: ListTile(
                           title: FutureBuilder<int>(
                             future: (() async {
-                              // 通过 AppDb 查 apkg_path
                               final allDecks = await AppDb.getAllDecks();
                               final d = allDecks.firstWhere(
                                 (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
@@ -150,7 +172,6 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               );
                               if (d.isEmpty) return 0;
                               final apkgPath = d['apkg_path'] as String;
-                              // 移除 parseApkg 的所有调用和相关 import
                               return 0;
                             })(),
                             builder: (context, snapshot) {
@@ -161,46 +182,14 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               return Text(displayName);
                             },
                           ),
-                          subtitle: FutureBuilder<int>(
-                            future: (() async {
-                              // 同上，查卡片数
-                              final allDecks = await AppDb.getAllDecks();
-                              final d = allDecks.firstWhere(
-                                (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
-                                orElse: () => <String, dynamic>{},
-                              );
-                              if (d.isEmpty) return 0;
-                              final apkgPath = d['apkg_path'] as String;
-                              // 移除 parseApkg 的所有调用和相关 import
-                              return 0;
-                            })(),
-                            builder: (context, snapshot) {
-                              final cardCount = snapshot.data ?? 0;
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('进度：${deck.currentIndex + 1}/$cardCount'),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4.0),
-                                    child: LinearProgressIndicator(
-                                      value: cardCount > 0 ? (deck.currentIndex + 1) / cardCount : 0,
-                                      minHeight: 6,
-                                      backgroundColor: Colors.grey[300],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
                           onTap: () async {
                             ref.read(currentIndexProvider.notifier).state = 0;
-                            // 获取 media_map（暂时传 null，后续可以从 AppDb 获取）
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => CardReviewPage(
                                   deckId: deck.deckId,
-                                  mediaMap: null, // TODO: 从 AppDb 获取 media_map
+                                  mediaMap: null,
                                 ),
                               ),
                             );
@@ -231,35 +220,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               ),
                             );
                             if (result == 'rename') {
-                              // _renameDeck(deck.deckId, deck.deckName); // AnkiDb removed
+                              // TODO: 重命名逻辑
                             } else if (result == 'delete') {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('确认删除'),
-                                  content: Text('确定要删除题库“${deck.deckName}”吗？'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-                                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                // 1. 删除 AppDb 索引
-                                await AppDb.deleteDeck(md5: deck.deckId);
-                                // 2. 删除解压目录
-                                try {
-                                  final dir = Directory(deck.deckId);
-                                  if (await dir.exists()) {
-                                    await dir.delete(recursive: true);
-                                  }
-                                } catch (e) {
-                                  print('删除解压目录失败: $e');
-                                }
-                                // 3. 刷新 provider
-                                ref.invalidate(allDecksProvider);
-                                setState(() {});
-                              }
+                              // TODO: 删除逻辑
                             }
                           },
                         ),
@@ -286,8 +249,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                 ),
                 elevation: 2,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
               ),
               onPressed: loading ? null : importApkg,
               child: const Text('导入anki卡片'),

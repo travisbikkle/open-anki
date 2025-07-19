@@ -8,18 +8,15 @@ class Dashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _StatItem(label: '总卡片', value: totalCards.toString()),
-            _StatItem(label: '已学习', value: learnedCards.toString()),
-            _StatItem(label: '题库数', value: deckCount.toString()),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _StatItem(label: '总卡片', value: totalCards.toString()),
+          _StatItem(label: '已学习', value: learnedCards.toString()),
+          _StatItem(label: '题库数', value: deckCount.toString()),
+        ],
       ),
     );
   }

@@ -405,20 +405,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           Container(
             height: 0,
           ),
-          if (_showBack && _currentNote != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildFeedbackButton('😄', '简单', 1),
-                  const SizedBox(width: 12),
-                  _buildFeedbackButton('😐', '一般', 2),
-                  const SizedBox(width: 12),
-                  _buildFeedbackButton('😫', '困难', 3),
-                ],
-              ),
-            ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -431,6 +417,20 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               ),
             ),
           ),
+                    if (_showBack && _currentNote != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 0, left: 16, right: 16, bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildFeedbackButton('😄', '简单', 1),
+                  const SizedBox(width: 12),
+                  _buildFeedbackButton('😐', '一般', 2),
+                  const SizedBox(width: 12),
+                  _buildFeedbackButton('😫', '困难', 3),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
