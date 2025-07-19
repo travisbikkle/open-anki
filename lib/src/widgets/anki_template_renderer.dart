@@ -27,6 +27,16 @@ class AnkiTemplateRenderer {
         back = _cleanHtml(back),
         config = config != null ? _cleanHtml(config) : null;
 
+  /// 渲染正面
+  String renderFront({String? deckId}) {
+    return _wrapHtml(_render(front, null), true, deckId: deckId);
+  }
+
+  /// 渲染反面，支持 {{FrontSide}}
+  String renderBack(String? frontHtml, {String? deckId}) {
+    return _wrapHtml(_render(back, frontHtml), false, deckId: deckId);
+  }
+
   static String _cleanHtml(String input) {
         // 从前往后，删除字符，直到碰到第一个字母、汉字、数字，<，>
         input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>{}]+'), '');
@@ -44,7 +54,7 @@ class AnkiTemplateRenderer {
   }
 
   /// 包裹完整HTML结构
-  String _wrapHtml(String body, {String? deckId}) {
+  String _wrapHtml(String body, bool fullHeight, {String? deckId}) {
     final fallbackFontCss = '''
 <style>
 body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
@@ -223,10 +233,11 @@ function trigger_save() {
 
     // 清理configBlock
     final safeConfigBlock = cleanConfigBlock(configBlock);
+    final height = fullHeight ? 'style="height:100%"' : '';
 
     return '''
 <!DOCTYPE html>
-<html style="height:100%">
+<html $height>
 <head>
   <!-- 公共 -->
   <script>
@@ -268,16 +279,6 @@ $body
 </body>
 </html>
 ''';
-  }
-
-  /// 渲染正面
-  String renderFront({String? deckId}) {
-    return _wrapHtml(_render(front, null), deckId: deckId);
-  }
-
-  /// 渲染反面，支持 {{FrontSide}}
-  String renderBack(String? frontHtml, {String? deckId}) {
-    return _wrapHtml(_render(back, frontHtml), deckId: deckId);
   }
 
   String _addImageSupport(String html) {
@@ -377,7 +378,7 @@ $body
       mergeFrontBack: false,
     );
     String frontHtml = renderer.renderFront(deckId: deckId);
-    String backHtml = renderer.renderBack(renderer.renderFront(deckId: deckId), deckId: deckId);
+    String backHtml = renderer.renderBack(front, deckId: deckId);
     // 调试：如内容为空则写入简单内容
     if (frontHtml.trim().isEmpty) {
       frontHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>Front</h1></body></html>';

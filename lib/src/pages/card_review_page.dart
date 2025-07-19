@@ -268,6 +268,19 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     _loadCurrentCard();
   }
 
+  Widget _buildFeedbackButton(String emoji, String label, int value) {
+    return ElevatedButton.icon(
+      icon: Text(emoji, style: const TextStyle(fontSize: 20)),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(minimumSize: const Size(64, 40)),
+      onPressed: () async {
+        if (_currentNote == null) return;
+        await AppDb.saveCardFeedback(_currentNote!.id, value);
+        _nextCard();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     debugPrint('[build] _loading=$_loading, _noteIds=${_noteIds.length}, _currentIndex=$_currentIndex, _currentNote=${_currentNote != null}, _currentNotetype=${_currentNotetype != null}');
@@ -392,6 +405,20 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           Container(
             height: 0,
           ),
+          if (_showBack && _currentNote != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildFeedbackButton('😄', '简单', 1),
+                  const SizedBox(width: 12),
+                  _buildFeedbackButton('😐', '一般', 2),
+                  const SizedBox(width: 12),
+                  _buildFeedbackButton('😫', '困难', 3),
+                ],
+              ),
+            ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

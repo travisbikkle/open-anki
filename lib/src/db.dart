@@ -49,6 +49,14 @@ class AppDb {
             value TEXT
           )
         ''');
+        await db.execute('''
+          CREATE TABLE card_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id INTEGER NOT NULL,
+            feedback INTEGER NOT NULL,
+            timestamp INTEGER NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -156,5 +164,29 @@ class AppDb {
       return decoded.map((key, value) => MapEntry(key, value.toString()));
     }
     return null;
+  }
+
+  // 保存卡片反馈
+  static Future<void> saveCardFeedback(int cardId, int feedback) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'card_feedback',
+      {
+        'card_id': cardId,
+        'feedback': feedback,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+  }
+
+  // 查询某卡片所有反馈
+  static Future<List<Map<String, dynamic>>> getCardFeedbacks(int cardId) async {
+    final dbClient = await db;
+    return await dbClient.query(
+      'card_feedback',
+      where: 'card_id = ?',
+      whereArgs: [cardId],
+      orderBy: 'timestamp DESC',
+    );
   }
 } 
