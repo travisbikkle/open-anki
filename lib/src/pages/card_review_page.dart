@@ -403,23 +403,8 @@ $content
                 const SizedBox(width: 24),
                 ElevatedButton(
                   onPressed: () async {
-                                          print('=== 显示答案按钮被点击 ===');
-                      print('_showBack: $_showBack');
-                      print('_frontHtmlPath: $_frontHtmlPath');
-                      print('_backHtmlPath: $_backHtmlPath');
-                      print('widget.deckId: ${widget.deckId}');
-                      
-                      // 检查文件是否存在
-                      if (_frontHtmlPath != null) {
-                        final frontFile = File(_frontHtmlPath!);
-                        print('正面文件存在: ${await frontFile.exists()}');
-                      }
-                      if (_backHtmlPath != null) {
-                        final backFile = File(_backHtmlPath!);
-                        print('反面文件存在: ${await backFile.exists()}');
-                      }
-                    
-                                          if (_showBack) {
+                      print('=== 显示答案按钮被点击 ===');
+                      if (_showBack) {
                         // 返回正面：加载正面 HTML
                         print('返回正面，加载: $_frontHtmlPath');
                         _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
@@ -427,7 +412,6 @@ $content
                         // 显示答案：直接加载反面 HTML（暂时跳过变量保存）
                         print('显示答案，加载: $_backHtmlPath');
                         _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
-                        print('反面HTML加载请求已发送');
                         setState(() {
                           _showBack = !_showBack;
                         });

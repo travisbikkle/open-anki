@@ -86,29 +86,42 @@ body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
   ankiDebug('新增变量: ' + JSON.stringify(newVars));
 })();</script>''';
 
+    // 注入全局JS错误捕获
+    final errorCatcherScript = '''<script>
+window.onerror = function(message, source, lineno, colno, error) {
+  if (window.AnkiDebug) {
+    window.AnkiDebug.postMessage('[JS ERROR] ' + message + ' at ' + source + ':' + lineno + ':' + colno);
+  }
+};
+</script>''';
+
     // localStorage脚本
     final localStorageScript = '''<script>
 // 创建深度代理函数
 function createDeepProxy(obj, deckPrefix, varName) {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-  
-  return new Proxy(obj, {
-    get: function(target, prop) {
-      const value = target[prop];
-      if (typeof value === 'object' && value !== null) {
-        // 递归代理嵌套对象
-        target[prop] = createDeepProxy(value, deckPrefix, varName + '.' + prop);
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj.__isProxied) return obj; // 防止重复代理
+
+  const handler = {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value === 'object' && value !== null && !value.__isProxied) {
+        const proxied = createDeepProxy(value, deckPrefix, varName + '.' + prop);
+        target[prop] = proxied;
+        return proxied;
       }
-      return target[prop];
+      return value;
     },
-    set: function(target, prop, value) {
-      target[prop] = value;
-      // 不自动保存，只在用户主动操作时保存
-      return true;
+    set(target, prop, value, receiver) {
+      const result = Reflect.set(target, prop, value, receiver);
+      if (typeof ankiDebug === 'function') {
+        ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
+      }
+      return result;
     }
-  });
+  };
+  Object.defineProperty(obj, '__isProxied', { value: true, enumerable: false });
+  return new Proxy(obj, handler);
 }
 
 // 手动保存函数
@@ -181,16 +194,37 @@ function saveToLocalStorage(deckPrefix) {
 <head>
   <meta charset="utf-8">
   $fallbackFontCss
+
+  $errorCatcherScript
+
   $beforeVarsScript
+
   $configBlock
+
   $script
+
   $afterVarsScript
+
   $localStorageScript
+
   $configBlock
 </head>
 <body>
+DEBUG:
+<span id="debug"></span>
+:DEBUG
+<br />
 $body
 </body>
+
+<script>
+setInterval(function() {
+  // 修复：应使用 textContent 或 innerText 而不是 text
+  // 修复拼写错误，应为 JSON.stringify 并且 gData 可能未定义，做容错
+  document.getElementById('debug').textContent = typeof gData !== 'undefined' ? JSON.stringify(gData) : '';
+}, 1000);
+</script>
+
 </html>
 ''';
   }
@@ -269,8 +303,9 @@ $body
     String? deckId,
   }) async {
     final dir = await getApplicationDocumentsDirectory();
-    final frontPath = '${dir.path}/anki_front.html';
-    final backPath = '${dir.path}/anki_back.html';
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final frontPath = '${dir.path}/anki_front_$timestamp.html';
+    final backPath = '${dir.path}/anki_back_$timestamp.html';
     final renderer = AnkiTemplateRenderer(
       front: front,
       back: back,
@@ -294,6 +329,7 @@ $body
     await File(backPath).writeAsString(backHtml);
     printLongHtml('Anki frontHtml path: $frontPath');
     printLongHtml('Anki backHtml path: $backPath');
+    
     printLongHtml('Anki frontHtml content:\n$frontHtml');
     printLongHtml('Anki backHtml content:\n$backHtml');
     
