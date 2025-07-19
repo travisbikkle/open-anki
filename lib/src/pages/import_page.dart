@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
+import '../widgets/deck_progress_tile.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -162,38 +163,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                       return Card(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 1,
-                        child: ListTile(
-                          title: FutureBuilder<int>(
-                            future: (() async {
-                              final allDecks = await AppDb.getAllDecks();
-                              final d = allDecks.firstWhere(
-                                (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
-                                orElse: () => <String, dynamic>{},
-                              );
-                              if (d.isEmpty) return 0;
-                              final apkgPath = d['apkg_path'] as String;
-                              return 0;
-                            })(),
-                            builder: (context, snapshot) {
-                              final cardCount = snapshot.data ?? 0;
-                              final displayName = showCount
-                                ? '${deck.deckName}（$cardCount）'
-                                : deck.deckName;
-                              return Text(displayName);
-                            },
-                          ),
-                          onTap: () async {
-                            ref.read(currentIndexProvider.notifier).state = 0;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CardReviewPage(
-                                  deckId: deck.deckId,
-                                  mediaMap: null,
-                                ),
-                              ),
-                            );
-                          },
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
                           onLongPress: () async {
                             final result = await showModalBottomSheet<String>(
                               context: context,
@@ -225,6 +196,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               // TODO: 删除逻辑
                             }
                           },
+                          child: DeckProgressTile(deck: deck),
                         ),
                       );
                     },

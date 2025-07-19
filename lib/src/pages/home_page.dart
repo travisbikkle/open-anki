@@ -11,9 +11,17 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final allDecksAsync = ref.watch(allDecksProvider);
     final recentDecksAsync = ref.watch(recentDecksProvider);
-    final totalCards = allDecksAsync.asData?.value.fold<int>(0, (sum, d) => sum + d.cardCount) ?? 0;
-    final deckCount = allDecksAsync.asData?.value.length ?? 0;
-    final learnedCards = allDecksAsync.asData?.value.fold<int>(0, (sum, d) => sum + (d.currentIndex + 1)) ?? 0;
+    int totalCards = 0;
+    int learnedCards = 0;
+    int deckCount = 0;
+    if (allDecksAsync.asData != null) {
+      final decks = allDecksAsync.asData!.value;
+      deckCount = decks.length;
+      for (final d in decks) {
+        totalCards += d.cardCount;
+        learnedCards += (d.currentIndex + 1).clamp(0, d.cardCount);
+      }
+    }
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
       body: SafeArea(

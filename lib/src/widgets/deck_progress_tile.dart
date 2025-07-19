@@ -10,43 +10,50 @@ class DeckProgressTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: FutureBuilder<int>(
-        future: (() async {
-          // 通过 AppDb 查 apkg_path
-          final allDecks = await AppDb.getAllDecks();
-          final d = allDecks.firstWhere(
-            (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
-            orElse: () => <String, dynamic>{},
-          );
-          if (d.isEmpty) return 0;
-          final apkgPath = d['apkg_path'] as String;
-          // 移除 parseApkg 的所有调用和相关 import
-          return 0;
-        })(),
-        builder: (context, snapshot) {
-          final cardCount = snapshot.data ?? 0;
-          final double progress = cardCount > 0 ? (deck.currentIndex + 1) / cardCount : 0;
-          return ListTile(
-            title: Text(deck.deckName),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('进度：${deck.currentIndex + 1}/$cardCount'),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(value: progress, minHeight: 6),
-              ],
+    return FutureBuilder<int>(
+      future: (() async {
+        final allDecks = await AppDb.getAllDecks();
+        final d = allDecks.firstWhere(
+          (d) => (d['md5'] ?? d['id'].toString()) == deck.deckId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (d.isEmpty) return 0;
+        final apkgPath = d['apkg_path'] as String;
+        return 0;
+      })(),
+      builder: (context, snapshot) {
+        final cardCount = snapshot.data ?? 0;
+        final learned = deck.currentIndex + 1;
+        final double progress = cardCount > 0 ? learned / cardCount : 0;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              title: Text(deck.deckName),
+              subtitle: Text('进度：$learned/$cardCount'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
+                );
+              },
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
-              );
-            },
-          );
-        },
-      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey[200],
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
     );
   }
 } 

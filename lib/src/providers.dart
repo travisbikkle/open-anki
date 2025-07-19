@@ -1,19 +1,43 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'model.dart';
 import 'db.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'dart:io';
 
 final currentIndexProvider = StateProvider<int>((ref) => 0);
 
 final allDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
   final decks = await AppDb.getAllDecks();
-  // 这里 cardCount/lastReviewed/currentIndex 需后续补充（如 FFI 查 collection.sqlite），暂设为0/null
-  return decks.map((e) => DeckInfo(
-    deckId: (e['md5'] ?? e['id'].toString()) as String,
-    deckName: (e['user_deck_name'] ?? '未命名题库') as String,
-    cardCount: 0, // TODO: 通过 FFI 查 collection.sqlite 获取卡片数
-    lastReviewed: null, // TODO: 通过 AppDb 或 FFI 获取
-    currentIndex: 0, // TODO: 通过 AppDb 或 FFI 获取
-  )).toList();
+  final List<DeckInfo> result = [];
+  for (final e in decks) {
+    final deckId = (e['md5'] ?? e['id'].toString()) as String;
+    final deckName = (e['user_deck_name'] ?? '未命名题库') as String;
+    int cardCount = 0;
+    try {
+      // 查找该题库的sqlite文件
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final deckDir = join(appDocDir.path, 'anki_data', deckId);
+      final sqlitePath = join(deckDir, 'collection.sqlite');
+      if (await File(sqlitePath).exists()) {
+        final db = await openDatabase(sqlitePath);
+        final res = await db.rawQuery('SELECT COUNT(*) as cnt FROM notes');
+        cardCount = res.first['cnt'] as int? ?? 0;
+        await db.close();
+      }
+    } catch (e) {
+      cardCount = 0;
+    }
+    result.add(DeckInfo(
+      deckId: deckId,
+      deckName: deckName,
+      cardCount: cardCount,
+      lastReviewed: null,
+      currentIndex: 0,
+    ));
+  }
+  return result;
 });
 
 final recentDecksProvider = FutureProvider<List<DeckInfo>>((ref) async {
