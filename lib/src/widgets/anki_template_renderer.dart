@@ -28,8 +28,19 @@ class AnkiTemplateRenderer {
         config = config != null ? _cleanHtml(config) : null;
 
   static String _cleanHtml(String input) {
-        // 移除开头可能被截断、渲染后可能显示为问号的字符（如 BOM、不可见控制字符等）
-        return input.replaceFirst(RegExp(r'^[\uFEFF\u200B-\u200F\u202A-\u202E\u2060-\u206F]+'), '');
+        // 从前往后，删除字符，直到碰到第一个字母、汉字、数字，<，>
+        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>]+'), '');
+        // 从后往前，删除字符，直到碰到第一个字母、汉字、数字，<，>
+        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>]+$'), '');
+        return input;
+  }
+
+  static String cleanConfigBlock(String input) {
+        // 从前往后，删除字符，直到碰到第一个字母、汉字、数字，<，>
+        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>]+'), '');
+        // 从后往前，删除字符，直到碰到第一个字母、汉字、数字，<，>
+        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>]+$'), '');
+        return input;
   }
 
   /// 包裹完整HTML结构
@@ -199,6 +210,9 @@ function saveToLocalStorage(deckPrefix) {
 })();
 </script>''';
 
+    // 清理configBlock
+    final safeConfigBlock = cleanConfigBlock(configBlock);
+
     return '''
 <!DOCTYPE html>
 <html>
@@ -214,7 +228,7 @@ function saveToLocalStorage(deckPrefix) {
   $beforeVarsScript
 
   <!-- configBlock -->
-  $configBlock
+  $safeConfigBlock
 
   <!-- script -->
   $script
