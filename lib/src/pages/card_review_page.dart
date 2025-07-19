@@ -67,13 +67,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           print('WebView Debug: ${message.message}');
         },
       )
-      ..addJavaScriptChannel(
-        'AnkiSave',
-        onMessageReceived: (JavaScriptMessage message) {
-          // 当用户点击显示答案时，保存变量到localStorage
-          _controller.runJavaScript('saveToLocalStorage("anki_${widget.deckId}_")');
-        },
-      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onWebResourceError: (WebResourceError error) {

@@ -114,8 +114,17 @@ function createDeepProxy(obj, deckPrefix, varName) {
     },
     set(target, prop, value, receiver) {
       const result = Reflect.set(target, prop, value, receiver);
-      if (typeof ankiDebug === 'function') {
-        ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
+      // 自动保存到localStorage
+      try {
+        localStorage.setItem(deckPrefix + varName, JSON.stringify(window[varName]));
+        if (typeof ankiDebug === 'function') {
+          ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
+          ankiDebug('已自动保存 ' + varName + ' 到 localStorage');
+        }
+      } catch (e) {
+        if (typeof ankiDebug === 'function') {
+          ankiDebug('保存到 localStorage 失败: ' + e);
+        }
       }
       return result;
     }
