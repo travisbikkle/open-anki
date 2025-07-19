@@ -28,14 +28,8 @@ class AnkiTemplateRenderer {
         config = config != null ? _cleanHtml(config) : null;
 
   static String _cleanHtml(String input) {
-    // 去除 BOM、不可见控制字符（保留常用换行/制表符）
-    return input;
-    return input
-        .replaceAll('  ', '') // BOM
-        .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '') // 控制字符
-        .replaceAll('  ', '') // 垂直制表符
-        .replaceAll('  ', '') // 换页符
-        ;
+        // 移除开头可能被截断、渲染后可能显示为问号的字符（如 BOM、不可见控制字符等）
+        return input.replaceFirst(RegExp(r'^[\uFEFF\u200B-\u200F\u202A-\u202E\u2060-\u206F]+'), '');
   }
 
   /// 包裹完整HTML结构
@@ -210,21 +204,26 @@ function saveToLocalStorage(deckPrefix) {
 <html>
 <head>
   <meta charset="utf-8">
+  <!-- fallbackFontCss -->
   $fallbackFontCss
 
+  <!-- errorCatcherScript -->
   $errorCatcherScript
 
+  <!-- beforeVarsScript -->
   $beforeVarsScript
 
+  <!-- configBlock -->
   $configBlock
 
+  <!-- script -->
   $script
 
+  <!-- afterVarsScript -->
   $afterVarsScript
 
+  <!-- localStorageScript -->
   $localStorageScript
-
-  $configBlock
 </head>
 <body>
 $body
