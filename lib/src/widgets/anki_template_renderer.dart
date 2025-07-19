@@ -29,17 +29,17 @@ class AnkiTemplateRenderer {
 
   static String _cleanHtml(String input) {
         // 从前往后，删除字符，直到碰到第一个字母、汉字、数字，<，>
-        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>]+'), '');
+        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>{}]+'), '');
         // 从后往前，删除字符，直到碰到第一个字母、汉字、数字，<，>
-        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>]+$'), '');
+        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>{}]+$'), '');
         return input;
   }
 
   static String cleanConfigBlock(String input) {
         // 从前往后，删除字符，直到碰到第一个字母、汉字、数字，<，>
-        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>]+'), '');
+        input = input.replaceFirst(RegExp(r'^[^a-zA-Z0-9\u4e00-\u9fa5<>{}]+'), '');
         // 从后往前，删除字符，直到碰到第一个字母、汉字、数字，<，>
-        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>]+$'), '');
+        input = input.replaceFirst(RegExp(r'[^a-zA-Z0-9\u4e00-\u9fa5<>{}]+$'), '');
         return input;
   }
 
@@ -80,11 +80,6 @@ body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
     return !before.includes(k) && k != '_ankiVarsBefore' && typeof window[k] !== 'function';
   });
   window.sharedVarNames = newVars;
-  function ankiDebug(msg) {
-    if (window.AnkiDebug) {
-      window.AnkiDebug.postMessage(msg);
-    }
-  }
   ankiDebug('开始检测新增变量');
   ankiDebug('检测前变量数量: ' + before.length);
   ankiDebug('检测后变量数量: ' + after.length);
@@ -132,7 +127,9 @@ function createDeepProxy(obj, deckPrefix, varName) {
           if (saveTimeout) clearTimeout(saveTimeout);
           saveTimeout = setTimeout(() => {
             window.AnkiSave.postMessage('saved');
-          }, 50);
+          }, 100);
+          ankiDebug('AnkiSave.postMessage will be called');
+          ankiDebug('AnkiSave.postMessage("saved") called');
         }
       } catch (e) {
         if (typeof ankiDebug === 'function') {
@@ -201,13 +198,24 @@ function saveToLocalStorage(deckPrefix) {
       ankiDebug('检查变量 ' + varName + ', 类型: ' + typeof currentValue);
       
       // 使用 Proxy 深度监听对象
-      if (typeof currentValue === 'object' && currentValue !== null) {
+      if (typeof currentValue == 'object' && currentValue !== null) {
         window[varName] = createDeepProxy(currentValue, deckPrefix, varName);
         ankiDebug('已设置对象变量 ' + varName + ' 的深度监听器');
       }
     });
   }
 })();
+</script>''';
+
+    // 注入哨兵变量，这个值的变化将会触发deep proxy，然后触发ankisave，然后切换页面
+    final sentinelScript = '''<script>
+window.anki_save_sentinel = {"current": Date.now()};
+
+function trigger_save() {
+  type = typeof anki_save_sentinel;
+  ankiDebug("trigger save called, anki_save_sentinel prev: " + anki_save_sentinel + ", type:" + type);
+  window.anki_save_sentinel.current = Date.now();
+}
 </script>''';
 
     // 清理configBlock
@@ -217,15 +225,26 @@ function saveToLocalStorage(deckPrefix) {
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- 公共 -->
+  <script>
+  function ankiDebug(msg) {
+    if (window.AnkiDebug) {
+      window.AnkiDebug.postMessage(msg);
+    }
+  }
+  </script>
   <meta charset="utf-8">
+  <!-- beforeVarsScript -->
+  $beforeVarsScript
+
+  <!-- sentinelScript -->
+  $sentinelScript
+
   <!-- fallbackFontCss -->
   $fallbackFontCss
 
   <!-- errorCatcherScript -->
   $errorCatcherScript
-
-  <!-- beforeVarsScript -->
-  $beforeVarsScript
 
   <!-- configBlock -->
   $safeConfigBlock

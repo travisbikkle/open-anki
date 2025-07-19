@@ -235,28 +235,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     _controller.loadRequest(Uri.parse('file://$frontPath'));
   }
 
-
-
-
-
-
-  String _wrapHtml(String content) {
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: system-ui, sans-serif; font-size: 50px; padding: 8; margin: 0; }
-    .stem { font-size: 20px; font-weight: bold; line-height: 2; }
-  </style>r
-</head>
-<body>
-$content
-</body>
-</html>
-''';
-  }
-
   void _nextCard() {
     if (_noteIds.isEmpty) return;
     setState(() {
@@ -416,12 +394,10 @@ $content
                     print('=== 显示答案按钮被点击 ===');
                     if (_showBack) {
                       _pendingShow = 'front';
-                      // 触发一次保存（会自动通知 Dart）
-                      await _controller.runJavaScript('window.gData && (gData._dummy = Date.now())');
                     } else {
                       _pendingShow = 'back';
-                      await _controller.runJavaScript('window.gData && (gData._dummy = Date.now())');
                     }
+                    await _controller.runJavaScript('trigger_save()');
                     // 不直接切页面，等 onMessageReceived 回调
                   },
                   child: Text(_showBack ? '返回正面' : '显示答案'),
