@@ -89,6 +89,21 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           onWebResourceError: (WebResourceError error) {
             print('WebView Error: ${error.description}');
           },
+          onPageFinished: (String url) async {
+            // 注入JS放大checkbox和radio
+            await _controller.runJavaScript('''
+              (function() {
+                var scale = 1.1;
+                var fontSize = window.getComputedStyle(document.body).fontSize;
+                var px = parseFloat(fontSize || '12');
+                var size = Math.max(px, 12);
+                var css = 'input[type=checkbox], input[type=radio] { width: ' + size + 'px !important; height: ' + size + 'px !important; min-width: ' + size + 'px !important; min-height: ' + size + 'px !important; zoom: ' + scale + '; vertical-align: middle; }';
+                var style = document.createElement('style');
+                style.innerHTML = css;
+                document.head.appendChild(style);
+              })();
+            ''');
+          },
         ),
       );
     _loadFontSizeAndDeck();
@@ -377,7 +392,18 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           Container(
             height: 0,
           ),
-          Expanded(child: WebViewWidget(key: ValueKey(_currentIndex), controller: _controller)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: WebViewWidget(
+                  key: ValueKey(_currentIndex),
+                  controller: _controller,
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(

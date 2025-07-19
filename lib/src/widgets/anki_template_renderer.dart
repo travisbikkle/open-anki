@@ -226,7 +226,7 @@ function trigger_save() {
 
     return '''
 <!DOCTYPE html>
-<html>
+<html style="height:100%">
 <head>
   <!-- 公共 -->
   <script>
@@ -261,8 +261,10 @@ function trigger_save() {
   <!-- localStorageScript -->
   $localStorageScript
 </head>
-<body>
+<body style="height:100%">
+<div class="card card1 card2" style="height:100%;padding:20px">
 $body
+</div>
 </body>
 </html>
 ''';
