@@ -278,6 +278,23 @@ $body
     return _wrapHtml(_render(back, frontHtml), deckId: deckId);
   }
 
+  String _addImageSupport(String html) {
+    if (mediaDir == null) return html;
+    // 匹配 <img src="xxx">，不处理已是绝对路径或以 http(s) 开头的
+    final reg1 = RegExp(r'<img\s+[^>]*src=["](?!https?://|/)([^">]+)["][^>]*>', caseSensitive: false);
+    final reg2 = RegExp(r"<img\s+[^>]*src=['](?!https?://|/)([^'>]+)['][^>]*>", caseSensitive: false);
+
+    String _replaceImgSrc(Match m) {
+      final src = m.group(1)!;
+      final newTag = m[0]!.replaceFirst(src, '${mediaDir!}/$src');
+      return newTag;
+    }
+
+    var result = html.replaceAllMapped(reg1, _replaceImgSrc);
+    result = result.replaceAllMapped(reg2, _replaceImgSrc);
+    return result;
+  }
+
   /// 主渲染逻辑，返回内容片段
   String _render(String template, String? frontHtml) {
     String html = template;
@@ -301,7 +318,9 @@ $body
         return '';
       }
     });
-    return _addAudioSupport(html);
+    html = _addAudioSupport(html);
+    html = _addImageSupport(html);
+    return html;
   }
 
   String _addAudioSupport(String html) {
