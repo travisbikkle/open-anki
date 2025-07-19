@@ -55,6 +55,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   double _minFontSize = 18;
   String? _frontHtmlPath;
   String? _backHtmlPath;
+  String? _pendingShow; // 'front' or 'back'
 
   @override
   void initState() {
@@ -64,7 +65,23 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       ..addJavaScriptChannel(
         'AnkiDebug',
         onMessageReceived: (JavaScriptMessage message) {
-          print('WebView Debug: ${message.message}');
+          print('WebView Debug:  [35m${message.message} [0m');
+        },
+      )
+      ..addJavaScriptChannel(
+        'AnkiSave',
+        onMessageReceived: (JavaScriptMessage message) {
+          if (message.message == 'saved' && _pendingShow != null) {
+            if (_pendingShow == 'back') {
+              _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
+            } else {
+              _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
+            }
+            setState(() {
+              _showBack = !_showBack;
+            });
+            _pendingShow = null;
+          }
         },
       )
       ..setNavigationDelegate(
@@ -396,19 +413,16 @@ $content
                 const SizedBox(width: 24),
                 ElevatedButton(
                   onPressed: () async {
-                      print('=== 显示答案按钮被点击 ===');
-                      if (_showBack) {
-                        // 返回正面：加载正面 HTML
-                        print('返回正面，加载: $_frontHtmlPath');
-                        _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
-                      } else {
-                        // 显示答案：直接加载反面 HTML（暂时跳过变量保存）
-                        print('显示答案，加载: $_backHtmlPath');
-                        _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
-                        setState(() {
-                          _showBack = !_showBack;
-                        });
-                      }
+                    print('=== 显示答案按钮被点击 ===');
+                    if (_showBack) {
+                      _pendingShow = 'front';
+                      // 触发一次保存（会自动通知 Dart）
+                      await _controller.runJavaScript('window.gData && (gData._dummy = Date.now())');
+                    } else {
+                      _pendingShow = 'back';
+                      await _controller.runJavaScript('window.gData && (gData._dummy = Date.now())');
+                    }
+                    // 不直接切页面，等 onMessageReceived 回调
                   },
                   child: Text(_showBack ? '返回正面' : '显示答案'),
                 ),

@@ -102,6 +102,7 @@ function createDeepProxy(obj, deckPrefix, varName) {
   if (obj === null || typeof obj !== 'object') return obj;
   if (obj.__isProxied) return obj; // 防止重复代理
 
+  let saveTimeout = null;
   const handler = {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
@@ -120,6 +121,13 @@ function createDeepProxy(obj, deckPrefix, varName) {
         if (typeof ankiDebug === 'function') {
           ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
           ankiDebug('已自动保存 ' + varName + ' 到 localStorage');
+        }
+        // debounce 50ms，只通知 Dart 一次
+        if (window.AnkiSave) {
+          if (saveTimeout) clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            window.AnkiSave.postMessage('saved');
+          }, 50);
         }
       } catch (e) {
         if (typeof ankiDebug === 'function') {
