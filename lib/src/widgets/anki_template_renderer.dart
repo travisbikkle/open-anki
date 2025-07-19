@@ -227,21 +227,8 @@ function saveToLocalStorage(deckPrefix) {
   $configBlock
 </head>
 <body>
-DEBUG:
-<span id="debug"></span>
-:DEBUG
-<br />
 $body
 </body>
-
-<script>
-setInterval(function() {
-  // 修复：应使用 textContent 或 innerText 而不是 text
-  // 修复拼写错误，应为 JSON.stringify 并且 gData 可能未定义，做容错
-  document.getElementById('debug').textContent = typeof gData !== 'undefined' ? JSON.stringify(gData) : '';
-}, 1000);
-</script>
-
 </html>
 ''';
   }
