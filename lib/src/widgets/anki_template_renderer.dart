@@ -29,6 +29,7 @@ class AnkiTemplateRenderer {
 
   static String _cleanHtml(String input) {
     // 去除 BOM、不可见控制字符（保留常用换行/制表符）
+    return input;
     return input
         .replaceAll('  ', '') // BOM
         .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '') // 控制字符
@@ -38,7 +39,7 @@ class AnkiTemplateRenderer {
   }
 
   /// 包裹完整HTML结构
-  String _wrapHtml(String body, {String? extraHead}) {
+  String _wrapHtml(String body, {String? deckId}) {
     final fallbackFontCss = '''
 <style>
 body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
@@ -55,15 +56,137 @@ body, .card, .text, .cloze, .wrong, .classify, .remark, .options, .options * {
       }
     }
     final script = js != null && js!.trim().isNotEmpty ? '<script>\n${js!}\n</script>' : '';
+    
+    final deckPrefix = deckId != null ? 'anki_${deckId}_' : 'anki_';
+    
+    // 变量检测脚本
+    final beforeVarsScript = '''<script>
+(function() {
+  var before = Object.keys(window);
+  window._ankiVarsBefore = before;
+})();</script>''';
+
+    // 变量检测和设置脚本
+    final afterVarsScript = '''<script>
+(function() {
+  var before = window._ankiVarsBefore || [];
+  var after = Object.keys(window);
+  var newVars = after.filter(function(k){
+    return !before.includes(k) && k != '_ankiVarsBefore' && typeof window[k] !== 'function';
+  });
+  window.sharedVarNames = newVars;
+  function ankiDebug(msg) {
+    if (window.AnkiDebug) {
+      window.AnkiDebug.postMessage(msg);
+    }
+  }
+  ankiDebug('开始检测新增变量');
+  ankiDebug('检测前变量数量: ' + before.length);
+  ankiDebug('检测后变量数量: ' + after.length);
+  ankiDebug('新增变量: ' + JSON.stringify(newVars));
+})();</script>''';
+
+    // localStorage脚本
+    final localStorageScript = '''<script>
+// 创建深度代理函数
+function createDeepProxy(obj, deckPrefix, varName) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  return new Proxy(obj, {
+    get: function(target, prop) {
+      const value = target[prop];
+      if (typeof value === 'object' && value !== null) {
+        // 递归代理嵌套对象
+        target[prop] = createDeepProxy(value, deckPrefix, varName + '.' + prop);
+      }
+      return target[prop];
+    },
+    set: function(target, prop, value) {
+      target[prop] = value;
+      // 不自动保存，只在用户主动操作时保存
+      return true;
+    }
+  });
+}
+
+// 手动保存函数
+function saveToLocalStorage(deckPrefix) {
+  if (window.sharedVarNames) {
+    window.sharedVarNames.forEach(function(varName) {
+      const value = window[varName];
+      if (value !== undefined && value !== null) {
+        localStorage.setItem(deckPrefix + varName, JSON.stringify(value));
+        function ankiDebug(msg) {
+          if (window.AnkiDebug) {
+            window.AnkiDebug.postMessage(msg);
+          }
+        }
+        ankiDebug('手动保存变量 ' + varName + ' 到localStorage');
+      }
+    });
+  }
+}
+
+// 页面加载时恢复变量并设置监听
+(function() {
+  var deckPrefix = '$deckPrefix';
+  function ankiDebug(msg) {
+    if (window.AnkiDebug) {
+      window.AnkiDebug.postMessage(msg);
+    }
+  }
+  ankiDebug('开始恢复变量, deckPrefix: ' + deckPrefix);
+  
+  // 先恢复变量
+  if (window.sharedVarNames) {
+    window.sharedVarNames.forEach(function(varName) {
+      const saved = localStorage.getItem(deckPrefix + varName);
+      if (saved) {
+        try {
+          const restoredValue = JSON.parse(saved);
+          window[varName] = restoredValue;
+          ankiDebug('恢复变量 ' + varName + ' = ' + JSON.stringify(window[varName]));
+        } catch(e) {
+          window[varName] = saved;
+          ankiDebug('恢复变量 ' + varName + ' = ' + window[varName] + ' (字符串)');
+        }
+      } else {
+        ankiDebug('变量 ' + varName + ' 在localStorage中不存在');
+      }
+    });
+  }
+  
+  // 然后设置变量监听
+  ankiDebug('开始设置变量监听, deckPrefix: ' + deckPrefix);
+  if (window.sharedVarNames) {
+    window.sharedVarNames.forEach(function(varName) {
+      let currentValue = window[varName];
+      ankiDebug('检查变量 ' + varName + ', 类型: ' + typeof currentValue);
+      
+      // 使用 Proxy 深度监听对象
+      if (typeof currentValue === 'object' && currentValue !== null) {
+        window[varName] = createDeepProxy(currentValue, deckPrefix, varName);
+        ankiDebug('已设置对象变量 ' + varName + ' 的深度监听器');
+      }
+    });
+  }
+})();
+</script>''';
+
     return '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   $fallbackFontCss
+  $beforeVarsScript
   $configBlock
   $script
-  ${extraHead ?? ''}
+  $afterVarsScript
+  $localStorageScript
+  $configBlock
 </head>
 <body>
 $body
@@ -73,13 +196,13 @@ $body
   }
 
   /// 渲染正面
-  String renderFront() {
-    return _wrapHtml(_render(front, null));
+  String renderFront({String? deckId}) {
+    return _wrapHtml(_render(front, null), deckId: deckId);
   }
 
   /// 渲染反面，支持 {{FrontSide}}
-  String renderBack(String? frontHtml) {
-    return _wrapHtml(_render(back, frontHtml));
+  String renderBack(String? frontHtml, {String? deckId}) {
+    return _wrapHtml(_render(back, frontHtml), deckId: deckId);
   }
 
   /// 主渲染逻辑，返回内容片段
@@ -125,26 +248,6 @@ $body
     });
   }
 
-  /// 合并正反面渲染，推荐用writeMergedToFiles+composeIframeHtml，renderMerged仅保留兼容性（不再包含iframe结构）。
-  String renderMerged({String? frontHtml}) {
-    // 兼容性保留：直接渲染正反面内容到同一div，不再包含iframe结构
-    final frontContent = _render(front, null);
-    final backContent = _render(back, frontHtml ?? frontContent);
-    final toggleScript = '''
-<script>
-function showFront() {
-  document.getElementById('anki-main').innerHTML = window.ankiFrontHtml;
-}
-function showBack() {
-  document.getElementById('anki-main').innerHTML = window.ankiBackHtml;
-}
-window.onload = function() { showFront(); };
-</script>
-''';
-    final body = '<div id="anki-main"></div>';
-    return _wrapHtml(body, extraHead: toggleScript);
-  }
-
    static void printLongHtml(String html) {
       // Flutter 的 print 会截断超长字符串，这里分段输出
       const int chunkSize = 800;
@@ -155,7 +258,7 @@ window.onload = function() { showFront(); };
     }
 
   /// 写入正反面HTML到本地文件，并返回主页面HTML和文件路径
-  static Future<(String frontPath, String backPath)> writeMergedToFiles({
+  static Future<(String frontPath, String backPath)> renderFrontBackHtml({
     required String front,
     required String back,
     required String config,
@@ -163,6 +266,7 @@ window.onload = function() { showFront(); };
     String? js,
     String? mediaDir,
     double minFontSize = 18,
+    String? deckId,
   }) async {
     final dir = await getApplicationDocumentsDirectory();
     final frontPath = '${dir.path}/anki_front.html';
@@ -177,8 +281,8 @@ window.onload = function() { showFront(); };
       minFontSize: minFontSize,
       mergeFrontBack: false,
     );
-    String frontHtml = renderer.renderFront();
-    String backHtml = renderer.renderBack(renderer.renderFront());
+    String frontHtml = renderer.renderFront(deckId: deckId);
+    String backHtml = renderer.renderBack(renderer.renderFront(deckId: deckId), deckId: deckId);
     // 调试：如内容为空则写入简单内容
     if (frontHtml.trim().isEmpty) {
       frontHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>Front</h1></body></html>';
@@ -194,53 +298,5 @@ window.onload = function() { showFront(); };
     printLongHtml('Anki backHtml content:\n$backHtml');
     
     return (frontPath, backPath);
-  }
-
-  /// 生成iframe主页面HTML
-  static String composeIframeHtml(String frontPath, String backPath, String testHtmlPath) {
-    final frontUrl = 'file://$frontPath';
-    final backUrl = 'file://$backPath';
-    final testUrl = 'file://$testHtmlPath';
-    final frontFile = File(frontPath);
-    final backFile = File(backPath);
-    final testFile = File(testHtmlPath);
-    final frontExists = frontFile.existsSync();
-    final backExists = backFile.existsSync();
-    final testExists = testFile.existsSync();
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>body,html{margin:0;padding:0;}</style>
-  <script>
-    function showFront() {
-      document.getElementById('anki-front-frame').style.display = 'block';
-      document.getElementById('anki-back-frame').style.display = 'none';
-      if(document.getElementById('test-frame')) document.getElementById('test-frame').style.display = 'block';
-    }
-    function showBack() {
-      document.getElementById('anki-front-frame').style.display = 'none';
-      document.getElementById('anki-back-frame').style.display = 'block';
-      if(document.getElementById('test-frame')) document.getElementById('test-frame').style.display = 'block';
-    }
-    window.onload = function() { showFront(); };
-    window.onerror = function(e) { document.body.innerHTML = 'JS ERROR: ' + e; }
-  </script>
-</head>
-<body style="margin:0;padding:0;">
-  <!--
-      $frontUrl $frontExists<br />
-      $backUrl $backExists<br />
-      $testUrl $testExists<br />
-  -->
-  <iframe id="anki-front-frame" src="$frontUrl" style="width:100vw;height:40vh;border:2px solid #888;display:block" sandbox="allow-scripts allow-same-origin"></iframe>
-  <iframe id="anki-back-frame" src="$backUrl" style="width:100vw;height:40vh;border:2px solid #888;display:none" sandbox="allow-scripts allow-same-origin"></iframe>
-  <!--
-      <iframe id="test-frame" src="$testUrl" style="width:100vw;height:20vh;border:2px solid #f00;display:block" sandbox="allow-scripts allow-same-origin"></iframe>
-  -->
-</body>
-</html>
-''';
   }
 } 

@@ -53,7 +53,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   String? _currentBack;
   bool _showBack = false;
   double _minFontSize = 18;
-  bool _useMergedHtml = true; // 启用正反面合并渲染
   String? _frontHtmlPath;
   String? _backHtmlPath;
 
@@ -61,7 +60,27 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   void initState() {
     super.initState();
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'AnkiDebug',
+        onMessageReceived: (JavaScriptMessage message) {
+          print('WebView Debug: ${message.message}');
+        },
+      )
+      ..addJavaScriptChannel(
+        'AnkiSave',
+        onMessageReceived: (JavaScriptMessage message) {
+          // 当用户点击显示答案时，保存变量到localStorage
+          _controller.runJavaScript('saveToLocalStorage("anki_${widget.deckId}_")');
+        },
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (WebResourceError error) {
+            print('WebView Error: ${error.description}');
+          },
+        ),
+      );
     _loadFontSizeAndDeck();
   }
 
@@ -147,8 +166,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
 
   Future<void> _loadCurrentCard() async {
+    print('[_loadCurrentCard] 开始加载卡片，索引: $_currentIndex');
     if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
       debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
+      print('_noteIds.isEmpty: ${_noteIds.isEmpty}');
+      print('_mediaDir: $_mediaDir');
+      print('_currentIndex: $_currentIndex');
+      print('_sqlitePath: $_sqlitePath');
+      print('_deckVersion: $_deckVersion');
       return;
     }
     setState(() {
@@ -177,115 +202,33 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _currentConfig = result.css;
     });
     if (_currentNotetype == null || _currentNote == null) return;
-    if (_useMergedHtml) {
-      final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-      final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
-        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
-      }
-      final (frontPath, backPath) = await AnkiTemplateRenderer.writeMergedToFiles(
-        front: _currentFront ?? '',
-        back: _currentBack ?? '',
-        config: _currentConfig ?? '',
-        fieldMap: fieldMap,
-        js: null,
-        mediaDir: _mediaDir,
-        minFontSize: _minFontSize,
-      );
-      _frontHtmlPath = frontPath;
-      _backHtmlPath = backPath;
-
-      // 获取 test.html 路径
-      final appDocDir = await getApplicationDocumentsDirectory();
-      final testHtmlPath = '${appDocDir.path}/test2.html';
-      final testHtmlUrl = 'file://$testHtmlPath';
-      bool testHtmlExist = File(testHtmlPath).existsSync();
-      print("----------------------------------------------------$testHtmlExist");
-      final debugHtml = AnkiTemplateRenderer.composeIframeHtml(frontPath, backPath, testHtmlPath);
-      // 写入 main_anki.html
-      final mainHtmlPath = '${appDocDir.path}/main_anki.html';
-      await File(mainHtmlPath).writeAsString(debugHtml);
-      _controller.loadRequest(Uri.parse('file://$mainHtmlPath'));
-    } else {
-      final html = _composeCardFrontHtml(_currentNote!);
-      _controller.loadHtmlString(html, baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-    }
-  }
-
-  Future<List<String>> _writeFrontBackHtml(NoteExt note) async {
-    final dir = await getTemporaryDirectory();
-    final frontPath = '${dir.path}/anki_front.html';
-    final backPath = '${dir.path}/anki_back.html';
+    
     final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
     final fieldMap = <String, String>{};
-    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
-      fieldMap[fieldsForType[i].name] = note.flds[i];
+    for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
+      fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
     }
-    String front = _currentFront ?? '';
-    String back = _currentBack ?? '';
-    String config = _currentConfig ?? '';
-    final renderer = AnkiTemplateRenderer(
-      front: front,
-      back: back,
-      config: config,
+    final (frontPath, backPath) = await AnkiTemplateRenderer.renderFrontBackHtml(
+      front: _currentFront ?? '',
+      back: _currentBack ?? '',
+      config: _currentConfig ?? '',
       fieldMap: fieldMap,
       js: null,
       mediaDir: _mediaDir,
       minFontSize: _minFontSize,
-      mergeFrontBack: false,
+      deckId: widget.deckId,
     );
-    final frontHtml = renderer.renderFront();
-    final backHtml = renderer.renderBack(renderer.renderFront());
-    await File(frontPath).writeAsString(frontHtml);
-    await File(backPath).writeAsString(backHtml);
-    return [frontPath, backPath];
+    _frontHtmlPath = frontPath;
+    _backHtmlPath = backPath;
+    print('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
+    // 直接加载正面 HTML
+    _controller.loadRequest(Uri.parse('file://$frontPath'));
   }
 
 
-  String _composeCardFrontHtml(NoteExt note) {
-    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-    final fieldMap = <String, String>{};
-    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
-      fieldMap[fieldsForType[i].name] = note.flds[i];
-    }
-    String front = '', back = '', config = '';
-    front = _currentFront ?? '';
-    back = _currentBack ?? '';
-    config = _currentConfig ?? '';
-    final renderer = AnkiTemplateRenderer(
-      front: front,
-      back: back,
-      config: config,
-      fieldMap: fieldMap,
-      js: null,
-      mediaDir: _mediaDir,
-      minFontSize: _minFontSize,
-    );
-    String html = renderer.renderFront();
-    return html;
-  }
 
-  String _composeCardBackHtml(NoteExt note) {
-    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-    final fieldMap = <String, String>{};
-    for (int i = 0; i < fieldsForType.length && i < note.flds.length; i++) {
-      fieldMap[fieldsForType[i].name] = note.flds[i];
-    }
-    String front = '', back = '', config = '';
-    front = _currentFront ?? '';
-    back = _currentBack ?? '';
-    config = _currentConfig ?? '';
-    final renderer = AnkiTemplateRenderer(
-      front: front,
-      back: back,
-      config: config,
-      fieldMap: fieldMap,
-      js: null,
-      mediaDir: _mediaDir,
-      minFontSize: _minFontSize,
-    );
-    return renderer.renderBack(renderer.renderFront());
-  }
+
+
 
   String _wrapHtml(String content) {
     return '''
@@ -410,25 +353,15 @@ $content
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
-                                        onPressed: () async {
-                                          if (_useMergedHtml && _frontHtmlPath != null && _backHtmlPath != null) {
-                                            // 获取 test.html 路径
-                                            final appDocDir = await getApplicationDocumentsDirectory();
-                                            final testHtmlPath = '${appDocDir.path}/test.html';
-                                            final testHtmlUrl = 'file://$testHtmlPath';
-                                            final mainHtml = AnkiTemplateRenderer.composeIframeHtml(_frontHtmlPath!, _backHtmlPath!, testHtmlUrl);
+                                                                                onPressed: () async {
+                                          // 显示当前加载的 HTML 文件内容
+                                          final currentPath = _showBack ? _backHtmlPath! : _frontHtmlPath!;
+                                          final htmlFile = File(currentPath);
+                                          if (await htmlFile.exists()) {
+                                            final htmlContent = await htmlFile.readAsString();
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (_) => HtmlSourcePage(html: mainHtml),
-                                              ),
-                                            );
-                                          } else {
-                                            final html = _showBack
-                                                ? _composeCardBackHtml(note!)
-                                                : _composeCardFrontHtml(note!);
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => HtmlSourcePage(html: html),
+                                                builder: (_) => HtmlSourcePage(html: htmlContent),
                                               ),
                                             );
                                           }
@@ -470,25 +403,35 @@ $content
                 const SizedBox(width: 24),
                 ElevatedButton(
                   onPressed: () async {
-                    if (_useMergedHtml) {
-                      if (_showBack) {
-                        await _controller.runJavaScript('showFront()');
-                      } else {
-                        await _controller.runJavaScript('showBack()');
+                                          print('=== 显示答案按钮被点击 ===');
+                      print('_showBack: $_showBack');
+                      print('_frontHtmlPath: $_frontHtmlPath');
+                      print('_backHtmlPath: $_backHtmlPath');
+                      print('widget.deckId: ${widget.deckId}');
+                      
+                      // 检查文件是否存在
+                      if (_frontHtmlPath != null) {
+                        final frontFile = File(_frontHtmlPath!);
+                        print('正面文件存在: ${await frontFile.exists()}');
                       }
-                      setState(() {
-                        _showBack = !_showBack;
-                      });
-                    } else {
-                      setState(() {
-                        _showBack = !_showBack;
-                        if (_showBack) {
-                          _controller.loadHtmlString(_composeCardBackHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-                        } else {
-                          _controller.loadHtmlString(_composeCardFrontHtml(note!), baseUrl: _mediaDir != null ? 'file://${_mediaDir!}/' : null);
-                        }
-                      });
-                    }
+                      if (_backHtmlPath != null) {
+                        final backFile = File(_backHtmlPath!);
+                        print('反面文件存在: ${await backFile.exists()}');
+                      }
+                    
+                                          if (_showBack) {
+                        // 返回正面：加载正面 HTML
+                        print('返回正面，加载: $_frontHtmlPath');
+                        _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
+                      } else {
+                        // 显示答案：直接加载反面 HTML（暂时跳过变量保存）
+                        print('显示答案，加载: $_backHtmlPath');
+                        _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
+                        print('反面HTML加载请求已发送');
+                        setState(() {
+                          _showBack = !_showBack;
+                        });
+                      }
                   },
                   child: Text(_showBack ? '返回正面' : '显示答案'),
                 ),
