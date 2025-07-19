@@ -102,7 +102,29 @@ function createDeepProxy(obj, deckPrefix, varName) {
   if (obj === null || typeof obj !== 'object') return obj;
   if (obj.__isProxied) return obj; // 防止重复代理
 
-  let saveTimeout = null;
+  // 批量保存机制
+  let saveScheduled = false;
+  function scheduleSave(deckPrefix, varName) {
+    if (saveScheduled) return;
+    saveScheduled = true;
+    setTimeout(() => {
+      saveScheduled = false;
+      try {
+        localStorage.setItem(deckPrefix + varName, JSON.stringify(window[varName]));
+        if (typeof ankiDebug === 'function') {
+          ankiDebug('批量保存 ' + varName + ' 到 localStorage');
+        }
+        if (window.AnkiSave) {
+          window.AnkiSave.postMessage('saved');
+        }
+      } catch (e) {
+        if (typeof ankiDebug === 'function') {
+          ankiDebug('保存到 localStorage 失败: ' + e);
+        }
+      }
+    }, 0);
+  }
+
   const handler = {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
@@ -115,27 +137,8 @@ function createDeepProxy(obj, deckPrefix, varName) {
     },
     set(target, prop, value, receiver) {
       const result = Reflect.set(target, prop, value, receiver);
-      // 自动保存到localStorage
-      try {
-        localStorage.setItem(deckPrefix + varName, JSON.stringify(window[varName]));
-        if (typeof ankiDebug === 'function') {
-          ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
-          ankiDebug('已自动保存 ' + varName + ' 到 localStorage');
-        }
-        // debounce 50ms，只通知 Dart 一次
-        if (window.AnkiSave) {
-          if (saveTimeout) clearTimeout(saveTimeout);
-          saveTimeout = setTimeout(() => {
-            window.AnkiSave.postMessage('saved');
-          }, 100);
-          ankiDebug('AnkiSave.postMessage will be called');
-          ankiDebug('AnkiSave.postMessage("saved") called');
-        }
-      } catch (e) {
-        if (typeof ankiDebug === 'function') {
-          ankiDebug('保存到 localStorage 失败: ' + e);
-        }
-      }
+      ankiDebug('Proxy set: ' + varName + '.' + String(prop) + ' = ' + JSON.stringify(value));
+      scheduleSave(deckPrefix, varName);
       return result;
     }
   };
