@@ -63,7 +63,7 @@ pub struct ExtractResult {
     pub dir: String,
     pub md5: String,
     pub media_map: HashMap<String, String>, // 文件名 -> 数字编号的映射
-    pub version: String, // 新增：anki2/anki21b
+    pub version: String, // 新增：anki2/anki21b/anki21
 }
 
 #[flutter_rust_bridge::frb]
@@ -100,14 +100,17 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
     }
     // 4. 处理 collection 文件
     let anki21b = deck_dir.join("collection.anki21b");
+    let anki21 = deck_dir.join("collection.anki21"); // 新增 anki21
     let anki2 = deck_dir.join("collection.anki2");
     let sqlite_path = deck_dir.join("collection.sqlite");
 
     rust_log(&format!("DEBUG: 检查 collection 文件"));
     rust_log(&format!("DEBUG: anki21b 路径: {}", anki21b.display()));
+    rust_log(&format!("DEBUG: anki21 路径: {}", anki21.display()));
     rust_log(&format!("DEBUG: anki2 路径: {}", anki2.display()));
     rust_log(&format!("DEBUG: sqlite 目标路径: {}", sqlite_path.display()));
     rust_log(&format!("DEBUG: anki21b 存在: {}", anki21b.exists()));
+    rust_log(&format!("DEBUG: anki21 存在: {}", anki21.exists()));
     rust_log(&format!("DEBUG: anki2 存在: {}", anki2.exists()));
 
     let version = if anki21b.exists() {
@@ -123,6 +126,12 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
         out.write_all(&sqlite_bytes).map_err(|e| format!("写入sqlite失败: {e}"))?;
         rust_log(&format!("DEBUG: anki21b 处理完成"));
         "anki21b"
+    } else if anki21.exists() {
+        // anki21：直接复制
+        rust_log(&format!("DEBUG: 开始处理 anki21"));
+        fs::copy(&anki21, &sqlite_path).map_err(|e| format!("复制anki21失败: {e}"))?;
+        rust_log(&format!("DEBUG: anki21 复制完成"));
+        "anki21"
     } else if anki2.exists() {
         // 老版：直接复制
         rust_log(&format!("DEBUG: 开始处理 anki2"));
@@ -130,8 +139,8 @@ pub fn extract_apkg(apkg_path: String, base_dir: String) -> Result<ExtractResult
         rust_log(&format!("DEBUG: anki2 复制完成"));
         "anki2"
     } else {
-        // 警告：未找到 collection.anki21b 或 collection.anki2
-        rust_log(&format!("DEBUG: 警告：未找到 collection.anki21b 或 collection.anki2"));
+        // 警告：未找到 collection.anki21b、collection.anki21 或 collection.anki2
+        rust_log(&format!("DEBUG: 警告：未找到 collection.anki21b、collection.anki21 或 collection.anki2"));
         "unknown"
     };
 

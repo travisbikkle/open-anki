@@ -45,7 +45,8 @@ app.*.map.json
 /android/app/release
 target
 target_anki
-target_old
-target_new
+target_2
+target_21
+target_21b
 
 test.html
