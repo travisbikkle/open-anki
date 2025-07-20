@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -8,12 +9,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   void _showSettings() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => const _FontSettingSheet(),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsPage()),
     );
   }
 
@@ -54,15 +52,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   const Icon(Icons.person, size: 60, color: Colors.white),
-                  const Positioned(
-                    bottom: 12,
-                    right: 12,
-                    child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.add, color: Colors.blue),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -78,42 +67,15 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 12),
-          // 课程/关注/粉丝
+          // 学习统计
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: const [
-                _StatCard(icon: Icons.flag, label: '课程', value: '2'),
-                _StatCard(icon: Icons.people, label: '关注', value: '1'),
-                _StatCard(icon: Icons.person, label: '关注者', value: '1'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // 添加好友按钮
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('添加好友'),
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: const Icon(Icons.share, color: Colors.blue),
-                  onPressed: () {},
-                ),
+                _StatCard(icon: Icons.menu_book, label: '题库数', value: '2'),
+                _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
+                _StatCard(icon: Icons.trending_up, label: '总卡片', value: '719'),
               ],
             ),
           ),
@@ -125,10 +87,10 @@ class _ProfilePageState extends State<ProfilePage> {
               spacing: 12,
               runSpacing: 12,
               children: const [
-                _OverviewCard(icon: Icons.local_fire_department, label: '连胜天数', value: '54', color: Colors.orange),
-                _OverviewCard(icon: Icons.flash_on, label: '总经验', value: '3179', color: Colors.amber),
-                _OverviewCard(icon: Icons.emoji_events, label: '等级', value: '蓝宝石', color: Colors.blue),
-                _OverviewCard(icon: Icons.flag, label: '德语分数', value: '8', color: Colors.red),
+                _OverviewCard(icon: Icons.local_fire_department, label: '连续学习', value: '54天', color: Colors.orange),
+                _OverviewCard(icon: Icons.flash_on, label: '今日学习', value: '127', color: Colors.amber),
+                _OverviewCard(icon: Icons.emoji_events, label: '学习等级', value: '蓝宝石', color: Colors.blue),
+                _OverviewCard(icon: Icons.psychology, label: '记忆效率', value: '85%', color: Colors.green),
               ],
             ),
           ),
@@ -178,24 +140,6 @@ class _OverviewCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-}
-
-class _FontSettingSheet extends StatelessWidget {
-  const _FontSettingSheet();
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Text('字体设置', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          SizedBox(height: 16),
-          Text('这里可以放字体大小等设置项'),
         ],
       ),
     );

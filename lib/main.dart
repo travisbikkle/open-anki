@@ -82,7 +82,6 @@ class _MyAppState extends State<MyApp> {
     const ImportPage(),
     const NotesPage(),
     const ProfilePage(),
-    const DebugPage(),
   ];
 
   @override
@@ -100,7 +99,6 @@ class _MyAppState extends State<MyApp> {
             BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '题库'),
             BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
-            BottomNavigationBarItem(icon: Icon(Icons.bug_report), label: '调试'),
           ],
         ),
       ),

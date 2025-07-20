@@ -1,0 +1,60 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="1024" height="1024" fill="#1f2937"/>
+  
+  <!-- 外圈轨道 -->
+  <circle cx="512" cy="512" r="320" fill="none" stroke="#ec4899" stroke-width="40" stroke-opacity="0.2"/>
+  
+  <!-- 外圈进度 -->
+  <path d="M 512 192 A 320 320 0 0 1 832 512" fill="none" stroke="#ec4899" stroke-width="40" stroke-linecap="round"/>
+  
+  <!-- 外圈卡片 -->
+  <g transform="translate(512, 512) rotate(45)">
+    <rect x="-320" y="-50" width="100" height="60" rx="10" fill="#ec4899"/>
+    <rect x="-315" y="-45" width="90" height="50" rx="6" fill="white"/>
+    <rect x="-310" y="-40" width="80" height="8" rx="4" fill="#ec4899"/>
+    <rect x="-310" y="-28" width="60" height="6" rx="3" fill="#94a3b8"/>
+    <rect x="-310" y="-20" width="70" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+  
+  <!-- 中圈轨道 -->
+  <circle cx="512" cy="512" r="220" fill="none" stroke="#22c55e" stroke-width="40" stroke-opacity="0.2"/>
+  
+  <!-- 中圈进度 -->
+  <path d="M 512 292 A 220 220 0 0 1 667 667" fill="none" stroke="#22c55e" stroke-width="40" stroke-linecap="round"/>
+  
+  <!-- 中圈卡片 -->
+  <g transform="translate(512, 512) rotate(135)">
+    <rect x="-220" y="-50" width="100" height="60" rx="10" fill="#22c55e"/>
+    <rect x="-215" y="-45" width="90" height="50" rx="6" fill="white"/>
+    <rect x="-210" y="-40" width="80" height="8" rx="4" fill="#22c55e"/>
+    <rect x="-210" y="-28" width="60" height="6" rx="3" fill="#94a3b8"/>
+    <rect x="-210" y="-20" width="70" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+  
+  <!-- 内圈轨道 -->
+  <circle cx="512" cy="512" r="120" fill="none" stroke="#06b6d4" stroke-width="40" stroke-opacity="0.2"/>
+  
+  <!-- 内圈进度 -->
+  <path d="M 512 392 A 120 120 0 0 1 597 597" fill="none" stroke="#06b6d4" stroke-width="40" stroke-linecap="round"/>
+  
+  <!-- 内圈卡片 -->
+  <g transform="translate(512, 512) rotate(225)">
+    <rect x="-120" y="-50" width="100" height="60" rx="10" fill="#06b6d4"/>
+    <rect x="-115" y="-45" width="90" height="50" rx="6" fill="white"/>
+    <rect x="-110" y="-40" width="80" height="8" rx="4" fill="#06b6d4"/>
+    <rect x="-110" y="-28" width="60" height="6" rx="3" fill="#94a3b8"/>
+    <rect x="-110" y="-20" width="70" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+  
+  <!-- 中心点 -->
+  <circle cx="512" cy="512" r="8" fill="white"/>
+  
+  <!-- 装饰性光点 -->
+  <circle cx="200" cy="200" r="6" fill="#ec4899"/>
+  <circle cx="824" cy="180" r="4" fill="#22c55e"/>
+  <circle cx="180" cy="400" r="8" fill="#06b6d4"/>
+  <circle cx="844" cy="400" r="5" fill="#ec4899"/>
+  <circle cx="200" cy="650" r="7" fill="#22c55e"/>
+  <circle cx="824" cy="650" r="6" fill="#06b6d4"/>
+</svg> 

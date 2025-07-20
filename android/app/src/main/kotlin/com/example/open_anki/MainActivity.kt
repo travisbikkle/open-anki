@@ -1,4 +1,4 @@
-package com.example.open_anki
+package com.eusoftbank.open_anki
 
 import io.flutter.embedding.android.FlutterActivity
 
