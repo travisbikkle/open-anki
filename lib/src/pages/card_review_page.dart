@@ -163,9 +163,9 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   void _saveProgress(int idx) async {
     await AppDb.saveProgress(widget.deckId, idx);
     await AppDb.upsertRecentDeck(widget.deckId);
-    // 不再每次切题刷新 provider
-    // ref.invalidate(allDecksProvider);
-    // ref.invalidate(recentDecksProvider);
+    // 刷新 provider 来更新界面显示
+    ref.invalidate(allDecksProvider);
+    ref.invalidate(recentDecksProvider);
   }
 
     void printLongHtml(String html) {

@@ -98,23 +98,54 @@ class AppDb {
   // 根据 ID 获取单个 deck
   static Future<DeckInfo?> getDeckById(String deckId) async {
     final dbClient = await db;
-    final result = await dbClient.query(
-      'decks',
-      where: 'md5 = ?',
-      whereArgs: [deckId],
-      limit: 1,
-    );
+    final result = await dbClient.rawQuery('''
+      SELECT 
+        d.md5,
+        d.user_deck_name,
+        d.card_count,
+        d.version,
+        p.current_card_id,
+        p.last_reviewed
+      FROM decks d
+      LEFT JOIN progress p ON d.md5 = p.deck_id
+      WHERE d.md5 = ?
+      LIMIT 1
+    ''', [deckId]);
     
     if (result.isEmpty) return null;
     
     final deckMap = result.first;
-    return DeckInfo.fromMap(deckMap);
+    // 合并 decks 和 progress 的数据
+    final mergedMap = {
+      ...deckMap,
+      'current_index': deckMap['current_card_id'] ?? 0,
+    };
+    return DeckInfo.fromMap(mergedMap);
   }
 
   static Future<List<DeckInfo>> getAllDecks() async {
     final dbClient = await db;
-    final result = await dbClient.query('decks', orderBy: 'import_time DESC');
-    return result.map((map) => DeckInfo.fromMap(map)).toList();
+    final result = await dbClient.rawQuery('''
+      SELECT 
+        d.md5,
+        d.user_deck_name,
+        d.card_count,
+        d.version,
+        p.current_card_id,
+        p.last_reviewed
+      FROM decks d
+      LEFT JOIN progress p ON d.md5 = p.deck_id
+      ORDER BY d.import_time DESC
+    ''');
+    
+    return result.map((map) {
+      // 合并 decks 和 progress 的数据
+      final deckMap = {
+        ...map,
+        'current_index': map['current_card_id'] ?? 0,
+      };
+      return DeckInfo.fromMap(deckMap);
+    }).toList();
   }
 
   // 刷题进度操作
@@ -154,7 +185,7 @@ class AppDb {
     final dbClient = await db;
     final recentResults = await dbClient.query('recent_decks', orderBy: 'last_reviewed DESC', limit: limit);
     
-    // 获取所有 deck 信息
+    // 获取所有 deck 信息（包含进度）
     final allDecks = await getAllDecks();
     final deckMap = {for (var d in allDecks) d.deckId: d};
     
