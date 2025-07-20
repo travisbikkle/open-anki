@@ -195,6 +195,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               if (newName != null && newName.isNotEmpty && newName != deck.deckName) {
                                 await AppDb.updateDeckName(deck.deckId, newName);
                                 ref.invalidate(allDecksProvider);
+                                ref.invalidate(recentDecksProvider);
                               }
                             } else if (result == 'delete') {
                               final confirmed = await showDialog<bool>(
@@ -218,6 +219,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               if (confirmed == true) {
                                 await AppDb.deleteDeck(md5: deck.deckId);
                                 ref.invalidate(allDecksProvider);
+                                ref.invalidate(recentDecksProvider);
                               }
                             }
                           },
