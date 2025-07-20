@@ -79,7 +79,15 @@ class AppDb {
   static Future<int> deleteDeck({String? md5}) async {
     final dbClient = await db;
     if (md5 != null) {
-      return await dbClient.delete('decks', where: 'md5 = ?', whereArgs: [md5]);
+      // 使用事务确保数据一致性
+      return await dbClient.transaction((txn) async {
+        // 删除 recent_decks 表中的记录
+        await txn.delete('recent_decks', where: 'deck_id = ?', whereArgs: [md5]);
+        // 删除 progress 表中的记录
+        await txn.delete('progress', where: 'deck_id = ?', whereArgs: [md5]);
+        // 删除 decks 表中的记录
+        return await txn.delete('decks', where: 'md5 = ?', whereArgs: [md5]);
+      });
     } else {
       throw ArgumentError('必须提供 md5');
     }
@@ -189,22 +197,14 @@ class AppDb {
     final allDecks = await getAllDecks();
     final deckMap = {for (var d in allDecks) d.deckId: d};
     
-    return recentResults.map((e) {
-      final deckId = e['deck_id'] as String;
-      final deck = deckMap[deckId];
-      if (deck != null) {
-        return deck;
-      } else {
-        // 如果找不到对应的 deck，返回一个默认的
-        return DeckInfo(
-          deckId: deckId,
-          deckName: '未知题库',
-          cardCount: 0,
-          lastReviewed: e['last_reviewed'] as int?,
-          currentIndex: 0,
-        );
-      }
-    }).toList();
+    // 只返回存在的 deck，过滤掉已删除的
+    return recentResults
+        .map((e) {
+          final deckId = e['deck_id'] as String;
+          return deckMap[deckId];
+        })
+        .whereType<DeckInfo>() // 过滤掉 null 值并确保类型正确
+        .toList();
   }
 
   // 用户设置
