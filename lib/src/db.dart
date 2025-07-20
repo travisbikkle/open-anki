@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert'; // Added for jsonEncode and jsonDecode
+import 'model.dart';
 
 class AppDb {
   static Database? _db;
@@ -16,22 +17,22 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 1, // 首次发布版本
+      version: 1, // 重新开始，使用版本1
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE decks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            md5 TEXT PRIMARY KEY,
             apkg_path TEXT NOT NULL,
             user_deck_name TEXT,
-            md5 TEXT,
             import_time INTEGER,
             media_map TEXT,
-            version TEXT
+            version TEXT,
+            card_count INTEGER
           )
         ''');
         await db.execute('''
           CREATE TABLE progress (
-            deck_id INTEGER NOT NULL,
+            deck_id TEXT NOT NULL,
             current_card_id INTEGER,
             last_reviewed INTEGER,
             PRIMARY KEY(deck_id)
@@ -39,7 +40,7 @@ class AppDb {
         ''');
         await db.execute('''
           CREATE TABLE recent_decks (
-            deck_id INTEGER PRIMARY KEY,
+            deck_id TEXT PRIMARY KEY,
             last_reviewed INTEGER
           )
         ''');
@@ -62,37 +63,62 @@ class AppDb {
   }
 
   // 题库索引操作
-  static Future<void> insertDeck(String apkgPath, String userDeckName, String md5, {Map<String, String>? mediaMap, String? version}) async {
+  static Future<void> insertDeck(String apkgPath, String userDeckName, String md5, {Map<String, String>? mediaMap, String? version, int? cardCount}) async {
     final dbClient = await db;
     await dbClient.insert('decks', {
+      'md5': md5,
       'apkg_path': apkgPath,
       'user_deck_name': userDeckName,
-      'md5': md5,
       'import_time': DateTime.now().millisecondsSinceEpoch,
       'media_map': mediaMap != null ? jsonEncode(mediaMap) : null,
       'version': version,
+      'card_count': cardCount,
     });
   }
 
-  static Future<int> deleteDeck({String? md5, int? id}) async {
+  static Future<int> deleteDeck({String? md5}) async {
     final dbClient = await db;
     if (md5 != null) {
       return await dbClient.delete('decks', where: 'md5 = ?', whereArgs: [md5]);
-    } else if (id != null) {
-      return await dbClient.delete('decks', where: 'id = ?', whereArgs: [id]);
     } else {
-      throw ArgumentError('必须提供 md5 或 id');
+      throw ArgumentError('必须提供 md5');
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getAllDecks() async {
+  static Future<int> updateDeckName(String md5, String newName) async {
+    final dbClient = await db;
+    return await dbClient.update(
+      'decks',
+      {'user_deck_name': newName},
+      where: 'md5 = ?',
+      whereArgs: [md5],
+    );
+  }
+
+  // 根据 ID 获取单个 deck
+  static Future<DeckInfo?> getDeckById(String deckId) async {
+    final dbClient = await db;
+    final result = await dbClient.query(
+      'decks',
+      where: 'md5 = ?',
+      whereArgs: [deckId],
+      limit: 1,
+    );
+    
+    if (result.isEmpty) return null;
+    
+    final deckMap = result.first;
+    return DeckInfo.fromMap(deckMap);
+  }
+
+  static Future<List<DeckInfo>> getAllDecks() async {
     final dbClient = await db;
     final result = await dbClient.query('decks', orderBy: 'import_time DESC');
-    return result;
+    return result.map((map) => DeckInfo.fromMap(map)).toList();
   }
 
   // 刷题进度操作
-  static Future<void> saveProgress(int deckId, int cardId) async {
+  static Future<void> saveProgress(String deckId, int cardId) async {
     final dbClient = await db;
     await dbClient.insert(
       'progress',
@@ -105,14 +131,14 @@ class AppDb {
     );
   }
 
-  static Future<Map<String, dynamic>?> getProgress(int deckId) async {
+  static Future<Map<String, dynamic>?> getProgress(String deckId) async {
     final dbClient = await db;
     final res = await dbClient.query('progress', where: 'deck_id = ?', whereArgs: [deckId]);
     return res.isNotEmpty ? res.first : null;
   }
 
   // 最近刷题记录
-  static Future<void> upsertRecentDeck(int deckId) async {
+  static Future<void> upsertRecentDeck(String deckId) async {
     final dbClient = await db;
     await dbClient.insert(
       'recent_decks',
@@ -124,9 +150,30 @@ class AppDb {
     );
   }
 
-  static Future<List<Map<String, dynamic>>> getRecentDecks({int limit = 10}) async {
+  static Future<List<DeckInfo>> getRecentDecks({int limit = 10}) async {
     final dbClient = await db;
-    return await dbClient.query('recent_decks', orderBy: 'last_reviewed DESC', limit: limit);
+    final recentResults = await dbClient.query('recent_decks', orderBy: 'last_reviewed DESC', limit: limit);
+    
+    // 获取所有 deck 信息
+    final allDecks = await getAllDecks();
+    final deckMap = {for (var d in allDecks) d.deckId: d};
+    
+    return recentResults.map((e) {
+      final deckId = e['deck_id'] as String;
+      final deck = deckMap[deckId];
+      if (deck != null) {
+        return deck;
+      } else {
+        // 如果找不到对应的 deck，返回一个默认的
+        return DeckInfo(
+          deckId: deckId,
+          deckName: '未知题库',
+          cardCount: 0,
+          lastReviewed: e['last_reviewed'] as int?,
+          currentIndex: 0,
+        );
+      }
+    }).toList();
   }
 
   // 用户设置

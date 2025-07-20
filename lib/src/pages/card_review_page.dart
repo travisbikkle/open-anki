@@ -116,14 +116,9 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
   Future<String?> _getDeckDir() async {
     final appDocDir = await getApplicationDocumentsDirectory();
-    final allDecks = await AppDb.getAllDecks();
-    final deck = allDecks.firstWhere(
-      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (deck.isEmpty) return null;
-    final md5 = deck['md5'] as String;
-    return '${appDocDir.path}/anki_data/$md5';
+    final deck = await AppDb.getDeckById(widget.deckId);
+    if (deck == null) return null;
+    return '${appDocDir.path}/anki_data/${deck.deckId}';
   }
 
   Future<void> _loadFontSizeAndDeck() async {
@@ -138,24 +133,23 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     setState(() { _loading = true; });
     try {
       final appDocDir = await getApplicationDocumentsDirectory();
-      final allDecks = await AppDb.getAllDecks();
-      final deck = allDecks.firstWhere(
-        (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
-        orElse: () => <String, dynamic>{},
-      );
-      if (deck.isEmpty) throw Exception('题库未找到');
-      final md5 = deck['md5'] as String;
-      final deckDir = '${appDocDir.path}/anki_data/$md5';
+      final deck = await AppDb.getDeckById(widget.deckId);
+      if (deck == null) throw Exception('题库未找到');
+      
+      final deckDir = '${appDocDir.path}/anki_data/${deck.deckId}';
       final sqlitePath = '$deckDir/$kSqliteDBFileName';
       _sqlitePath = sqlitePath;
       _mediaDir = '$deckDir/unarchived_media';
-      _deckVersion = deck['version'] as String? ?? 'anki2';
+      _deckVersion = deck.version ?? 'anki2';
+      
       // 只查ID列表
       final db = await openDatabase(sqlitePath);
       final idRows = await db.rawQuery('SELECT id FROM notes');
       _noteIds = idRows.map((e) => e['id'] as int).toList();
       await db.close();
-      final progress = await AppDb.getProgress(deck['id'] as int);
+      
+      // 使用 deckId 获取进度
+      final progress = await AppDb.getProgress(widget.deckId);
       final idx = progress?['current_card_id'] ?? 0;
       _currentIndex = idx;
       await _loadCurrentCard();
@@ -167,15 +161,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   }
 
   void _saveProgress(int idx) async {
-    final allDecks = await AppDb.getAllDecks();
-    final deck = allDecks.firstWhere(
-      (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (deck.isEmpty) return;
-    final deckId = deck['id'] as int;
-    await AppDb.saveProgress(deckId, idx);
-    await AppDb.upsertRecentDeck(deckId);
+    await AppDb.saveProgress(widget.deckId, idx);
+    await AppDb.upsertRecentDeck(widget.deckId);
     // 不再每次切题刷新 provider
     // ref.invalidate(allDecksProvider);
     // ref.invalidate(recentDecksProvider);
@@ -314,85 +301,72 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () async {
-              final allDecks = await AppDb.getAllDecks();
               showDialog(
                 context: context,
                 builder: (context) {
-                  return FutureBuilder<List<Map<String, dynamic>>>(
-                    future: AppDb.getAllDecks(),
-                    builder: (context, snapshot) {
-                      String deckId = widget.deckId;
-                      String apkgPath = '';
-                      if (snapshot.hasData) {
-                        final deck = snapshot.data!.firstWhere(
-                          (d) => (d['md5'] ?? d['id'].toString()) == widget.deckId,
-                          orElse: () => <String, dynamic>{},
-                        );
-                      }
-                      final cardId = note?.id.toString() ?? '';
-                      final version = _deckVersion ?? '';
-                      final flds = note?.fieldNames.join(' | ') ?? '';
-                      final notetype = note?.notetypeName ?? '';
-                      return Dialog(
-                        backgroundColor: Colors.white.withOpacity(0.7),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: 400,
-                            maxHeight: MediaQuery.of(context).size.height * 0.7,
-                            minWidth: 200,
-                            minHeight: 100,
-                          ),
-                          child: SingleChildScrollView(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: DefaultTextStyle(
-                                style: const TextStyle(color: Colors.black, fontSize: 14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('卡片信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    const SizedBox(height: 12),
-                                    Text('牌组ID: $deckId'),
-                                    Text('模板名称: $notetype'),
-                                    const SizedBox(height: 8),
-                                    Text('卡片ID: $cardId'),
-                                    Text('版本: $version'),
-                                    Text('字段: $flds'),
-                                    const SizedBox(height: 12),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('关闭', style: TextStyle(color: Colors.black)),
-                                      ),
-                                    ),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                                                                onPressed: () async {
-                                          // 显示当前加载的 HTML 文件内容
-                                          final currentPath = _showBack ? _backHtmlPath! : _frontHtmlPath!;
-                                          final htmlFile = File(currentPath);
-                                          if (await htmlFile.exists()) {
-                                            final htmlContent = await htmlFile.readAsString();
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => HtmlSourcePage(html: htmlContent),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        child: const Text('查看卡片源码', style: TextStyle(color: Colors.blue)),
-                                      ),
-                                    ),
-                                  ],
+                  String deckId = widget.deckId;
+                  final cardId = note?.id.toString() ?? '';
+                  final version = _deckVersion ?? '';
+                  final flds = note?.fieldNames.join(' | ') ?? '';
+                  final notetype = note?.notetypeName ?? '';
+                  return Dialog(
+                    backgroundColor: Colors.white.withOpacity(0.7),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: 400,
+                        maxHeight: MediaQuery.of(context).size.height * 0.7,
+                        minWidth: 200,
+                        minHeight: 100,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: DefaultTextStyle(
+                            style: const TextStyle(color: Colors.black, fontSize: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('卡片信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                const SizedBox(height: 12),
+                                Text('牌组ID: $deckId'),
+                                Text('模板名称: $notetype'),
+                                const SizedBox(height: 8),
+                                Text('卡片ID: $cardId'),
+                                Text('版本: $version'),
+                                Text('字段: $flds'),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('关闭', style: TextStyle(color: Colors.black)),
+                                  ),
                                 ),
-                              ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () async {
+                                      // 显示当前加载的 HTML 文件内容
+                                      final currentPath = _showBack ? _backHtmlPath! : _frontHtmlPath!;
+                                      final htmlFile = File(currentPath);
+                                      if (await htmlFile.exists()) {
+                                        final htmlContent = await htmlFile.readAsString();
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => HtmlSourcePage(html: htmlContent),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: const Text('查看卡片源码', style: TextStyle(color: Colors.blue)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   );
                 },
               );

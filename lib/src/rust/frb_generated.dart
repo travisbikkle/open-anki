@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -811015048;
+  int get rustContentHash => -437203285;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,14 +82,17 @@ abstract class RustLibApi extends BaseApi {
     required String baseDir,
   });
 
+  Future<BigInt> crateApiSimpleGetCardCount({required String sqlitePath});
+
+  Future<BigInt> crateApiSimpleGetCardCountFromDeck({
+    required String appDocDir,
+    required String md5,
+  });
+
   Future<SingleNoteResult> crateApiSimpleGetDeckNote({
     required String sqlitePath,
     required PlatformInt64 noteId,
     required String version,
-  });
-
-  Future<DeckNotesResult> crateApiSimpleGetDeckNotes({
-    required String sqlitePath,
   });
 
   String crateApiSimpleGreet({required String name});
@@ -142,6 +145,71 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<BigInt> crateApiSimpleGetCardCount({required String sqlitePath}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sqlitePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_usize,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSimpleGetCardCountConstMeta,
+        argValues: [sqlitePath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSimpleGetCardCountConstMeta => const TaskConstMeta(
+    debugName: "get_card_count",
+    argNames: ["sqlitePath"],
+  );
+
+  @override
+  Future<BigInt> crateApiSimpleGetCardCountFromDeck({
+    required String appDocDir,
+    required String md5,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(appDocDir, serializer);
+          sse_encode_String(md5, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_usize,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSimpleGetCardCountFromDeckConstMeta,
+        argValues: [appDocDir, md5],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSimpleGetCardCountFromDeckConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_card_count_from_deck",
+        argNames: ["appDocDir", "md5"],
+      );
+
+  @override
   Future<SingleNoteResult> crateApiSimpleGetDeckNote({
     required String sqlitePath,
     required PlatformInt64 noteId,
@@ -157,7 +225,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -178,45 +246,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<DeckNotesResult> crateApiSimpleGetDeckNotes({
-    required String sqlitePath,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(sqlitePath, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_deck_notes_result,
-          decodeErrorData: sse_decode_String,
-        ),
-        constMeta: kCrateApiSimpleGetDeckNotesConstMeta,
-        argValues: [sqlitePath],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiSimpleGetDeckNotesConstMeta => const TaskConstMeta(
-    debugName: "get_deck_notes",
-    argNames: ["sqlitePath"],
-  );
-
-  @override
   String crateApiSimpleGreet({required String name}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -241,7 +277,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -271,7 +307,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 6,
+              funcId: 7,
               port: port_,
             );
           },
@@ -329,36 +365,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  CardExt dco_decode_card_ext(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return CardExt(
-      id: dco_decode_i_64(arr[0]),
-      nid: dco_decode_i_64(arr[1]),
-      ord: dco_decode_i_64(arr[2]),
-      type: dco_decode_i_64(arr[3]),
-      queue: dco_decode_i_64(arr[4]),
-      due: dco_decode_i_64(arr[5]),
-    );
-  }
-
-  @protected
-  DeckNotesResult dco_decode_deck_notes_result(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return DeckNotesResult(
-      notes: dco_decode_list_note_ext(arr[0]),
-      notetypes: dco_decode_list_notetype_ext(arr[1]),
-      fields: dco_decode_list_field_ext(arr[2]),
-      cards: dco_decode_list_card_ext(arr[3]),
-    );
-  }
-
-  @protected
   ExtractResult dco_decode_extract_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -399,27 +405,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<CardExt> dco_decode_list_card_ext(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_card_ext).toList();
-  }
-
-  @protected
   List<FieldExt> dco_decode_list_field_ext(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_field_ext).toList();
-  }
-
-  @protected
-  List<NoteExt> dco_decode_list_note_ext(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_note_ext).toList();
-  }
-
-  @protected
-  List<NotetypeExt> dco_decode_list_notetype_ext(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_notetype_ext).toList();
   }
 
   @protected
@@ -515,6 +503,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_String(deserializer);
@@ -551,40 +545,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_notetype_ext(deserializer));
-  }
-
-  @protected
-  CardExt sse_decode_card_ext(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_id = sse_decode_i_64(deserializer);
-    var var_nid = sse_decode_i_64(deserializer);
-    var var_ord = sse_decode_i_64(deserializer);
-    var var_type = sse_decode_i_64(deserializer);
-    var var_queue = sse_decode_i_64(deserializer);
-    var var_due = sse_decode_i_64(deserializer);
-    return CardExt(
-      id: var_id,
-      nid: var_nid,
-      ord: var_ord,
-      type: var_type,
-      queue: var_queue,
-      due: var_due,
-    );
-  }
-
-  @protected
-  DeckNotesResult sse_decode_deck_notes_result(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_notes = sse_decode_list_note_ext(deserializer);
-    var var_notetypes = sse_decode_list_notetype_ext(deserializer);
-    var var_fields = sse_decode_list_field_ext(deserializer);
-    var var_cards = sse_decode_list_card_ext(deserializer);
-    return DeckNotesResult(
-      notes: var_notes,
-      notetypes: var_notetypes,
-      fields: var_fields,
-      cards: var_cards,
-    );
   }
 
   @protected
@@ -636,18 +596,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<CardExt> sse_decode_list_card_ext(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <CardExt>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_card_ext(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
   List<FieldExt> sse_decode_list_field_ext(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -655,30 +603,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <FieldExt>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_field_ext(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<NoteExt> sse_decode_list_note_ext(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NoteExt>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_note_ext(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<NotetypeExt> sse_decode_list_notetype_ext(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NotetypeExt>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_notetype_ext(deserializer));
     }
     return ans_;
   }
@@ -799,6 +723,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -864,29 +794,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_card_ext(CardExt self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_64(self.id, serializer);
-    sse_encode_i_64(self.nid, serializer);
-    sse_encode_i_64(self.ord, serializer);
-    sse_encode_i_64(self.type, serializer);
-    sse_encode_i_64(self.queue, serializer);
-    sse_encode_i_64(self.due, serializer);
-  }
-
-  @protected
-  void sse_encode_deck_notes_result(
-    DeckNotesResult self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_note_ext(self.notes, serializer);
-    sse_encode_list_notetype_ext(self.notetypes, serializer);
-    sse_encode_list_field_ext(self.fields, serializer);
-    sse_encode_list_card_ext(self.cards, serializer);
-  }
-
-  @protected
   void sse_encode_extract_result(ExtractResult self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.dir, serializer);
@@ -920,15 +827,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_card_ext(List<CardExt> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_card_ext(item, serializer);
-    }
-  }
-
-  @protected
   void sse_encode_list_field_ext(
     List<FieldExt> self,
     SseSerializer serializer,
@@ -937,27 +835,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_field_ext(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_note_ext(List<NoteExt> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_note_ext(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_notetype_ext(
-    List<NotetypeExt> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_notetype_ext(item, serializer);
     }
   }
 
@@ -1059,6 +936,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected

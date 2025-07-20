@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/deck_progress_tile.dart';
+import 'package:sqflite/sqflite.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -92,9 +93,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         }
         // 调用Rust端解压
         final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
-        // 在AppDb登记索引，保存version
-        await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version);
-        print('DEBUG: 导入完成，media_map 大小:  {result.mediaMap.length}, version: ${result.version}');
+        // 统计卡片总数
+        int cardCount = (await getCardCountFromDeck(appDocDir: appDocDir.path, md5: result.md5)).toInt();
+        // 在AppDb登记索引，保存version和cardCount
+        await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version, cardCount: cardCount);
       }
       // 强制刷新 provider
       ref.invalidate(allDecksProvider);
@@ -110,8 +112,6 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       });
     }
   }
-
-  // 移除AnkiDb相关遗留代码
 
   @override
   Widget build(BuildContext context) {
@@ -161,10 +161,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                       final deck = decks[idx];
                       final showCount = (nameCount[deck.deckName] ?? 0) > 1;
                       return Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         elevation: 1,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                           onLongPress: () async {
                             final result = await showModalBottomSheet<String>(
                               context: context,
@@ -191,9 +191,34 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               ),
                             );
                             if (result == 'rename') {
-                              // TODO: 重命名逻辑
+                              final newName = await _inputRenameDialog(deck.deckName);
+                              if (newName != null && newName.isNotEmpty && newName != deck.deckName) {
+                                await AppDb.updateDeckName(deck.deckId, newName);
+                                ref.invalidate(allDecksProvider);
+                              }
                             } else if (result == 'delete') {
-                              // TODO: 删除逻辑
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('确认删除'),
+                                  content: Text('确定要删除题库 "${deck.deckName}" 吗？此操作不可撤销。'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('取消'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                      child: const Text('删除'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true) {
+                                await AppDb.deleteDeck(md5: deck.deckId);
+                                ref.invalidate(allDecksProvider);
+                              }
                             }
                           },
                           child: DeckProgressTile(deck: deck),

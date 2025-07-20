@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../db.dart';
+import '../model.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -16,7 +17,7 @@ class _DebugPageState extends State<DebugPage> {
   bool _loading = true;
   String? _error;
   List<FileSystemEntity> _rootEntities = [];
-  List<Map<String, dynamic>> _dbDecks = [];
+  List<DeckInfo> _dbDecks = [];
   bool _showDbDecks = false;
 
   @override

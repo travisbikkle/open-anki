@@ -34,12 +34,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NotetypeExt dco_decode_box_autoadd_notetype_ext(dynamic raw);
 
   @protected
-  CardExt dco_decode_card_ext(dynamic raw);
-
-  @protected
-  DeckNotesResult dco_decode_deck_notes_result(dynamic raw);
-
-  @protected
   ExtractResult dco_decode_extract_result(dynamic raw);
 
   @protected
@@ -52,16 +46,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
-  List<CardExt> dco_decode_list_card_ext(dynamic raw);
-
-  @protected
   List<FieldExt> dco_decode_list_field_ext(dynamic raw);
-
-  @protected
-  List<NoteExt> dco_decode_list_note_ext(dynamic raw);
-
-  @protected
-  List<NotetypeExt> dco_decode_list_notetype_ext(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -94,6 +79,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
@@ -113,12 +101,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NotetypeExt sse_decode_box_autoadd_notetype_ext(SseDeserializer deserializer);
 
   @protected
-  CardExt sse_decode_card_ext(SseDeserializer deserializer);
-
-  @protected
-  DeckNotesResult sse_decode_deck_notes_result(SseDeserializer deserializer);
-
-  @protected
   ExtractResult sse_decode_extract_result(SseDeserializer deserializer);
 
   @protected
@@ -131,16 +113,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
-  List<CardExt> sse_decode_list_card_ext(SseDeserializer deserializer);
-
-  @protected
   List<FieldExt> sse_decode_list_field_ext(SseDeserializer deserializer);
-
-  @protected
-  List<NoteExt> sse_decode_list_note_ext(SseDeserializer deserializer);
-
-  @protected
-  List<NotetypeExt> sse_decode_list_notetype_ext(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -179,6 +152,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -212,15 +188,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_card_ext(CardExt self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_deck_notes_result(
-    DeckNotesResult self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_extract_result(ExtractResult self, SseSerializer serializer);
 
   @protected
@@ -233,19 +200,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_card_ext(List<CardExt> self, SseSerializer serializer);
-
-  @protected
   void sse_encode_list_field_ext(List<FieldExt> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_note_ext(List<NoteExt> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_notetype_ext(
-    List<NotetypeExt> self,
-    SseSerializer serializer,
-  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -291,6 +246,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);

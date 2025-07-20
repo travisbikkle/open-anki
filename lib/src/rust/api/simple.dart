@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `rust_log`, `table_has_columns`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `LOG_SINK`, `Note`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `CardExt`, `DeckNotesResult`, `LOG_SINK`, `Note`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
 
 String greet({required String name}) =>
@@ -24,9 +24,6 @@ Future<ExtractResult> extractApkg({
   baseDir: baseDir,
 );
 
-Future<DeckNotesResult> getDeckNotes({required String sqlitePath}) =>
-    RustLib.instance.api.crateApiSimpleGetDeckNotes(sqlitePath: sqlitePath);
-
 Future<SingleNoteResult> getDeckNote({
   required String sqlitePath,
   required PlatformInt64 noteId,
@@ -37,72 +34,16 @@ Future<SingleNoteResult> getDeckNote({
   version: version,
 );
 
-class CardExt {
-  final PlatformInt64 id;
-  final PlatformInt64 nid;
-  final PlatformInt64 ord;
-  final PlatformInt64 type;
-  final PlatformInt64 queue;
-  final PlatformInt64 due;
+Future<BigInt> getCardCount({required String sqlitePath}) =>
+    RustLib.instance.api.crateApiSimpleGetCardCount(sqlitePath: sqlitePath);
 
-  const CardExt({
-    required this.id,
-    required this.nid,
-    required this.ord,
-    required this.type,
-    required this.queue,
-    required this.due,
-  });
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      nid.hashCode ^
-      ord.hashCode ^
-      type.hashCode ^
-      queue.hashCode ^
-      due.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CardExt &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          nid == other.nid &&
-          ord == other.ord &&
-          type == other.type &&
-          queue == other.queue &&
-          due == other.due;
-}
-
-class DeckNotesResult {
-  final List<NoteExt> notes;
-  final List<NotetypeExt> notetypes;
-  final List<FieldExt> fields;
-  final List<CardExt> cards;
-
-  const DeckNotesResult({
-    required this.notes,
-    required this.notetypes,
-    required this.fields,
-    required this.cards,
-  });
-
-  @override
-  int get hashCode =>
-      notes.hashCode ^ notetypes.hashCode ^ fields.hashCode ^ cards.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DeckNotesResult &&
-          runtimeType == other.runtimeType &&
-          notes == other.notes &&
-          notetypes == other.notetypes &&
-          fields == other.fields &&
-          cards == other.cards;
-}
+Future<BigInt> getCardCountFromDeck({
+  required String appDocDir,
+  required String md5,
+}) => RustLib.instance.api.crateApiSimpleGetCardCountFromDeck(
+  appDocDir: appDocDir,
+  md5: md5,
+);
 
 class ExtractResult {
   final String dir;
