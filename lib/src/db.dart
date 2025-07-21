@@ -310,4 +310,17 @@ class AppDb {
     }
     return streak;
   }
+
+  static Future<int> getTotalStudyDays() async {
+    final dbClient = await db;
+    final res = await dbClient.rawQuery(
+      'SELECT MIN(study_time) as min_time FROM study_log',
+    );
+    if (res.isEmpty || res.first['min_time'] == null) return 0;
+    final minTime = res.first['min_time'] as int;
+    final firstDay = DateTime.fromMillisecondsSinceEpoch(minTime);
+    final now = DateTime.now();
+    final diff = now.difference(DateTime(firstDay.year, firstDay.month, firstDay.day)).inDays + 1;
+    return diff;
+  }
 } 

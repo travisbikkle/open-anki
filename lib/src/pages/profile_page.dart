@@ -35,10 +35,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       future: Future.wait([
         AppDb.getConsecutiveStudyDays(),
         AppDb.getTodayStudyCount(),
+        AppDb.getTotalStudyDays(),
       ]),
       builder: (context, snapshot) {
         final consecutiveDays = snapshot.data != null ? snapshot.data![0] : 0;
         final todayCount = snapshot.data != null ? snapshot.data![1] : 0;
+        final totalStudyDays = snapshot.data != null ? snapshot.data![2] : 0;
         return Scaffold(
           backgroundColor: const Color(0xffeaf6ff),
           appBar: AppBar(
@@ -96,7 +98,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
-                    const _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
+                    _StatCard(icon: Icons.psychology, label: '学习天数', value: totalStudyDays.toString()),
                     _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
                   ],
                 ),
