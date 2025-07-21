@@ -38,6 +38,7 @@ class DeckProgressTile extends StatelessWidget {
       items: [
         const PopupMenuItem(value: 'preview', child: Text('自由浏览')),
         const PopupMenuItem(value: 'rename', child: Text('重命名')),
+        const PopupMenuItem(value: 'reset', child: Text('重置学习进度')),
         const PopupMenuItem(value: 'delete', child: Text('删除')),
       ],
     );
@@ -67,6 +68,34 @@ class DeckProgressTile extends StatelessWidget {
             ),
           ),
         );
+        break;
+      case 'reset':
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('重置学习进度'),
+            content: const Text('确定要重置该题库的学习进度吗？此操作会清空进度条和所有卡片的调度信息，无法恢复。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true) {
+          await AppDb.resetDeckProgress(deck.deckId);
+          // 刷新 provider
+          if (context.mounted) {
+            final container = ProviderScope.containerOf(context);
+            container.invalidate(allDecksProvider);
+            container.invalidate(recentDecksProvider);
+          }
+        }
         break;
       case 'delete':
         final confirm = await showDialog<bool>(

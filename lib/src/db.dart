@@ -757,4 +757,24 @@ class AppDb {
     final res = await dbClient.query('cards', where: 'deck_id = ?', whereArgs: [deckId]);
     return res.map((e) => e['card_id'] as int).toList();
   }
+
+  // 重置牌组学习进度
+  static Future<void> resetDeckProgress(String deckId) async {
+    final dbClient = await db;
+    await dbClient.transaction((txn) async {
+      // 1. 重置总学习数量
+      await txn.update('decks', {'total_learned': 0}, where: 'md5 = ?', whereArgs: [deckId]);
+      // 2. 删除每日学习进度
+      await txn.delete('progress', where: 'deck_id = ?', whereArgs: [deckId]);
+      // 3. 查出该牌组所有卡片ID
+      final cardIdRows = await txn.query('cards', where: 'deck_id = ?', whereArgs: [deckId]);
+      final cardIds = cardIdRows.map((e) => e['card_id'] as int).toList();
+      String idList = cardIds.isNotEmpty ? '(${List.filled(cardIds.length, '?').join(',')})' : '(NULL)';
+      // 4. 删除调度和状态
+      if (cardIds.isNotEmpty) {
+        await txn.delete('card_scheduling', where: 'card_id IN $idList', whereArgs: cardIds);
+        await txn.delete('card_states', where: 'card_id IN $idList', whereArgs: cardIds);
+      }
+    });
+  }
 } 
