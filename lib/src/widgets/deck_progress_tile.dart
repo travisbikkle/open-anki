@@ -27,55 +27,25 @@ class DeckProgressTile extends StatelessWidget {
     }
   }
 
-  // 显示长按菜单
-  Future<void> _showDeckMenu(BuildContext context) async {
-    final result = await showModalBottomSheet<String>(
+  // 显示长按菜单（在手指位置弹出）
+  Future<void> _showDeckMenu(BuildContext context, Offset position) async {
+    final result = await showMenu<String>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.remove_red_eye),
-              title: const Text('自由浏览'),
-              onTap: () => Navigator.pop(context, 'preview'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('重命名'),
-              onTap: () => Navigator.pop(context, 'rename'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete),
-              title: const Text('删除'),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-          ],
-        ),
+      position: RelativeRect.fromLTRB(
+        position.dx, position.dy, position.dx, position.dy
       ),
+      items: [
+        const PopupMenuItem(value: 'preview', child: Text('自由浏览')),
+        const PopupMenuItem(value: 'rename', child: Text('重命名')),
+        const PopupMenuItem(value: 'delete', child: Text('删除')),
+      ],
     );
 
     if (result == null) return;
-
     if (!context.mounted) return;
 
     switch (result) {
-      case 'preview':
-        // 进入自由浏览模式
-        if (context.mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CardReviewPage(
-                deckId: deck.deckId,
-                mode: StudyMode.preview,
-              ),
-            ),
-          );
-        }
-      break;
       case 'rename':
-        // 显示重命名对话框
         final newName = await showDialog<String>(
           context: context,
           builder: (context) => RenameDialog(
@@ -86,8 +56,18 @@ class DeckProgressTile extends StatelessWidget {
           await AppDb.renameDeck(deck.deckId, newName);
         }
         break;
+      case 'preview':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CardReviewPage(
+              deckId: deck.deckId,
+              mode: StudyMode.preview,
+            ),
+          ),
+        );
+        break;
       case 'delete':
-        // 显示删除确认对话框
         final confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -186,7 +166,7 @@ class DeckProgressTile extends StatelessWidget {
           );
         }
       },
-      onLongPress: () => _showDeckMenu(context),
+      onLongPressStart: (details) => _showDeckMenu(context, details.globalPosition),
       child: Container(
         color: Colors.transparent,
         child: Column(
