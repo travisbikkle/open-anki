@@ -568,7 +568,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     // 合并模式下，切换正反面用JS，不再重新loadHtmlString
     return Scaffold(
       appBar: AppBar(
-        title: Text('刷卡 ( ${_currentIndex + 1}/${_noteIds.length})'),
+        title: Text('今日卡片 ( ${_currentIndex + 1}/${_noteIds.length})'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -610,6 +610,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                                 Text('卡片ID: $cardId'),
                                 Text('版本: $version'),
                                 Text('字段: $flds'),
+                                // 新增调度信息
+                                if (_currentScheduling != null) ...[
+                                  const SizedBox(height: 8),
+                                  Text('稳定性: 	${_currentScheduling!.stability.toStringAsFixed(1)}'),
+                                  Text('难度: 	${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+                                  Text('下次复习: 	${DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000).toString().substring(0, 16)}'),
+                                ],
                                 const SizedBox(height: 12),
                                 Align(
                                   alignment: Alignment.centerRight,
@@ -655,8 +662,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           Container(
             height: 0,
           ),
-          // 添加调度信息显示
-          if (!_showBack) _buildSchedulingInfo(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
