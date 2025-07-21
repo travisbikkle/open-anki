@@ -838,6 +838,16 @@ CREATE INDEX idx_graves_pending ON graves (usn);
 [x] 4.2 避免一次加载全部
 5. 可选：Rust 端结构优化
 6. 答题反馈与记忆算法
+   - [ ] 集成 FSRS（自由间隔重复调度器）算法
+     - [ ] 设计/修改数据库表，支持调度参数和复习日志
+     - [ ] Rust 端实现 FSRS 算法，暴露接口给 Flutter
+     - [ ] Flutter 端集成：
+       - [ ] 展示“今日待复习卡片”
+       - [ ] 复习后将反馈传给 Rust，更新调度
+       - [ ] 展示复习历史和统计
+     - [ ] 调研 FSRS 算法参数和实现
+     - [ ] 每次复习后，调用 Rust 方法：update_card_schedule(card_id, rating, review_time)，返回新的 due、stability、difficulty 等
+     - [ ] 查询“今天要复习的卡片”时，查 due <= now 的卡片
 7. 优化数据统计：
 
    题库上列表，每一个列表项，矩形底部应该增加一个进度条，能够展示这个牌组有多少卡片，当前学习到了多少
