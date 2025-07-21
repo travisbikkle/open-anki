@@ -683,37 +683,40 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                 ],
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.navigate_before),
-                  label: const Text('上一题'),
-                  onPressed: _prevCard,
-                ),
-                const SizedBox(width: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    LogHelper.log('=== 显示答案按钮被点击 ===');
-                    if (_showBack) {
-                      _pendingShow = 'front';
-                    } else {
-                      _pendingShow = 'back';
-                    }
-                    await _controller.runJavaScript('trigger_save()');
-                    // 不直接切页面，等 onMessageReceived 回调
-                  },
-                  child: Text(_showBack ? '返回正面' : '显示答案'),
-                ),
-                const SizedBox(width: 24),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.navigate_next),
-                  label: const Text('下一题'),
-                  onPressed: _nextCard,
-                ),
-              ],
+          SafeArea(
+            minimum: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_before),
+                    label: const Text('上一题'),
+                    onPressed: _prevCard,
+                  ),
+                  const SizedBox(width: 24),
+                  ElevatedButton(
+                    onPressed: () async {
+                      LogHelper.log('=== 显示答案按钮被点击 ===');
+                      if (_showBack) {
+                        _pendingShow = 'front';
+                      } else {
+                        _pendingShow = 'back';
+                      }
+                      await _controller.runJavaScript('trigger_save()');
+                      // 不直接切页面，等 onMessageReceived 回调
+                    },
+                    child: Text(_showBack ? '返回正面' : '显示答案'),
+                  ),
+                  const SizedBox(width: 24),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_next),
+                    label: const Text('下一题'),
+                    onPressed: _nextCard,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

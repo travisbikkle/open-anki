@@ -60,18 +60,6 @@ class DeckProgressTile extends StatelessWidget {
     if (!context.mounted) return;
 
     switch (result) {
-      case 'rename':
-        // 显示重命名对话框
-        final newName = await showDialog<String>(
-          context: context,
-          builder: (context) => RenameDialog(
-            initialName: deck.deckName,
-          ),
-        );
-        if (newName != null) {
-          await AppDb.renameDeck(deck.deckId, newName);
-        }
-        break;
       case 'preview':
         // 进入自由浏览模式
         if (context.mounted) {
@@ -84,6 +72,18 @@ class DeckProgressTile extends StatelessWidget {
               ),
             ),
           );
+        }
+      break;
+      case 'rename':
+        // 显示重命名对话框
+        final newName = await showDialog<String>(
+          context: context,
+          builder: (context) => RenameDialog(
+            initialName: deck.deckName,
+          ),
+        );
+        if (newName != null) {
+          await AppDb.renameDeck(deck.deckId, newName);
         }
         break;
       case 'delete':
