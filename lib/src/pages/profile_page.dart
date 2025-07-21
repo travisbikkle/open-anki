@@ -4,6 +4,9 @@ import '../providers.dart';
 import '../model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
+import 'package:image_cropper/image_cropper.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -30,11 +33,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
   final TextEditingController _editController = TextEditingController();
   final FocusNode _editFocusNode = FocusNode();
   String _currentUserName = '';
+  Uint8List? _avatarBytes;
 
   @override
   void initState() {
     super.initState();
     _refreshProfile();
+    _loadAvatar();
     _nickAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -52,6 +57,60 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
 
   void _refreshProfile() {
     _profileFuture = _makeProfileFuture();
+  }
+
+  Future<void> _loadAvatar() async {
+    final bytes = await AppDb.getUserProfileAvatar();
+    setState(() { _avatarBytes = bytes; });
+  }
+
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('拍照'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picked = await picker.pickImage(source: source, imageQuality: 80, maxWidth: 512, maxHeight: 512);
+    if (picked != null) {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        cropStyle: CropStyle.circle,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: '裁剪头像',
+            hideBottomControls: true,
+          ),
+          IOSUiSettings(
+            title: '裁剪头像',
+          ),
+        ],
+      );
+      if (cropped != null) {
+        final bytes = await cropped.readAsBytes();
+        await AppDb.setUserProfileAvatar(bytes);
+        setState(() { _avatarBytes = bytes; });
+      }
+    }
   }
 
   Future<void> _checkCustomName() async {
@@ -142,20 +201,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Container(
-                        width: 110,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          color: Colors.blue[100],
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.blue[200]!,
-                            width: 3,
-                            style: BorderStyle.solid,
-                          ),
+                      GestureDetector(
+                        onTap: _pickAvatar,
+                        child: CircleAvatar(
+                          radius: 55,
+                          backgroundColor: Colors.blue[100],
+                          backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
+                          child: _avatarBytes == null
+                              ? const Icon(Icons.person, size: 60, color: Colors.white)
+                              : null,
                         ),
                       ),
-                      const Icon(Icons.person, size: 60, color: Colors.white),
                     ],
                   ),
                 ),

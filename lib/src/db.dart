@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert'; // Added for jsonEncode and jsonDecode
+import 'dart:typed_data'; // Added for Uint8List
 import 'model.dart';
 
 class AppDb {
@@ -64,6 +65,13 @@ class AppDb {
             deck_id TEXT NOT NULL,
             card_id INTEGER NOT NULL,
             study_time INTEGER NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE user_profile (
+            id INTEGER PRIMARY KEY,
+            nickname TEXT,
+            avatar BLOB
           )
         ''');
       },
@@ -347,5 +355,30 @@ class AppDb {
     if (res.isEmpty || res.first['min_time'] == null) return null;
     final minTime = res.first['min_time'] as int;
     return DateTime.fromMillisecondsSinceEpoch(minTime);
+  }
+
+  // 用户头像相关
+  static Future<void> setUserProfileAvatar(Uint8List avatarBytes) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'user_profile',
+      {'id': 1, 'avatar': avatarBytes},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<Uint8List?> getUserProfileAvatar() async {
+    final dbClient = await db;
+    final res = await dbClient.query('user_profile', columns: ['avatar'], where: 'id = ?', whereArgs: [1]);
+    if (res.isNotEmpty && res.first['avatar'] != null) {
+      return res.first['avatar'] as Uint8List;
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getUserProfile() async {
+    final dbClient = await db;
+    final res = await dbClient.query('user_profile', where: 'id = ?', whereArgs: [1]);
+    return res.isNotEmpty ? res.first : null;
   }
 } 
