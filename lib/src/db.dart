@@ -105,7 +105,7 @@ class AppDb {
         await db.execute('''
           CREATE TABLE study_plan_settings (
             deck_id TEXT PRIMARY KEY,
-            new_cards_per_day INTEGER NOT NULL DEFAULT 20,
+            new_rrr_per_day INTEGER NOT NULL DEFAULT 20,
             reviews_per_day INTEGER NOT NULL DEFAULT 100,
             enable_time_limit INTEGER NOT NULL DEFAULT 0,
             study_time_minutes INTEGER NOT NULL DEFAULT 30,
@@ -240,6 +240,7 @@ class AppDb {
         d.user_deck_name,
         d.card_count,
         d.version,
+        d.total_learned,
         p.current_card_id,
         p.last_reviewed
       FROM decks d
@@ -267,6 +268,7 @@ class AppDb {
         d.user_deck_name,
         d.card_count,
         d.version,
+        d.total_learned,
         p.current_card_id,
         p.last_reviewed
       FROM decks d

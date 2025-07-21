@@ -450,8 +450,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         // 保存反馈和学习记录
         await AppDb.saveCardFeedback(_currentNote!.id, value);
         await AppDb.logStudy(widget.deckId, _currentNote!.id);
-        // 增加总学习数量
-        await AppDb.incrementTotalLearned(widget.deckId);
         _nextCard();
       },
       onLongPress: () async {
@@ -722,6 +720,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                   ElevatedButton(
                     onPressed: () async {
                       LogHelper.log('=== 显示答案按钮被点击 ===');
+                      if (!_showBack) {
+                        // 只在从正面切到背面时计入已学习
+                        await AppDb.incrementTotalLearned(widget.deckId);
+                        if (context.mounted) {
+                          final container = ProviderScope.containerOf(context);
+                          container.invalidate(allDecksProvider);
+                          container.invalidate(recentDecksProvider);
+                        }
+                      }
                       if (_showBack) {
                         _pendingShow = 'front';
                       } else {
