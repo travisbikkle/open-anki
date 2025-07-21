@@ -329,29 +329,45 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   void _nextCard() async {
     if (_noteIds.isEmpty) return;
     
+    int prevIndex = _currentIndex;
     switch (widget.mode) {
       case StudyMode.learn:
       case StudyMode.preview:
       case StudyMode.custom:
-        // 顺序浏览模式，直接下一张
         setState(() {
           _currentIndex = (_currentIndex + 1) % _noteIds.length;
         });
         break;
-        
       case StudyMode.review:
-        // 复习模式，重新获取到期卡片
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         _dueCards = await AppDb.getDueCards(now);
         setState(() {
           _noteIds = _dueCards.map((e) => e.cardId).toList();
-          _currentIndex = 0; // 从第一张到期卡片开始
+          _currentIndex = 0;
         });
         break;
     }
-    
     _saveProgress(_currentIndex);
     _loadCurrentCard();
+
+    // 新增：如果已经是最后一题，再点“下一题”时弹窗
+    if (_noteIds.isNotEmpty && prevIndex == _noteIds.length - 1) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('今日计划已完成！'),
+            content: const Text('如需多刷题，请在题库点击齿轮按钮，增加每日刷题数。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   void _prevCard() async {
