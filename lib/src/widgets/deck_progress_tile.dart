@@ -36,14 +36,14 @@ class DeckProgressTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('重命名'),
-              onTap: () => Navigator.pop(context, 'rename'),
-            ),
-            ListTile(
               leading: const Icon(Icons.remove_red_eye),
               title: const Text('自由浏览'),
               onTap: () => Navigator.pop(context, 'preview'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('重命名'),
+              onTap: () => Navigator.pop(context, 'rename'),
             ),
             ListTile(
               leading: const Icon(Icons.delete),
