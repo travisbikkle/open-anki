@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../db.dart';
 import 'debug_page.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -101,7 +102,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: const [
                             Text('12px', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                            Text('32px', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text('128px', style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -128,56 +129,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // 其他设置卡片
-                Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.storage, color: Colors.blue[600]),
-                            const SizedBox(width: 12),
-                            const Text(
-                              '数据管理',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ListTile(
-                          leading: const Icon(Icons.delete_sweep),
-                          title: const Text('清理缓存'),
-                          subtitle: const Text('清理临时文件和缓存数据'),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () {
-                            // TODO: 实现清理缓存功能
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('清理缓存功能开发中...')),
-                            );
-                          },
-                        ),
-                        const Divider(),
-                        ListTile(
-                          leading: const Icon(Icons.backup),
-                          title: const Text('数据备份'),
-                          subtitle: const Text('备份题库和学习进度'),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () {
-                            // TODO: 实现数据备份功能
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('数据备份功能开发中...')),
-                            );
-                          },
                         ),
                       ],
                     ),
@@ -251,7 +202,14 @@ class _SettingsPageState extends State<SettingsPage> {
                               context: context,
                               applicationName: 'Open Anki',
                               applicationVersion: '1.0.0',
-                              applicationIcon: const FlutterLogo(size: 64),
+                              applicationIcon: ClipOval(
+                                child: SvgPicture.asset(
+                                  'assets/icon.svg',
+                                  width: 64,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                               children: const [
                                 Text('一个开源的 Anki 卡片学习应用'),
                               ],
