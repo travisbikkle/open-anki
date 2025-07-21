@@ -428,14 +428,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               stability: scheduling.stability,
               difficulty: scheduling.difficulty,
               lastReview: scheduling.due,
-              rating: value, // 直接使用 value，因为我们已经修正了按钮值
+              rating: value,
               now: now,
             )
           : await updateCardSchedule(
               stability: scheduling.stability,
               difficulty: scheduling.difficulty,
               lastReview: scheduling.due,
-              rating: value, // 直接使用 value，因为我们已经修正了按钮值
+              rating: value,
               now: now,
             );
         
@@ -450,6 +450,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         // 保存反馈和学习记录
         await AppDb.saveCardFeedback(_currentNote!.id, value);
         await AppDb.logStudy(widget.deckId, _currentNote!.id);
+        // 增加总学习数量
+        await AppDb.incrementTotalLearned(widget.deckId);
         _nextCard();
       },
       onLongPress: () async {

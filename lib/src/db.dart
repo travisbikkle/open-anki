@@ -20,7 +20,7 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 3, // 升级到版本3
+      version: 4, // 升级到版本4
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE decks (
@@ -30,7 +30,8 @@ class AppDb {
             import_time INTEGER,
             media_map TEXT,
             version TEXT,
-            card_count INTEGER
+            card_count INTEGER,
+            total_learned INTEGER DEFAULT 0
           )
         ''');
         await db.execute('''
@@ -158,6 +159,10 @@ class AppDb {
               FOREIGN KEY(deck_id) REFERENCES decks(md5)
             )
           ''');
+        }
+        if (oldVersion < 4) {
+          // 版本3->4：添加总学习数量字段
+          await db.execute('ALTER TABLE decks ADD COLUMN total_learned INTEGER DEFAULT 0');
         }
       },
     );
@@ -792,5 +797,14 @@ class AppDb {
         stats.totalTime >= settings.studyTimeMinutes * 60) return false;
     
     return true;
+  }
+
+  // 新增：增加总学习数量
+  static Future<void> incrementTotalLearned(String deckId) async {
+    final dbClient = await db;
+    await dbClient.rawUpdate(
+      'UPDATE decks SET total_learned = total_learned + 1 WHERE md5 = ?',
+      [deckId]
+    );
   }
 } 

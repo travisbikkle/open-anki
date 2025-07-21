@@ -42,6 +42,7 @@ class DeckInfo {
   final int cardCount;
   final int? lastReviewed;
   final int currentIndex;
+  final int totalLearned;
   final String? version;
   
   DeckInfo({
@@ -50,6 +51,7 @@ class DeckInfo {
     required this.cardCount, 
     this.lastReviewed, 
     this.currentIndex = 0,
+    this.totalLearned = 0,
     this.version,
   });
 
@@ -60,6 +62,7 @@ class DeckInfo {
       cardCount: map['card_count'] as int? ?? 0,
       lastReviewed: map['last_reviewed'] as int?,
       currentIndex: map['current_index'] as int? ?? 0,
+      totalLearned: map['total_learned'] as int? ?? 0,
       version: map['version'] as String?,
     );
   }
@@ -71,6 +74,7 @@ class DeckInfo {
       'cardCount': cardCount,
       'lastReviewed': lastReviewed,
       'currentIndex': currentIndex,
+      'totalLearned': totalLearned,
       'version': version,
     };
   }

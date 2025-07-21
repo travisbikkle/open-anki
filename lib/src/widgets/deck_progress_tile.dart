@@ -95,7 +95,7 @@ class DeckProgressTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardCount = deck.cardCount;
-    final learned = deck.currentIndex + 1;
+    final learned = deck.totalLearned;
     final double progress = cardCount > 0 ? learned / cardCount : 0;
     
     return GestureDetector(
