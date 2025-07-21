@@ -10,6 +10,7 @@ import 'package:open_anki/src/rust/api/simple.manual.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'src/log_helper.dart';
 
 Future<void> writeTestHtml() async {
   final dir = await getApplicationDocumentsDirectory();
@@ -50,34 +51,30 @@ Future<void> writeTestHtml() async {
 </body>
 </html>
 ''');
-  print('Test HTML written to: ${file.path}');
-  print('Test2 HTML written to: ${file2.path}');
+  LogHelper.log('Test HTML written to: ${file.path}');
+  LogHelper.log('Test2 HTML written to: ${file2.path}');
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LogHelper.init();
+
   await writeTestHtml();
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) async {
     FlutterError.presentError(details);
-    await _writeCrashLog('FlutterError: ' + details.toString());
+    LogHelper.log('FlutterError: ' + details.toString());
   };
-  runZonedGuarded<Future<void>>(() async {
-    try {
-      await RustLib.init();
-      await initRustLog();
-    } catch (e, st) {
-      print('init error: $e\n$st');
-      await _writeCrashLog('init error: $e\n$st');
-    }
-    rustLogStream.stream.listen((msg) {
-      print('[RUST] $msg');
-    });
-    runApp(const ProviderScope(child: MyApp()));
-  }, (error, stack) async {
-    print('Uncaught error: $error\n$stack');
-    await _writeCrashLog('Uncaught error: $error\n$stack');
+  try {
+    await RustLib.init();
+    await initRustLog();
+  } catch (e, st) {
+    LogHelper.log('init error: $e\n$st');
+  }
+  rustLogStream.stream.listen((msg) {
+    LogHelper.log('[RUST] $msg');
   });
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 Future<void> _writeCrashLog(String content) async {
@@ -87,7 +84,7 @@ Future<void> _writeCrashLog(String content) async {
     final now = DateTime.now().toIso8601String();
     await file.writeAsString('[$now] $content\n', mode: FileMode.append);
   } catch (e) {
-    print('写入crash_log.txt失败: $e');
+    LogHelper.log('写入crash_log.txt失败: $e');
   }
 }
 

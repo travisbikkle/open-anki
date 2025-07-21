@@ -16,6 +16,7 @@ import 'package:sqflite/sqflite.dart'; // 新增导入
 import 'package:open_anki/src/widgets/anki_template_renderer.dart';
 import 'package:open_anki/src/pages/html_source_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../log_helper.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -65,7 +66,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       ..addJavaScriptChannel(
         'AnkiDebug',
         onMessageReceived: (JavaScriptMessage message) {
-          print('WebView Debug:  [35m${message.message} [0m');
+          LogHelper.log('WebView Debug: ${message.message}');
         },
       )
       ..addJavaScriptChannel(
@@ -87,7 +88,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onWebResourceError: (WebResourceError error) {
-            print('WebView Error: ${error.description}');
+            LogHelper.log('WebView Error: ${error.description}');
           },
           onPageFinished: (String url) async {
             // 注入JS放大checkbox和radio
@@ -173,19 +174,19 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       const int chunkSize = 800;
       for (int i = 0; i < html.length; i += chunkSize) {
         final end = (i + chunkSize < html.length) ? i + chunkSize : html.length;
-        print(html.substring(i, end));
+        LogHelper.log(html.substring(i, end));
       }
     }
 
   Future<void> _loadCurrentCard() async {
-    print('[_loadCurrentCard] 开始加载卡片，索引: $_currentIndex');
+    LogHelper.log('[_loadCurrentCard] 开始加载卡片，索引: $_currentIndex');
     if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
       debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
-      print('_noteIds.isEmpty: ${_noteIds.isEmpty}');
-      print('_mediaDir: $_mediaDir');
-      print('_currentIndex: $_currentIndex');
-      print('_sqlitePath: $_sqlitePath');
-      print('_deckVersion: $_deckVersion');
+      LogHelper.log('_noteIds.isEmpty: ${_noteIds.isEmpty}');
+      LogHelper.log('_mediaDir: $_mediaDir');
+      LogHelper.log('_currentIndex: $_currentIndex');
+      LogHelper.log('_sqlitePath: $_sqlitePath');
+      LogHelper.log('_deckVersion: $_deckVersion');
       return;
     }
     setState(() {
@@ -232,7 +233,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     );
     _frontHtmlPath = frontPath;
     _backHtmlPath = backPath;
-    print('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
+    LogHelper.log('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
     // 直接加载正面 HTML
     _controller.loadRequest(Uri.parse('file://$frontPath'));
   }
@@ -420,7 +421,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                 const SizedBox(width: 24),
                 ElevatedButton(
                   onPressed: () async {
-                    print('=== 显示答案按钮被点击 ===');
+                    LogHelper.log('=== 显示答案按钮被点击 ===');
                     if (_showBack) {
                       _pendingShow = 'front';
                     } else {

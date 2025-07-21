@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:io';
+import '../log_helper.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -40,23 +41,9 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  Future<String> _getRecentLog() async {
-    // 假设日志保存在 app 文档目录下的 open_anki.log
-    try {
-      final dir = await Directory.systemTemp.createTemp();
-      final logFile = File('/tmp/open_anki.log'); // 你可根据实际日志路径调整
-      if (await logFile.exists()) {
-        final lines = await logFile.readAsLines();
-        // 只取最后100行
-        return lines.length > 100 ? lines.sublist(lines.length - 100).join('\n') : lines.join('\n');
-      }
-    } catch (_) {}
-    return '';
-  }
-
   Future<void> sendFeedbackEmail(BuildContext context) async {
     final info = await PackageInfo.fromPlatform();
-    final log = await _getRecentLog();
+    final log = await LogHelper.getRecentLog();
     final subject = Uri.encodeComponent('Open Anki 问题反馈');
     final body = Uri.encodeComponent(
       '请详细描述您的问题，并可在邮件中添加截图。\n\n'
@@ -66,7 +53,7 @@ class _SettingsPageState extends State<SettingsPage> {
       '平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n'
       '最近日志(部分):\n$log\n'
     );
-    final email = 'support@eusoftbank.com';
+    final email = 'support@example.com'; // TODO: 替换为你的支持邮箱
     final uri = 'mailto:$email?subject=$subject&body=$body';
     if (await canLaunch(uri)) {
       await launch(uri);

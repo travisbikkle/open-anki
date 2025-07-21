@@ -1,10 +1,11 @@
 import '../frb_generated.dart';
 import 'dart:async';
+import 'package:open_anki/src/log_helper.dart';
 
 final rustLogStream = StreamController<String>.broadcast();
 
 void rustLogCallback(String msg) {
-  print('[RUST] $msg');
+  LogHelper.log('[RUST] $msg');
   rustLogStream.add(msg);
 }
 
