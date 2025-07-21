@@ -263,6 +263,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       onPressed: () async {
         if (_currentNote == null) return;
         await AppDb.saveCardFeedback(_currentNote!.id, value);
+        // 新增：记录学习日志
+        await AppDb.logStudy(widget.deckId, _currentNote!.id);
         _nextCard();
       },
     );

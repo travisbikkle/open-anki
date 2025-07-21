@@ -3,6 +3,7 @@ import 'settings_page.dart';
 import '../providers.dart';
 import '../model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../db.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -30,86 +31,94 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         totalCards += d.cardCount;
       }
     }
-    return Scaffold(
-      backgroundColor: const Color(0xffeaf6ff),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey),
-            onPressed: _showSettings,
-          ),
-        ],
-      ),
-      body: ListView(
-        children: [
-          // 顶部头像区
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: Colors.blue[100],
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.blue[200]!,
-                        width: 3,
-                        style: BorderStyle.solid,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.person, size: 60, color: Colors.white),
-                ],
+    return FutureBuilder<List<int>>(
+      future: Future.wait([
+        AppDb.getConsecutiveStudyDays(),
+        AppDb.getTodayStudyCount(),
+      ]),
+      builder: (context, snapshot) {
+        final consecutiveDays = snapshot.data != null ? snapshot.data![0] : 0;
+        final todayCount = snapshot.data != null ? snapshot.data![1] : 0;
+        return Scaffold(
+          backgroundColor: const Color(0xffeaf6ff),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings, color: Colors.grey),
+                onPressed: _showSettings,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 8),
-          // 用户名、ID、加入时间
-          Center(
-            child: Column(
-              children: [
-                const Text('yu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-                Text('@ph.7t7DN1 · 2025年5月加入', style: TextStyle(color: Colors.grey, fontSize: 14)),
-              ],
-            ),
+          body: ListView(
+            children: [
+              // 顶部头像区
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: Colors.blue[100],
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.blue[200]!,
+                            width: 3,
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.person, size: 60, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 用户名、ID、加入时间
+              Center(
+                child: Column(
+                  children: [
+                    const Text('yu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+                    Text('@ph.7t7DN1 · 2025年5月加入', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 学习统计
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
+                    const _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
+                    _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 概览区块
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _OverviewCard(icon: Icons.local_fire_department, label: '连续学习', value: consecutiveDays.toString() + '天', color: Colors.orange),
+                    _OverviewCard(icon: Icons.flash_on, label: '今日学习', value: todayCount.toString(), color: Colors.amber),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-          const SizedBox(height: 12),
-          // 学习统计
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
-                const _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
-                _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // 概览区块
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: const [
-                _OverviewCard(icon: Icons.local_fire_department, label: '连续学习', value: '54天', color: Colors.orange),
-                _OverviewCard(icon: Icons.flash_on, label: '今日学习', value: '127', color: Colors.amber),
-                _OverviewCard(icon: Icons.emoji_events, label: '学习等级', value: '蓝宝石', color: Colors.blue),
-                _OverviewCard(icon: Icons.psychology, label: '记忆效率', value: '85%', color: Colors.green),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        );
+      },
     );
   }
 }

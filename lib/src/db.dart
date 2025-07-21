@@ -58,6 +58,14 @@ class AppDb {
             timestamp INTEGER NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE study_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deck_id TEXT NOT NULL,
+            card_id INTEGER NOT NULL,
+            study_time INTEGER NOT NULL
+          )
+        ''');
       },
     );
   }
@@ -257,5 +265,49 @@ class AppDb {
       whereArgs: [cardId],
       orderBy: 'timestamp DESC',
     );
+  }
+
+  // 学习日志
+  static Future<void> logStudy(String deckId, int cardId) async {
+    final dbClient = await db;
+    await dbClient.insert('study_log', {
+      'deck_id': deckId,
+      'card_id': cardId,
+      'study_time': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  static Future<int> getTodayStudyCount() async {
+    final dbClient = await db;
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    final endOfDay = startOfDay + Duration(days: 1).inMilliseconds;
+    final res = await dbClient.rawQuery(
+      'SELECT COUNT(DISTINCT card_id) as cnt FROM study_log WHERE study_time >= ? AND study_time < ?',
+      [startOfDay, endOfDay],
+    );
+    return res.isNotEmpty ? (res.first['cnt'] as int? ?? 0) : 0;
+  }
+
+  static Future<int> getConsecutiveStudyDays() async {
+    final dbClient = await db;
+    // 查询所有有学习记录的日期（去重）
+    final res = await dbClient.rawQuery(
+      'SELECT DISTINCT strftime("%Y-%m-%d", datetime(study_time/1000, "unixepoch")) as day FROM study_log ORDER BY day DESC',
+    );
+    if (res.isEmpty) return 0;
+    final now = DateTime.now();
+    int streak = 0;
+    for (int i = 0; i < res.length; i++) {
+      final dayStr = res[i]['day'] as String;
+      final day = DateTime.parse(dayStr);
+      final expected = now.subtract(Duration(days: streak));
+      if (day.year == expected.year && day.month == expected.month && day.day == expected.day) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
   }
 } 
