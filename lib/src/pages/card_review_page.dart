@@ -172,23 +172,41 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               correctCount: 0,
               totalCount: 0,
             );
-          if (stats.newCardsLearned >= settings.newCardsPerDay) {
-            // 今日新卡片已达上限
+          final newLimit = settings.newCardsPerDay - stats.newCardsLearned;
+          if (newLimit <= 0) {
             _noteIds = [];
             break;
           }
-          // 获取新卡片
+          // 获取新卡片，按ID排序，限制数量
           final db = await openDatabase(sqlitePath);
-          final idRows = await db.rawQuery('SELECT id FROM notes');
+          final idRows = await db.rawQuery('SELECT id FROM notes ORDER BY id LIMIT ?', [newLimit]);
           _noteIds = idRows.map((e) => e['id'] as int).toList();
           await db.close();
           break;
           
         case StudyMode.review:
-          // 获取到期的复习卡片
+          // 获取今日计划的复习卡片
+          final settings = await AppDb.getStudyPlanSettings(widget.deckId) ?? 
+            const StudyPlanSettings();
+          final stats = await AppDb.getTodayStats(widget.deckId) ?? 
+            DailyStudyStats(
+              deckId: widget.deckId,
+              date: DateTime.now(),
+              newCardsLearned: 0,
+              cardsReviewed: 0,
+              totalTime: 0,
+              correctCount: 0,
+              totalCount: 0,
+            );
+          final reviewLimit = settings.reviewsPerDay - stats.cardsReviewed;
+          if (reviewLimit <= 0) {
+            _noteIds = [];
+            break;
+          }
           final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
           _dueCards = await AppDb.getDueCards(now);
-          _noteIds = _dueCards.map((e) => e.cardId).toList();
+          // 只取今日计划数量的到期卡片
+          _noteIds = _dueCards.take(reviewLimit).map((e) => e.cardId).toList();
           break;
           
         case StudyMode.preview:
