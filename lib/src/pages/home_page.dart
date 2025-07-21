@@ -5,6 +5,7 @@ import '../model.dart';
 import '../widgets/deck_progress_tile.dart';
 import '../widgets/dashboard.dart';
 import '../db.dart';
+import '../pages/card_review_page.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -74,7 +75,71 @@ class HomePage extends ConsumerWidget {
                             child: Card(
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               elevation: 1,
-                              child: DeckProgressTile(deck: deck),
+                              child: DeckProgressTile(
+                                deck: deck,
+                                onTap: () async {
+                                  // 保持原有点击刷题逻辑
+                                  final canStudy = await AppDb.canStudyMore(deck.deckId);
+                                  if (!canStudy) {
+                                    if (!context.mounted) return;
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('今日学习已达上限'),
+                                        content: const Text('您可以通过题库设置按钮修改每日学习数量，或者选择自由浏览模式继续学习。'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('知道了'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => CardReviewPage(
+                                                    deckId: deck.deckId,
+                                                    mode: StudyMode.preview,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: const Text('自由浏览'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  final stats = await AppDb.getTodayStats(deck.deckId);
+                                  final settings = await AppDb.getStudyPlanSettings(deck.deckId);
+                                  if (stats == null || stats.newCardsLearned < settings.newCardsPerDay) {
+                                    if (!context.mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CardReviewPage(
+                                          deckId: deck.deckId,
+                                          mode: StudyMode.learn,
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    if (!context.mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CardReviewPage(
+                                          deckId: deck.deckId,
+                                          mode: StudyMode.review,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                showSettings: false,
+                              ),
                             ),
                           );
                         },

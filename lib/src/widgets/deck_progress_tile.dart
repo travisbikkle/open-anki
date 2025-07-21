@@ -8,7 +8,8 @@ import '../db.dart';
 class DeckProgressTile extends StatelessWidget {
   final DeckInfo deck;
   final VoidCallback? onTap;
-  const DeckProgressTile({required this.deck, this.onTap, super.key});
+  final bool showSettings;
+  const DeckProgressTile({required this.deck, this.onTap, this.showSettings = true, super.key});
 
   // 显示学习计划设置对话框
   Future<void> _showStudyPlanDialog(BuildContext context) async {
@@ -202,7 +203,7 @@ class DeckProgressTile extends StatelessWidget {
           );
         }
       },
-      onLongPressStart: (details) => _showDeckMenu(context, details.globalPosition),
+      onLongPressStart: showSettings ? (details) => _showDeckMenu(context, details.globalPosition) : null,
       child: Container(
         color: Colors.transparent,
         child: Column(
@@ -210,10 +211,12 @@ class DeckProgressTile extends StatelessWidget {
           children: [
             ListTile(
               title: Text(deck.deckName),
-              trailing: IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () => _showStudyPlanDialog(context),
-              ),
+              trailing: showSettings
+                  ? IconButton(
+                      icon: const Icon(Icons.settings),
+                      onPressed: () => _showStudyPlanDialog(context),
+                    )
+                  : null,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
