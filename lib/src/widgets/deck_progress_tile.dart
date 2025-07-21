@@ -2,11 +2,115 @@ import 'package:flutter/material.dart';
 import '../providers.dart';
 import '../model.dart';
 import '../pages/card_review_page.dart';
+import '../db.dart';
 
 class DeckProgressTile extends StatelessWidget {
   final DeckInfo deck;
   final VoidCallback? onTap;
   const DeckProgressTile({required this.deck, this.onTap, super.key});
+
+  // 显示学习计划设置对话框
+  Future<void> _showStudyPlanDialog(BuildContext context) async {
+    final settings = await AppDb.getStudyPlanSettings(deck.deckId) ?? 
+      const StudyPlanSettings();
+
+    final result = await showDialog<StudyPlanSettings>(
+      context: context,
+      builder: (context) => StudyPlanDialog(
+        initialSettings: settings,
+        deckName: deck.deckName,
+      ),
+    );
+
+    if (result != null) {
+      await AppDb.saveStudyPlanSettings(deck.deckId, result);
+    }
+  }
+
+  // 显示长按菜单
+  Future<void> _showDeckMenu(BuildContext context) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('重命名'),
+              onTap: () => Navigator.pop(context, 'rename'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.remove_red_eye),
+              title: const Text('自由浏览'),
+              onTap: () => Navigator.pop(context, 'preview'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('删除'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    if (!context.mounted) return;
+
+    switch (result) {
+      case 'rename':
+        // 显示重命名对话框
+        final newName = await showDialog<String>(
+          context: context,
+          builder: (context) => RenameDialog(
+            initialName: deck.deckName,
+          ),
+        );
+        if (newName != null) {
+          await AppDb.renameDeck(deck.deckId, newName);
+        }
+        break;
+      case 'preview':
+        // 进入自由浏览模式
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CardReviewPage(
+                deckId: deck.deckId,
+                mode: StudyMode.preview,
+              ),
+            ),
+          );
+        }
+        break;
+      case 'delete':
+        // 显示删除确认对话框
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('删除题库'),
+            content: Text('确定要删除题库"${deck.deckName}"吗？此操作不可恢复。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true) {
+          await AppDb.deleteDeck(deck.deckId);
+        }
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,12 +119,74 @@ class DeckProgressTile extends StatelessWidget {
     final double progress = cardCount > 0 ? learned / cardCount : 0;
     
     return GestureDetector(
-      onTap: onTap ?? () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => CardReviewPage(deckId: deck.deckId)),
-        );
+      onTap: onTap ?? () async {
+        // 检查今日学习上限
+        final canStudy = await AppDb.canStudyMore(deck.deckId);
+        if (!canStudy) {
+          if (!context.mounted) return;
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('今日学习已达上限'),
+              content: const Text('您可以通过题库设置按钮修改每日学习数量，或者选择自由浏览模式继续学习。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('知道了'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CardReviewPage(
+                          deckId: deck.deckId,
+                          mode: StudyMode.preview,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('自由浏览'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+        
+        // 获取今日统计
+        final stats = await AppDb.getTodayStats(deck.deckId);
+        final settings = await AppDb.getStudyPlanSettings(deck.deckId);
+        
+        // 判断应该优先学习新卡片还是复习
+        if (stats == null || stats.newCardsLearned < settings.newCardsPerDay) {
+          // 优先学习新卡片
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CardReviewPage(
+                deckId: deck.deckId,
+                mode: StudyMode.learn,
+              ),
+            ),
+          );
+        } else {
+          // 新卡片已达上限，进入复习模式
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CardReviewPage(
+                deckId: deck.deckId,
+                mode: StudyMode.review,
+              ),
+            ),
+          );
+        }
       },
+      onLongPress: () => _showDeckMenu(context),
       child: Container(
         color: Colors.transparent,
         child: Column(
@@ -28,6 +194,10 @@ class DeckProgressTile extends StatelessWidget {
           children: [
             ListTile(
               title: Text(deck.deckName),
+              trailing: IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () => _showStudyPlanDialog(context),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -61,6 +231,192 @@ class DeckProgressTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// 学习计划设置对话框
+class StudyPlanDialog extends StatefulWidget {
+  final StudyPlanSettings initialSettings;
+  final String deckName;
+
+  const StudyPlanDialog({
+    required this.initialSettings,
+    required this.deckName,
+    super.key,
+  });
+
+  @override
+  State<StudyPlanDialog> createState() => _StudyPlanDialogState();
+}
+
+class _StudyPlanDialogState extends State<StudyPlanDialog> {
+  late StudyPlanSettings _settings;
+  
+  @override
+  void initState() {
+    super.initState();
+    _settings = widget.initialSettings;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('学习计划'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('每日新卡片数', style: TextStyle(fontSize: 16)),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      onPressed: () {
+                        if (_settings.newCardsPerDay > 5) {
+                          setState(() {
+                            _settings = _settings.copyWith(
+                              newCardsPerDay: _settings.newCardsPerDay - 5,
+                            );
+                          });
+                        }
+                      },
+                    ),
+                    SizedBox(
+                      width: 48,
+                      child: Text(
+                        '${_settings.newCardsPerDay}',
+                        style: const TextStyle(fontSize: 16),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        setState(() {
+                          _settings = _settings.copyWith(
+                            newCardsPerDay: _settings.newCardsPerDay + 5,
+                          );
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('每日复习数量', style: TextStyle(fontSize: 16)),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      onPressed: () {
+                        if (_settings.reviewsPerDay > 10) {
+                          setState(() {
+                            _settings = _settings.copyWith(
+                              reviewsPerDay: _settings.reviewsPerDay - 10,
+                            );
+                          });
+                        }
+                      },
+                    ),
+                    SizedBox(
+                      width: 48,
+                      child: Text(
+                        '${_settings.reviewsPerDay}',
+                        style: const TextStyle(fontSize: 16),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        setState(() {
+                          _settings = _settings.copyWith(
+                            reviewsPerDay: _settings.reviewsPerDay + 10,
+                          );
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _settings),
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+}
+
+// 重命名对话框
+class RenameDialog extends StatefulWidget {
+  final String initialName;
+
+  const RenameDialog({
+    required this.initialName,
+    super.key,
+  });
+
+  @override
+  State<RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<RenameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('重命名题库'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: '题库名称',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('确定'),
+        ),
+      ],
     );
   }
 } 

@@ -27,7 +27,14 @@ class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
   final Map<String, Uint8List>? mediaFiles;
   final Map<String, String>? mediaMap; // 文件名 -> 数字编号的映射
-  const CardReviewPage({required this.deckId, this.mediaFiles, this.mediaMap, super.key});
+  final StudyMode mode; // 新增：学习模式
+  const CardReviewPage({
+    required this.deckId, 
+    this.mediaFiles, 
+    this.mediaMap, 
+    this.mode = StudyMode.learn, // 默认为学习模式
+    super.key,
+  });
   @override
   ConsumerState<CardReviewPage> createState() => _CardReviewPageState();
 }
@@ -149,19 +156,56 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _mediaDir = '$deckDir/unarchived_media';
       _deckVersion = deck.version ?? 'anki2';
       
-      // 获取到期的卡片
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      _dueCards = await AppDb.getDueCards(now);
-      
-      if (_dueCards.isEmpty) {
-        // 如果没有到期卡片，获取所有卡片ID
-        final db = await openDatabase(sqlitePath);
-        final idRows = await db.rawQuery('SELECT id FROM notes');
-        _noteIds = idRows.map((e) => e['id'] as int).toList();
-        await db.close();
-      } else {
-        // 使用到期卡片的ID
-        _noteIds = _dueCards.map((e) => e.cardId).toList();
+      // 根据学习模式获取卡片
+      switch (widget.mode) {
+        case StudyMode.learn:
+          // 获取今日计划的新卡片
+          final settings = await AppDb.getStudyPlanSettings(widget.deckId) ?? 
+            const StudyPlanSettings();
+          final stats = await AppDb.getTodayStats(widget.deckId) ?? 
+            DailyStudyStats(
+              deckId: widget.deckId,
+              date: DateTime.now(),
+              newCardsLearned: 0,
+              cardsReviewed: 0,
+              totalTime: 0,
+              correctCount: 0,
+              totalCount: 0,
+            );
+          if (stats.newCardsLearned >= settings.newCardsPerDay) {
+            // 今日新卡片已达上限
+            _noteIds = [];
+            break;
+          }
+          // 获取新卡片
+          final db = await openDatabase(sqlitePath);
+          final idRows = await db.rawQuery('SELECT id FROM notes');
+          _noteIds = idRows.map((e) => e['id'] as int).toList();
+          await db.close();
+          break;
+          
+        case StudyMode.review:
+          // 获取到期的复习卡片
+          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          _dueCards = await AppDb.getDueCards(now);
+          _noteIds = _dueCards.map((e) => e.cardId).toList();
+          break;
+          
+        case StudyMode.preview:
+          // 自由浏览模式，获取所有卡片
+          final db = await openDatabase(sqlitePath);
+          final idRows = await db.rawQuery('SELECT id FROM notes');
+          _noteIds = idRows.map((e) => e['id'] as int).toList();
+          await db.close();
+          break;
+          
+        case StudyMode.custom:
+          // TODO: 自定义模式，暂时同 preview
+          final db = await openDatabase(sqlitePath);
+          final idRows = await db.rawQuery('SELECT id FROM notes');
+          _noteIds = idRows.map((e) => e['id'] as int).toList();
+          await db.close();
+          break;
       }
       
       // 使用 deckId 获取进度
@@ -264,20 +308,58 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     _controller.loadRequest(Uri.parse('file://$frontPath'));
   }
 
-  void _nextCard() {
+  void _nextCard() async {
     if (_noteIds.isEmpty) return;
-    setState(() {
-      _currentIndex = (_currentIndex + 1) % _noteIds.length;
-    });
+    
+    switch (widget.mode) {
+      case StudyMode.learn:
+      case StudyMode.preview:
+      case StudyMode.custom:
+        // 顺序浏览模式，直接下一张
+        setState(() {
+          _currentIndex = (_currentIndex + 1) % _noteIds.length;
+        });
+        break;
+        
+      case StudyMode.review:
+        // 复习模式，重新获取到期卡片
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        _dueCards = await AppDb.getDueCards(now);
+        setState(() {
+          _noteIds = _dueCards.map((e) => e.cardId).toList();
+          _currentIndex = 0; // 从第一张到期卡片开始
+        });
+        break;
+    }
+    
     _saveProgress(_currentIndex);
     _loadCurrentCard();
   }
 
-  void _prevCard() {
+  void _prevCard() async {
     if (_noteIds.isEmpty) return;
-    setState(() {
-      _currentIndex = (_currentIndex - 1 + _noteIds.length) % _noteIds.length;
-    });
+    
+    switch (widget.mode) {
+      case StudyMode.learn:
+      case StudyMode.preview:
+      case StudyMode.custom:
+        // 顺序浏览模式，直接上一张
+        setState(() {
+          _currentIndex = (_currentIndex - 1 + _noteIds.length) % _noteIds.length;
+        });
+        break;
+        
+      case StudyMode.review:
+        // 复习模式，重新获取到期卡片
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        _dueCards = await AppDb.getDueCards(now);
+        setState(() {
+          _noteIds = _dueCards.map((e) => e.cardId).toList();
+          _currentIndex = _dueCards.length - 1; // 从最后一张到期卡片开始
+        });
+        break;
+    }
+    
     _saveProgress(_currentIndex);
     _loadCurrentCard();
   }

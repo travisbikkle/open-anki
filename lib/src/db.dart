@@ -20,41 +20,144 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 2, // 升级到版本2
+      version: 3, // 升级到版本3
       onCreate: (db, version) async {
-        await _createTables(db);
+        await db.execute('''
+          CREATE TABLE decks (
+            md5 TEXT PRIMARY KEY,
+            apkg_path TEXT NOT NULL,
+            user_deck_name TEXT,
+            import_time INTEGER,
+            media_map TEXT,
+            version TEXT,
+            card_count INTEGER
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE progress (
+            deck_id TEXT NOT NULL,
+            current_card_id INTEGER,
+            last_reviewed INTEGER,
+            PRIMARY KEY(deck_id)
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE recent_decks (
+            deck_id TEXT PRIMARY KEY,
+            last_reviewed INTEGER
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE user_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE card_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id INTEGER NOT NULL,
+            feedback INTEGER NOT NULL,
+            timestamp INTEGER NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE study_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deck_id TEXT NOT NULL,
+            card_id INTEGER NOT NULL,
+            study_time INTEGER NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE user_profile (
+            id INTEGER PRIMARY KEY,
+            nickname TEXT,
+            avatar BLOB
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE card_scheduling (
+            card_id INTEGER PRIMARY KEY,
+            stability REAL NOT NULL,
+            difficulty REAL NOT NULL,
+            due INTEGER NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE study_plan_settings (
+            deck_id TEXT PRIMARY KEY,
+            new_cards_per_day INTEGER NOT NULL DEFAULT 20,
+            reviews_per_day INTEGER NOT NULL DEFAULT 100,
+            enable_time_limit INTEGER NOT NULL DEFAULT 0,
+            study_time_minutes INTEGER NOT NULL DEFAULT 30,
+            default_mode INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE daily_study_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deck_id TEXT NOT NULL,
+            date INTEGER NOT NULL,
+            new_cards_learned INTEGER NOT NULL DEFAULT 0,
+            cards_reviewed INTEGER NOT NULL DEFAULT 0,
+            total_time INTEGER NOT NULL DEFAULT 0,
+            correct_count INTEGER NOT NULL DEFAULT 0,
+            total_count INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(deck_id, date)
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE card_states (
+            card_id INTEGER PRIMARY KEY,
+            deck_id TEXT NOT NULL,
+            state INTEGER NOT NULL DEFAULT 0,
+            first_learned INTEGER,
+            last_reviewed INTEGER,
+            FOREIGN KEY(deck_id) REFERENCES decks(md5)
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
+          // 版本1->2：添加调度表
           await _createCardSchedulingTable(db);
-          
-          // 为现有卡片初始化调度参数
-          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-          final decks = await db.query('decks');
-          for (final deck in decks) {
-            final deckId = deck['md5'] as String;
-            final appDocDir = await getApplicationDocumentsDirectory();
-            final sqlitePath = join(appDocDir.path, 'anki_data', deckId, 'collection.sqlite');
-            if (!File(sqlitePath).existsSync()) continue;
-            
-            final deckDb = await openDatabase(sqlitePath);
-            final cardIds = await deckDb.rawQuery('SELECT id FROM notes');
-            await deckDb.close();
-            
-            for (final row in cardIds) {
-              final cardId = row['id'] as int;
-              await db.insert(
-                'card_scheduling',
-                {
-                  'card_id': cardId,
-                  'stability': 0.0, // 新卡片，稳定性为0
-                  'difficulty': 5.0,
-                  'due': now,
-                },
-                conflictAlgorithm: ConflictAlgorithm.ignore,
-              );
-            }
-          }
+        }
+        if (oldVersion < 3) {
+          // 版本2->3：添加学习计划相关的表
+          await db.execute('''
+            CREATE TABLE study_plan_settings (
+              deck_id TEXT PRIMARY KEY,
+              new_cards_per_day INTEGER NOT NULL DEFAULT 20,
+              reviews_per_day INTEGER NOT NULL DEFAULT 100,
+              enable_time_limit INTEGER NOT NULL DEFAULT 0,
+              study_time_minutes INTEGER NOT NULL DEFAULT 30,
+              default_mode INTEGER NOT NULL DEFAULT 1
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE daily_study_stats (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              deck_id TEXT NOT NULL,
+              date INTEGER NOT NULL,
+              new_cards_learned INTEGER NOT NULL DEFAULT 0,
+              cards_reviewed INTEGER NOT NULL DEFAULT 0,
+              total_time INTEGER NOT NULL DEFAULT 0,
+              correct_count INTEGER NOT NULL DEFAULT 0,
+              total_count INTEGER NOT NULL DEFAULT 0,
+              UNIQUE(deck_id, date)
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE card_states (
+              card_id INTEGER PRIMARY KEY,
+              deck_id TEXT NOT NULL,
+              state INTEGER NOT NULL DEFAULT 0,
+              first_learned INTEGER,
+              last_reviewed INTEGER,
+              FOREIGN KEY(deck_id) REFERENCES decks(md5)
+            )
+          ''');
         }
       },
     );
@@ -158,30 +261,37 @@ class AppDb {
     });
   }
 
-  static Future<int> deleteDeck({String? md5}) async {
+  // 删除题库 - 完整版本
+  static Future<void> deleteDeck(String deckId) async {
     final dbClient = await db;
-    if (md5 != null) {
-      // 使用事务确保数据一致性
-      return await dbClient.transaction((txn) async {
-        // 删除 recent_decks 表中的记录
-        await txn.delete('recent_decks', where: 'deck_id = ?', whereArgs: [md5]);
-        // 删除 progress 表中的记录
-        await txn.delete('progress', where: 'deck_id = ?', whereArgs: [md5]);
-        // 删除 decks 表中的记录
-        return await txn.delete('decks', where: 'md5 = ?', whereArgs: [md5]);
-      });
-    } else {
-      throw ArgumentError('必须提供 md5');
+    await dbClient.transaction((txn) async {
+      // 删除题库相关的所有数据
+      await txn.delete('recent_decks', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('progress', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('decks', where: 'md5 = ?', whereArgs: [deckId]);
+      await txn.delete('notes', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('card_scheduling', where: 'card_id IN (SELECT id FROM notes WHERE deck_id = ?)', whereArgs: [deckId]);
+      await txn.delete('study_plan_settings', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('daily_study_stats', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('card_states', where: 'deck_id = ?', whereArgs: [deckId]);
+    });
+
+    // 删除题库文件
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final deckDir = Directory('${appDocDir.path}/anki_data/$deckId');
+    if (await deckDir.exists()) {
+      await deckDir.delete(recursive: true);
     }
   }
 
-  static Future<int> updateDeckName(String md5, String newName) async {
+  // 重命名题库
+  static Future<void> renameDeck(String deckId, String newName) async {
     final dbClient = await db;
-    return await dbClient.update(
+    await dbClient.update(
       'decks',
       {'user_deck_name': newName},
       where: 'md5 = ?',
-      whereArgs: [md5],
+      whereArgs: [deckId],
     );
   }
 
@@ -479,5 +589,208 @@ class AppDb {
     final dbClient = await db;
     final res = await dbClient.query('card_scheduling', orderBy: 'due ASC');
     return res.map((e) => CardScheduling.fromMap(e)).toList();
+  }
+
+  // 学习计划设置操作
+  static Future<void> saveStudyPlanSettings(String deckId, StudyPlanSettings settings) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'study_plan_settings',
+      {
+        'deck_id': deckId,
+        'new_cards_per_day': settings.newCardsPerDay,
+        'reviews_per_day': settings.reviewsPerDay,
+        'enable_time_limit': settings.enableTimeLimit ? 1 : 0,
+        'study_time_minutes': settings.studyTimeMinutes,
+        'default_mode': settings.defaultMode.index,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<StudyPlanSettings> getStudyPlanSettings(String deckId) async {
+    final dbClient = await db;
+    final res = await dbClient.query(
+      'study_plan_settings',
+      where: 'deck_id = ?',
+      whereArgs: [deckId],
+    );
+    if (res.isEmpty) {
+      return const StudyPlanSettings(); // 返回默认设置
+    }
+    return StudyPlanSettings(
+      newCardsPerDay: res.first['new_cards_per_day'] as int,
+      reviewsPerDay: res.first['reviews_per_day'] as int,
+      enableTimeLimit: res.first['enable_time_limit'] == 1,
+      studyTimeMinutes: res.first['study_time_minutes'] as int,
+      defaultMode: StudyMode.values[res.first['default_mode'] as int],
+    );
+  }
+
+  // 每日学习统计操作
+  static Future<void> updateDailyStats(DailyStudyStats stats) async {
+    final dbClient = await db;
+    final startOfDay = DateTime(stats.date.year, stats.date.month, stats.date.day).millisecondsSinceEpoch;
+    
+    await dbClient.insert(
+      'daily_study_stats',
+      {
+        'deck_id': stats.deckId,
+        'date': startOfDay,
+        'new_cards_learned': stats.newCardsLearned,
+        'cards_reviewed': stats.cardsReviewed,
+        'total_time': stats.totalTime,
+        'correct_count': stats.correctCount,
+        'total_count': stats.totalCount,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<DailyStudyStats?> getTodayStats(String deckId) async {
+    final dbClient = await db;
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    
+    final res = await dbClient.query(
+      'daily_study_stats',
+      where: 'deck_id = ? AND date = ?',
+      whereArgs: [deckId, startOfDay],
+    );
+    
+    if (res.isEmpty) return null;
+    return DailyStudyStats.fromMap(res.first);
+  }
+
+  // 卡片状态操作
+  static Future<void> updateCardState(int cardId, String deckId, CardState state) async {
+    final dbClient = await db;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    
+    await dbClient.insert(
+      'card_states',
+      {
+        'card_id': cardId,
+        'deck_id': deckId,
+        'state': state.index,
+        'last_reviewed': now,
+        'first_learned': state == CardState.newCard ? now : null,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<CardState> getCardState(int cardId) async {
+    final dbClient = await db;
+    final res = await dbClient.query(
+      'card_states',
+      where: 'card_id = ?',
+      whereArgs: [cardId],
+    );
+    
+    if (res.isEmpty) {
+      return CardState.newCard; // 默认为新卡片
+    }
+    return CardState.values[res.first['state'] as int];
+  }
+
+  // 获取学习统计
+  static Future<Map<String, int>> getDeckStats(String deckId) async {
+    final dbClient = await db;
+    
+    // 获取各状态的卡片数量
+    final res = await dbClient.rawQuery('''
+      SELECT state, COUNT(*) as count
+      FROM card_states
+      WHERE deck_id = ?
+      GROUP BY state
+    ''', [deckId]);
+    
+    final stats = {
+      'new': 0,
+      'learning': 0,
+      'review': 0,
+      'done': 0,
+    };
+    
+    for (final row in res) {
+      final state = CardState.values[row['state'] as int];
+      final count = row['count'] as int;
+      switch (state) {
+        case CardState.newCard:
+          stats['new'] = count;
+          break;
+        case CardState.learning:
+          stats['learning'] = count;
+          break;
+        case CardState.review:
+          stats['review'] = count;
+          break;
+        case CardState.done:
+          stats['done'] = count;
+          break;
+      }
+    }
+    
+    return stats;
+  }
+
+  // 根据学习模式获取卡片
+  static Future<List<int>> getCardsForMode(String deckId, StudyMode mode, {int limit = 50}) async {
+    final dbClient = await db;
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    
+    switch (mode) {
+      case StudyMode.learn:
+        // 获取新卡片，按ID排序
+        final res = await dbClient.rawQuery('''
+          SELECT cs.card_id
+          FROM card_states cs
+          WHERE cs.deck_id = ? AND cs.state = ?
+          ORDER BY cs.card_id
+          LIMIT ?
+        ''', [deckId, CardState.newCard.index, limit]);
+        return res.map((e) => e['card_id'] as int).toList();
+        
+      case StudyMode.review:
+        // 获取到期的复习卡片
+        return (await getDueCards(now)).map((e) => e.cardId).toList();
+        
+      case StudyMode.preview:
+        // 获取所有卡片，按ID排序
+        final res = await dbClient.rawQuery('''
+          SELECT DISTINCT card_id
+          FROM card_states
+          WHERE deck_id = ?
+          ORDER BY card_id
+        ''', [deckId]);
+        return res.map((e) => e['card_id'] as int).toList();
+        
+      case StudyMode.custom:
+        // 混合模式：新卡片 + 复习卡片，各取一半
+        final newCards = await getCardsForMode(deckId, StudyMode.learn, limit: limit ~/ 2);
+        final reviewCards = await getCardsForMode(deckId, StudyMode.review, limit: limit ~/ 2);
+        return [...newCards, ...reviewCards];
+    }
+  }
+
+  // 检查今天的学习限制
+  static Future<bool> canStudyMore(String deckId) async {
+    final settings = await getStudyPlanSettings(deckId);
+    final stats = await getTodayStats(deckId);
+    
+    if (stats == null) return true;
+    
+    // 检查新卡片限制
+    if (stats.newCardsLearned >= settings.newCardsPerDay) return false;
+    
+    // 检查复习限制
+    if (stats.cardsReviewed >= settings.reviewsPerDay) return false;
+    
+    // 检查时间限制
+    if (settings.enableTimeLimit && 
+        stats.totalTime >= settings.studyTimeMinutes * 60) return false;
+    
+    return true;
   }
 } 

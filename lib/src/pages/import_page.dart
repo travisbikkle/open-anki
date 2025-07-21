@@ -211,7 +211,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                             if (result == 'rename') {
                               final newName = await _inputRenameDialog(deck.deckName);
                               if (newName != null && newName.isNotEmpty && newName != deck.deckName) {
-                                await AppDb.updateDeckName(deck.deckId, newName);
+                                await AppDb.renameDeck(deck.deckId, newName);
                                 ref.invalidate(allDecksProvider);
                                 ref.invalidate(recentDecksProvider);
                               }
@@ -235,7 +235,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                 ),
                               );
                               if (confirmed == true) {
-                                await AppDb.deleteDeck(md5: deck.deckId);
+                                await AppDb.deleteDeck(deck.deckId);
                                 ref.invalidate(allDecksProvider);
                                 ref.invalidate(recentDecksProvider);
                               }
