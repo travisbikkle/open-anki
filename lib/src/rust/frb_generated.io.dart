@@ -37,7 +37,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtractResult dco_decode_extract_result(dynamic raw);
 
   @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
   FieldExt dco_decode_field_ext(dynamic raw);
+
+  @protected
+  FsrsScheduleResult dco_decode_fsrs_schedule_result(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -104,7 +110,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtractResult sse_decode_extract_result(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
   FieldExt sse_decode_field_ext(SseDeserializer deserializer);
+
+  @protected
+  FsrsScheduleResult sse_decode_fsrs_schedule_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -191,7 +205,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_extract_result(ExtractResult self, SseSerializer serializer);
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_field_ext(FieldExt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fsrs_schedule_result(
+    FsrsScheduleResult self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);

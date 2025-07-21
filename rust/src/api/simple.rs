@@ -24,6 +24,8 @@ use itertools::Itertools;
 use crate::frb_generated::StreamSink;
 use std::sync::Mutex;
 use lazy_static::lazy_static;
+use rs_fsrs::{FSRS, Card, Rating};
+use chrono::{Utc, TimeZone};
 
 lazy_static! {
     static ref LOG_SINK: Mutex<Option<StreamSink<String>>> = Mutex::new(None);
@@ -543,4 +545,111 @@ pub fn get_card_count_from_deck(app_doc_dir: String, md5: String) -> usize {
     } else {
         0
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct FsrsScheduleResult {
+    pub due: i64,
+    pub stability: f64,
+    pub difficulty: f64,
+}
+
+#[flutter_rust_bridge::frb]
+pub fn update_card_schedule_simple(
+    stability: f64,
+    difficulty: f64,
+    last_review: i64, // unix timestamp (秒)
+    rating: u8,       // 0-困难, 1-一般, 2-简单
+    now: i64          // 当前时间戳（秒）
+) -> Result<FsrsScheduleResult, String> {
+    rust_log(&format!("[Simple] 开始简单调度计算"));
+    rust_log(&format!("[Simple] 输入参数: stability={}, difficulty={}, rating={}", 
+        stability, difficulty, rating));
+    
+    let mut new_stability = stability;
+    let mut new_difficulty = difficulty;
+    let mut interval_minutes: i64 = 0;
+    
+    match rating {
+        0 => { // 困难
+            new_stability = (stability * 0.5).max(0.1);
+            new_difficulty = (difficulty + 0.2).min(10.0);
+            interval_minutes = 5; // 困难的卡片5分钟后重试
+        },
+        1 => { // 一般
+            new_stability = (stability * 0.8).max(0.5);
+            new_difficulty = (difficulty + 0.15).min(10.0);
+            interval_minutes = 10; // 一般的卡片10分钟后重试
+        },
+        2 => { // 简单
+            new_stability = (stability * 1.2).max(1.0);
+            new_difficulty = difficulty; // 保持不变
+            interval_minutes = 30; // 简单的卡片30分钟后重试
+        },
+        _ => return Err("无效的rating，必须是0-2之间的值".to_string()),
+    }
+    
+    let due_timestamp = now + (interval_minutes * 60);
+    
+    rust_log(&format!("[Simple] 调度结果: interval_minutes={}, due_timestamp={}", 
+        interval_minutes, due_timestamp));
+    rust_log(&format!("[Simple] 新参数: stability={}, difficulty={}", new_stability, new_difficulty));
+    
+    Ok(FsrsScheduleResult {
+        due: due_timestamp,
+        stability: new_stability,
+        difficulty: new_difficulty,
+    })
+}
+
+#[flutter_rust_bridge::frb]
+pub fn update_card_schedule(
+    stability: f64,
+    difficulty: f64,
+    last_review: i64, // unix timestamp (秒)
+    rating: u8,       // 0-困难, 1-一般, 2-简单
+    now: i64          // 当前时间戳（秒）
+) -> Result<FsrsScheduleResult, String> {
+    rust_log(&format!("[FSRS] 开始调度计算"));
+    rust_log(&format!("[FSRS] 输入参数: stability={}, difficulty={}, last_review={}, rating={}, now={}", 
+        stability, difficulty, last_review, rating, now));
+    
+    // 构造FSRS参数
+    let card = Card {
+        stability,
+        difficulty,
+        last_review: Utc.timestamp_opt(last_review, 0).single().unwrap_or(Utc::now()),
+        due: Utc.timestamp_opt(now, 0).single().unwrap_or(Utc::now()),
+        ..Default::default()
+    };
+    
+    // 使用默认参数，但添加日志
+    let fsrs = FSRS::default();
+    
+    let rating = match rating {
+        0 => Rating::Again,  // 困难
+        1 => Rating::Hard,   // 一般
+        2 => Rating::Good,   // 简单
+        _ => return Err("无效的rating，必须是0-2之间的值".to_string()),
+    };
+    
+    let review_time = Utc.timestamp_opt(now, 0).single().unwrap_or(Utc::now());
+    let result = fsrs.repeat(card.clone(), review_time);
+    let item = result.get(&rating).ok_or("FSRS调度失败")?;
+    
+    let due_timestamp = item.card.due.timestamp();
+    let interval_seconds = due_timestamp - now;
+    let interval_minutes = interval_seconds / 60;
+    let interval_hours = interval_seconds / 3600;
+    let interval_days = interval_seconds / 86400;
+    
+    rust_log(&format!("[FSRS] 调度结果: due={}, interval_seconds={}, interval_minutes={}, interval_hours={}, interval_days={}", 
+        due_timestamp, interval_seconds, interval_minutes, interval_hours, interval_days));
+    rust_log(&format!("[FSRS] 新参数: stability={}, difficulty={}", item.card.stability, item.card.difficulty));
+    
+    Ok(FsrsScheduleResult {
+        due: due_timestamp,
+        stability: item.card.stability,
+        difficulty: item.card.difficulty,
+    })
 }

@@ -3,6 +3,8 @@ import 'package:path/path.dart';
 import 'dart:convert'; // Added for jsonEncode and jsonDecode
 import 'dart:typed_data'; // Added for Uint8List
 import 'model.dart';
+import 'package:path_provider/path_provider.dart'; // Added for getApplicationDocumentsDirectory
+import 'dart:io'; // Added for File
 
 class AppDb {
   static Database? _db;
@@ -18,64 +20,128 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 1, // 重新开始，使用版本1
+      version: 2, // 升级到版本2
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE decks (
-            md5 TEXT PRIMARY KEY,
-            apkg_path TEXT NOT NULL,
-            user_deck_name TEXT,
-            import_time INTEGER,
-            media_map TEXT,
-            version TEXT,
-            card_count INTEGER
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE progress (
-            deck_id TEXT NOT NULL,
-            current_card_id INTEGER,
-            last_reviewed INTEGER,
-            PRIMARY KEY(deck_id)
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE recent_decks (
-            deck_id TEXT PRIMARY KEY,
-            last_reviewed INTEGER
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE user_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE card_feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            card_id INTEGER NOT NULL,
-            feedback INTEGER NOT NULL,
-            timestamp INTEGER NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE study_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            deck_id TEXT NOT NULL,
-            card_id INTEGER NOT NULL,
-            study_time INTEGER NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE user_profile (
-            id INTEGER PRIMARY KEY,
-            nickname TEXT,
-            avatar BLOB
-          )
-        ''');
+        await _createTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createCardSchedulingTable(db);
+          
+          // 为现有卡片初始化调度参数
+          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          final decks = await db.query('decks');
+          for (final deck in decks) {
+            final deckId = deck['md5'] as String;
+            final appDocDir = await getApplicationDocumentsDirectory();
+            final sqlitePath = join(appDocDir.path, 'anki_data', deckId, 'collection.sqlite');
+            if (!File(sqlitePath).existsSync()) continue;
+            
+            final deckDb = await openDatabase(sqlitePath);
+            final cardIds = await deckDb.rawQuery('SELECT id FROM notes');
+            await deckDb.close();
+            
+            for (final row in cardIds) {
+              final cardId = row['id'] as int;
+              await db.insert(
+                'card_scheduling',
+                {
+                  'card_id': cardId,
+                  'stability': 0.0, // 新卡片，稳定性为0
+                  'difficulty': 5.0,
+                  'due': now,
+                },
+                conflictAlgorithm: ConflictAlgorithm.ignore,
+              );
+            }
+          }
+        }
       },
     );
+  }
+
+  static Future<void> _createTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE decks (
+        md5 TEXT PRIMARY KEY,
+        apkg_path TEXT NOT NULL,
+        user_deck_name TEXT,
+        import_time INTEGER,
+        media_map TEXT,
+        version TEXT,
+        card_count INTEGER
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE progress (
+        deck_id TEXT NOT NULL,
+        current_card_id INTEGER,
+        last_reviewed INTEGER,
+        PRIMARY KEY(deck_id)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE recent_decks (
+        deck_id TEXT PRIMARY KEY,
+        last_reviewed INTEGER
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE user_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE card_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        card_id INTEGER NOT NULL,
+        feedback INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE study_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        deck_id TEXT NOT NULL,
+        card_id INTEGER NOT NULL,
+        study_time INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE user_profile (
+        id INTEGER PRIMARY KEY,
+        nickname TEXT,
+        avatar BLOB
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE card_scheduling (
+        card_id INTEGER PRIMARY KEY,
+        stability REAL NOT NULL,
+        difficulty REAL NOT NULL,
+        due INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  static Future<void> _createCardSchedulingTable(Database db) async {
+    // 检查 card_scheduling 表是否已存在
+    final tableExists = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='card_scheduling'"
+    );
+    
+    if (tableExists.isEmpty) {
+      // 创建 card_scheduling 表
+      await db.execute('''
+        CREATE TABLE card_scheduling (
+          card_id INTEGER PRIMARY KEY,
+          stability REAL NOT NULL,
+          difficulty REAL NOT NULL,
+          due INTEGER NOT NULL
+        )
+      ''');
+    }
   }
 
   // 题库索引操作
@@ -380,5 +446,38 @@ class AppDb {
     final dbClient = await db;
     final res = await dbClient.query('user_profile', where: 'id = ?', whereArgs: [1]);
     return res.isNotEmpty ? res.first : null;
+  }
+
+  // 卡片调度参数操作
+  static Future<void> upsertCardScheduling(CardScheduling scheduling) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'card_scheduling',
+      scheduling.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<CardScheduling?> getCardScheduling(int cardId) async {
+    final dbClient = await db;
+    final res = await dbClient.query('card_scheduling', where: 'card_id = ?', whereArgs: [cardId]);
+    return res.isNotEmpty ? CardScheduling.fromMap(res.first) : null;
+  }
+
+  static Future<void> deleteCardScheduling(int cardId) async {
+    final dbClient = await db;
+    await dbClient.delete('card_scheduling', where: 'card_id = ?', whereArgs: [cardId]);
+  }
+
+  static Future<List<CardScheduling>> getDueCards(int now) async {
+    final dbClient = await db;
+    final res = await dbClient.query('card_scheduling', where: 'due <= ?', whereArgs: [now]);
+    return res.map((e) => CardScheduling.fromMap(e)).toList();
+  }
+
+  static Future<List<CardScheduling>> getAllCardScheduling() async {
+    final dbClient = await db;
+    final res = await dbClient.query('card_scheduling', orderBy: 'due ASC');
+    return res.map((e) => CardScheduling.fromMap(e)).toList();
   }
 } 

@@ -19,6 +19,7 @@ md5 = "0.7"
 itertools = "0.12"
 chrono = "0.4.41"
 ctor = "0.4.2"
+rs-fsrs = "1.2.1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

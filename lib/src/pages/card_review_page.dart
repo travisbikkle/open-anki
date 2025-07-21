@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../db.dart';
+import '../model.dart';
 import 'package:just_audio/just_audio.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ import 'package:open_anki/src/widgets/anki_template_renderer.dart';
 import 'package:open_anki/src/pages/html_source_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../log_helper.dart';
+import 'settings_page.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -41,6 +43,10 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   NotetypeExt? _currentNotetype;
   List<FieldExt> _currentFields = [];
   late WebViewController _controller;
+  // 新增：当前卡片的调度信息
+  CardScheduling? _currentScheduling;
+  // 新增：到期卡片列表
+  List<CardScheduling> _dueCards = [];
   // 新增交互状态
   int? _selectedIndex;
   bool _showAnswer = false;
@@ -143,16 +149,26 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       _mediaDir = '$deckDir/unarchived_media';
       _deckVersion = deck.version ?? 'anki2';
       
-      // 只查ID列表
-      final db = await openDatabase(sqlitePath);
-      final idRows = await db.rawQuery('SELECT id FROM notes');
-      _noteIds = idRows.map((e) => e['id'] as int).toList();
-      await db.close();
+      // 获取到期的卡片
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      _dueCards = await AppDb.getDueCards(now);
+      
+      if (_dueCards.isEmpty) {
+        // 如果没有到期卡片，获取所有卡片ID
+        final db = await openDatabase(sqlitePath);
+        final idRows = await db.rawQuery('SELECT id FROM notes');
+        _noteIds = idRows.map((e) => e['id'] as int).toList();
+        await db.close();
+      } else {
+        // 使用到期卡片的ID
+        _noteIds = _dueCards.map((e) => e.cardId).toList();
+      }
       
       // 使用 deckId 获取进度
       final progress = await AppDb.getProgress(widget.deckId);
       final idx = progress?['current_card_id'] ?? 0;
-      _currentIndex = idx;
+      _currentIndex = _noteIds.indexOf(idx);
+      if (_currentIndex < 0) _currentIndex = 0;
       await _loadCurrentCard();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
@@ -189,31 +205,41 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       LogHelper.log('_deckVersion: $_deckVersion');
       return;
     }
+
+    final noteId = _noteIds[_currentIndex];
+    
+    // 先获取调度信息
+    var scheduling = await AppDb.getCardScheduling(noteId);
+    if (scheduling == null) {
+      // 如果没有调度参数，创建默认值
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      scheduling = CardScheduling(
+        cardId: noteId,
+        stability: 0.0, // 新卡片从0开始
+        difficulty: 5.0,
+        due: now,
+      );
+      await AppDb.upsertCardScheduling(scheduling);
+    }
+    
+    final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
+    
     setState(() {
       _selectedIndex = null;
       _showAnswer = false;
-      _currentNote = null;
-      _currentNotetype = null;
-      _currentFields = [];
-      _currentCardOrd = null;
-      _currentQfmt = null;
-      _currentAfmt = null;
-      _currentConfig = null;
-      _currentFront = null;
-      _currentBack = null;
-      _showBack = false;
-    });
-    final noteId = _noteIds[_currentIndex];
-    final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
-    setState(() {
       _currentNote = result.note;
       _currentNotetype = result.notetype;
       _currentFields = result.fields;
       _currentCardOrd = result.ord;
+      _currentQfmt = null;
+      _currentAfmt = null;
+      _currentConfig = result.css;
       _currentFront = result.front;
       _currentBack = result.back;
-      _currentConfig = result.css;
+      _showBack = false;
+      _currentScheduling = scheduling; // 使用获取到的调度信息
     });
+
     if (_currentNotetype == null || _currentNote == null) return;
     
     final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
@@ -263,11 +289,158 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       style: ElevatedButton.styleFrom(minimumSize: const Size(64, 40)),
       onPressed: () async {
         if (_currentNote == null) return;
+        // 获取当前卡片的调度参数
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000; // 转换为秒
+        var scheduling = await AppDb.getCardScheduling(_currentNote!.id);
+        if (scheduling == null) {
+          // 如果没有调度参数，创建默认值
+          scheduling = CardScheduling(
+            cardId: _currentNote!.id,
+            stability: 0.0, // 新卡片从0开始
+            difficulty: 5.0,
+            due: now,
+          );
+          await AppDb.upsertCardScheduling(scheduling);
+        }
+        
+        // 根据设置选择调度算法
+        final prefs = await SharedPreferences.getInstance();
+        final algorithm = prefs.getString('schedulingAlgorithm') ?? 'fsrs';
+        
+        final result = algorithm == 'simple' 
+          ? await updateCardScheduleSimple(
+              stability: scheduling.stability,
+              difficulty: scheduling.difficulty,
+              lastReview: scheduling.due,
+              rating: value, // 直接使用 value，因为我们已经修正了按钮值
+              now: now,
+            )
+          : await updateCardSchedule(
+              stability: scheduling.stability,
+              difficulty: scheduling.difficulty,
+              lastReview: scheduling.due,
+              rating: value, // 直接使用 value，因为我们已经修正了按钮值
+              now: now,
+            );
+        
+        // 保存新的调度参数
+        await AppDb.upsertCardScheduling(CardScheduling(
+          cardId: _currentNote!.id,
+          stability: result.stability,
+          difficulty: result.difficulty,
+          due: result.due,
+        ));
+        
+        // 保存反馈和学习记录
         await AppDb.saveCardFeedback(_currentNote!.id, value);
-        // 新增：记录学习日志
         await AppDb.logStudy(widget.deckId, _currentNote!.id);
         _nextCard();
       },
+      onLongPress: () async {
+        // 预览此选项的复习时间
+        if (_currentNote == null) return;
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final scheduling = await AppDb.getCardScheduling(_currentNote!.id);
+        if (scheduling == null) return;
+
+        // 根据设置选择调度算法
+        final prefs = await SharedPreferences.getInstance();
+        final algorithm = prefs.getString('schedulingAlgorithm') ?? 'fsrs';
+        
+        final result = algorithm == 'simple' 
+          ? await updateCardScheduleSimple(
+              stability: scheduling.stability,
+              difficulty: scheduling.difficulty,
+              lastReview: scheduling.due,
+              rating: value, // 直接使用 value
+              now: now,
+            )
+          : await updateCardSchedule(
+              stability: scheduling.stability,
+              difficulty: scheduling.difficulty,
+              lastReview: scheduling.due,
+              rating: value, // 直接使用 value
+              now: now,
+            );
+
+        final dueDate = DateTime.fromMillisecondsSinceEpoch(result.due * 1000);
+        final dueIn = result.due - now;
+        String dueText;
+        if (dueIn < 3600) {
+          dueText = '${(dueIn / 60).round()} 分钟后';
+        } else if (dueIn < 86400) {
+          dueText = '${(dueIn / 3600).round()} 小时后';
+        } else {
+          dueText = '${(dueIn / 86400).round()} 天后';
+        }
+
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('如果选择"$label"'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('下次复习时间: $dueText'),
+                Text('具体时间: ${dueDate.toString().substring(0, 16)}'),
+                const SizedBox(height: 8),
+                Text('稳定性将变为: ${result.stability.toStringAsFixed(1)}'),
+                Text('难度将变为: ${result.difficulty.toStringAsFixed(1)}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('关闭'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 修改调度信息显示
+  Widget _buildSchedulingInfo() {
+    if (_currentScheduling == null) return const SizedBox.shrink();
+    
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final dueDate = DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000);
+    final dueIn = _currentScheduling!.due - now;
+    
+    String dueText;
+    if (dueIn < 0) {
+      dueText = '已过期 ${(-dueIn / 3600).round()} 小时';
+    } else if (dueIn < 3600) {
+      dueText = '${(dueIn / 60).round()} 分钟后复习';
+    } else if (dueIn < 86400) {
+      dueText = '${(dueIn / 3600).round()} 小时后复习';
+    } else {
+      dueText = '${(dueIn / 86400).round()} 天后复习';
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('稳定性: ${_currentScheduling!.stability.toStringAsFixed(1)}'),
+              Text('难度: ${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+              Text('下次复习: $dueText'),
+              Text('具体时间: ${dueDate.toString().substring(0, 16)}'),
+              const SizedBox(height: 4),
+              const Text('长按反馈按钮可预览下次复习时间', 
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -382,6 +555,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           Container(
             height: 0,
           ),
+          // 添加调度信息显示
+          if (!_showBack) _buildSchedulingInfo(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -400,11 +575,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFeedbackButton('😄', '简单', 1),
+                  _buildFeedbackButton('😫', '困难', 0), // 改为 0 (Again)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😐', '一般', 2),
+                  _buildFeedbackButton('😐', '一般', 1), // 改为 1 (Hard)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😫', '困难', 3),
+                  _buildFeedbackButton('😄', '简单', 2), // 改为 2 (Good)
                 ],
               ),
             ),

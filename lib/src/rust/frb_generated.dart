@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -437203285;
+  int get rustContentHash => -730772098;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -100,6 +100,22 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiSimpleInitApp();
 
   Stream<String> crateApiSimpleRegisterLogCallback();
+
+  Future<FsrsScheduleResult> crateApiSimpleUpdateCardSchedule({
+    required double stability,
+    required double difficulty,
+    required PlatformInt64 lastReview,
+    required int rating,
+    required PlatformInt64 now,
+  });
+
+  Future<FsrsScheduleResult> crateApiSimpleUpdateCardScheduleSimple({
+    required double stability,
+    required double difficulty,
+    required PlatformInt64 lastReview,
+    required int rating,
+    required PlatformInt64 now,
+  });
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -330,6 +346,88 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["sink"],
       );
 
+  @override
+  Future<FsrsScheduleResult> crateApiSimpleUpdateCardSchedule({
+    required double stability,
+    required double difficulty,
+    required PlatformInt64 lastReview,
+    required int rating,
+    required PlatformInt64 now,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_f_64(stability, serializer);
+          sse_encode_f_64(difficulty, serializer);
+          sse_encode_i_64(lastReview, serializer);
+          sse_encode_u_8(rating, serializer);
+          sse_encode_i_64(now, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_fsrs_schedule_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSimpleUpdateCardScheduleConstMeta,
+        argValues: [stability, difficulty, lastReview, rating, now],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSimpleUpdateCardScheduleConstMeta =>
+      const TaskConstMeta(
+        debugName: "update_card_schedule",
+        argNames: ["stability", "difficulty", "lastReview", "rating", "now"],
+      );
+
+  @override
+  Future<FsrsScheduleResult> crateApiSimpleUpdateCardScheduleSimple({
+    required double stability,
+    required double difficulty,
+    required PlatformInt64 lastReview,
+    required int rating,
+    required PlatformInt64 now,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_f_64(stability, serializer);
+          sse_encode_f_64(difficulty, serializer);
+          sse_encode_i_64(lastReview, serializer);
+          sse_encode_u_8(rating, serializer);
+          sse_encode_i_64(now, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_fsrs_schedule_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSimpleUpdateCardScheduleSimpleConstMeta,
+        argValues: [stability, difficulty, lastReview, rating, now],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSimpleUpdateCardScheduleSimpleConstMeta =>
+      const TaskConstMeta(
+        debugName: "update_card_schedule_simple",
+        argNames: ["stability", "difficulty", "lastReview", "rating", "now"],
+      );
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -379,6 +477,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   FieldExt dco_decode_field_ext(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -389,6 +493,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       notetypeId: dco_decode_i_64(arr[1]),
       name: dco_decode_String(arr[2]),
       ord: dco_decode_i_64(arr[3]),
+    );
+  }
+
+  @protected
+  FsrsScheduleResult dco_decode_fsrs_schedule_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FsrsScheduleResult(
+      due: dco_decode_i_64(arr[0]),
+      stability: dco_decode_f_64(arr[1]),
+      difficulty: dco_decode_f_64(arr[2]),
     );
   }
 
@@ -563,6 +680,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
   FieldExt sse_decode_field_ext(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_i_64(deserializer);
@@ -574,6 +697,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       notetypeId: var_notetypeId,
       name: var_name,
       ord: var_ord,
+    );
+  }
+
+  @protected
+  FsrsScheduleResult sse_decode_fsrs_schedule_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_due = sse_decode_i_64(deserializer);
+    var var_stability = sse_decode_f_64(deserializer);
+    var var_difficulty = sse_decode_f_64(deserializer);
+    return FsrsScheduleResult(
+      due: var_due,
+      stability: var_stability,
+      difficulty: var_difficulty,
     );
   }
 
@@ -803,12 +941,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
   void sse_encode_field_ext(FieldExt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_64(self.id, serializer);
     sse_encode_i_64(self.notetypeId, serializer);
     sse_encode_String(self.name, serializer);
     sse_encode_i_64(self.ord, serializer);
+  }
+
+  @protected
+  void sse_encode_fsrs_schedule_result(
+    FsrsScheduleResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.due, serializer);
+    sse_encode_f_64(self.stability, serializer);
+    sse_encode_f_64(self.difficulty, serializer);
   }
 
   @protected

@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `rust_log`, `table_has_columns`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApkgParseResult`, `CardExt`, `DeckNotesResult`, `LOG_SINK`, `Note`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `initialize`
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
@@ -43,6 +43,34 @@ Future<BigInt> getCardCountFromDeck({
 }) => RustLib.instance.api.crateApiSimpleGetCardCountFromDeck(
   appDocDir: appDocDir,
   md5: md5,
+);
+
+Future<FsrsScheduleResult> updateCardScheduleSimple({
+  required double stability,
+  required double difficulty,
+  required PlatformInt64 lastReview,
+  required int rating,
+  required PlatformInt64 now,
+}) => RustLib.instance.api.crateApiSimpleUpdateCardScheduleSimple(
+  stability: stability,
+  difficulty: difficulty,
+  lastReview: lastReview,
+  rating: rating,
+  now: now,
+);
+
+Future<FsrsScheduleResult> updateCardSchedule({
+  required double stability,
+  required double difficulty,
+  required PlatformInt64 lastReview,
+  required int rating,
+  required PlatformInt64 now,
+}) => RustLib.instance.api.crateApiSimpleUpdateCardSchedule(
+  stability: stability,
+  difficulty: difficulty,
+  lastReview: lastReview,
+  rating: rating,
+  now: now,
 );
 
 class ExtractResult {
@@ -99,6 +127,30 @@ class FieldExt {
           notetypeId == other.notetypeId &&
           name == other.name &&
           ord == other.ord;
+}
+
+class FsrsScheduleResult {
+  final PlatformInt64 due;
+  final double stability;
+  final double difficulty;
+
+  const FsrsScheduleResult({
+    required this.due,
+    required this.stability,
+    required this.difficulty,
+  });
+
+  @override
+  int get hashCode => due.hashCode ^ stability.hashCode ^ difficulty.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FsrsScheduleResult &&
+          runtimeType == other.runtimeType &&
+          due == other.due &&
+          stability == other.stability &&
+          difficulty == other.difficulty;
 }
 
 class NoteExt {

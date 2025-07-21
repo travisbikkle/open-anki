@@ -26,6 +26,14 @@ class _DebugPageState extends State<DebugPage> {
       'action': '_showAllDecks',
     },
     {
+      'label': '显示所有卡片调度状态',
+      'action': '_showAllScheduling',
+    },
+    {
+      'label': '测试调度参数保存',
+      'action': '_testScheduling',
+    },
+    {
       'label': '跳转到底部',
       'action': '_scrollToBottom',
     },
@@ -39,8 +47,10 @@ class _DebugPageState extends State<DebugPage> {
     },
   ];
   List<Map<String, dynamic>> _allDeckRows = [];
+  List<Map<String, dynamic>> _allSchedulingRows = [];
   bool _showAllDeckCards = false;
   bool _showFileTree = false;
+  bool _showScheduling = false;
 
   @override
   void initState() {
@@ -83,6 +93,116 @@ class _DebugPageState extends State<DebugPage> {
       _allDeckRows = rows;
       _showAllDeckCards = true;
     });
+  }
+
+  Future<void> _testScheduling() async {
+    try {
+      // 测试1: 保存调度参数
+      final testCardId = 99999;
+      final testScheduling = CardScheduling(
+        cardId: testCardId,
+        stability: 3.0,
+        difficulty: 4.5,
+        due: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
+      
+      await AppDb.upsertCardScheduling(testScheduling);
+      
+      // 测试2: 读取调度参数
+      final retrievedScheduling = await AppDb.getCardScheduling(testCardId);
+      
+      // 测试3: 更新调度参数
+      final updatedScheduling = CardScheduling(
+        cardId: testCardId,
+        stability: 4.2,
+        difficulty: 3.8,
+        due: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 86400, // 1天后
+      );
+      
+      await AppDb.upsertCardScheduling(updatedScheduling);
+      
+      // 测试4: 验证更新
+      final finalScheduling = await AppDb.getCardScheduling(testCardId);
+      
+      // 显示测试结果
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('调度参数测试结果'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('初始保存: ${retrievedScheduling != null ? "成功" : "失败"}'),
+              if (retrievedScheduling != null) ...[
+                Text('初始稳定性: ${retrievedScheduling.stability}'),
+                Text('初始难度: ${retrievedScheduling.difficulty}'),
+              ],
+              const SizedBox(height: 8),
+              Text('更新保存: ${finalScheduling != null ? "成功" : "失败"}'),
+              if (finalScheduling != null) ...[
+                Text('更新后稳定性: ${finalScheduling.stability}'),
+                Text('更新后难度: ${finalScheduling.difficulty}'),
+                Text('下次复习: ${finalScheduling.due}'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('测试失败'),
+          content: Text('错误: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _showAllScheduling() async {
+    setState(() { _showScheduling = true; });
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final allScheduling = await AppDb.getAllCardScheduling();
+      setState(() {
+        _allSchedulingRows = allScheduling.map((s) {
+          final dueIn = s.due - now;
+          String dueText;
+          if (dueIn < 0) {
+            dueText = '已过期 ${(-dueIn / 3600).round()} 小时';
+          } else if (dueIn < 3600) {
+            dueText = '${(dueIn / 60).round()} 分钟后';
+          } else if (dueIn < 86400) {
+            dueText = '${(dueIn / 3600).round()} 小时后';
+          } else {
+            dueText = '${(dueIn / 86400).round()} 天后';
+          }
+          return {
+            'card_id': s.cardId,
+            'stability': s.stability.toStringAsFixed(1),
+            'difficulty': s.difficulty.toStringAsFixed(1),
+            'due': dueText,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    }
   }
 
   void _scrollToBottom() {
@@ -203,6 +323,33 @@ class _DebugPageState extends State<DebugPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showScheduling && _allSchedulingRows.isNotEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('卡片调度状态')),
+        body: ListView.builder(
+          itemCount: _allSchedulingRows.length,
+          itemBuilder: (context, idx) {
+            final row = _allSchedulingRows[idx];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('卡片ID: ${row['card_id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('稳定性: ${row['stability']}'),
+                    Text('难度: ${row['difficulty']}'),
+                    Text('下次复习: ${row['due']}'),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('调试-题库文件树浏览')),
       body: Column(
@@ -228,6 +375,12 @@ class _DebugPageState extends State<DebugPage> {
                     if (val == '_showAllDecks') {
                       setState(() { _showAllDeckCards = true; });
                       _showAllDecks();
+                    }
+                    if (val == '_showAllScheduling') {
+                      _showAllScheduling();
+                    }
+                    if (val == '_testScheduling') {
+                      _testScheduling();
                     }
                     if (val == '_scrollToBottom') _scrollToBottom();
                     if (val == '_testWebView') _testWebView();

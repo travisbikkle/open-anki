@@ -28,10 +28,13 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadSettings();
   }
 
+  String _schedulingAlgorithm = 'fsrs';
+
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _minFontSize = prefs.getDouble('minFontSize') ?? 18;
+      _schedulingAlgorithm = prefs.getString('schedulingAlgorithm') ?? 'fsrs';
       _isLoading = false;
     });
   }
@@ -41,6 +44,14 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setDouble('minFontSize', value);
     setState(() {
       _minFontSize = value;
+    });
+  }
+
+  Future<void> _saveSchedulingAlgorithm(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('schedulingAlgorithm', value);
+    setState(() {
+      _schedulingAlgorithm = value;
     });
   }
 
@@ -190,6 +201,79 @@ class _SettingsPageState extends State<SettingsPage> {
                                   fontSize: _minFontSize,
                                   color: Colors.black87,
                                 ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 调度算法设置卡片
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.schedule, color: Colors.blue[600]),
+                            const SizedBox(width: 12),
+                            const Text(
+                              '复习调度',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            const Text('调度算法'),
+                            const Spacer(),
+                            DropdownButton<String>(
+                              value: _schedulingAlgorithm,
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'fsrs',
+                                  child: Text('FSRS (智能算法)'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'simple',
+                                  child: Text('简单算法'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  _saveSchedulingAlgorithm(value);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _schedulingAlgorithm == 'fsrs' ? 'FSRS 算法' : '简单算法',
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _schedulingAlgorithm == 'fsrs' 
+                                  ? '使用 FSRS (Free Spaced Repetition Scheduler) 智能算法，根据记忆曲线自动调整复习间隔。'
+                                  : '使用简单的固定间隔算法：困难(5分钟) → 一般(10分钟) → 简单(30分钟)',
+                                style: const TextStyle(fontSize: 14, color: Colors.black87),
                               ),
                             ],
                           ),

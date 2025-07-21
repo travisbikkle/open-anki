@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -437203285;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -730772098;
 
 // Section: executor
 
@@ -290,6 +290,92 @@ fn wire__crate__api__simple__register_log_callback_impl(
         },
     )
 }
+fn wire__crate__api__simple__update_card_schedule_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "update_card_schedule",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_stability = <f64>::sse_decode(&mut deserializer);
+            let api_difficulty = <f64>::sse_decode(&mut deserializer);
+            let api_last_review = <i64>::sse_decode(&mut deserializer);
+            let api_rating = <u8>::sse_decode(&mut deserializer);
+            let api_now = <i64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::simple::update_card_schedule(
+                        api_stability,
+                        api_difficulty,
+                        api_last_review,
+                        api_rating,
+                        api_now,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__simple__update_card_schedule_simple_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "update_card_schedule_simple",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_stability = <f64>::sse_decode(&mut deserializer);
+            let api_difficulty = <f64>::sse_decode(&mut deserializer);
+            let api_last_review = <i64>::sse_decode(&mut deserializer);
+            let api_rating = <u8>::sse_decode(&mut deserializer);
+            let api_now = <i64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::simple::update_card_schedule_simple(
+                        api_stability,
+                        api_difficulty,
+                        api_last_review,
+                        api_rating,
+                        api_now,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 
 // Section: dart2rust
 
@@ -342,6 +428,13 @@ impl SseDecode for crate::api::simple::ExtractResult {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for crate::api::simple::FieldExt {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -354,6 +447,20 @@ impl SseDecode for crate::api::simple::FieldExt {
             notetype_id: var_notetypeId,
             name: var_name,
             ord: var_ord,
+        };
+    }
+}
+
+impl SseDecode for crate::api::simple::FsrsScheduleResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_due = <i64>::sse_decode(deserializer);
+        let mut var_stability = <f64>::sse_decode(deserializer);
+        let mut var_difficulty = <f64>::sse_decode(deserializer);
+        return crate::api::simple::FsrsScheduleResult {
+            due: var_due,
+            stability: var_stability,
+            difficulty: var_difficulty,
         };
     }
 }
@@ -555,6 +662,13 @@ fn pde_ffi_dispatcher_primary_impl(
         7 => {
             wire__crate__api__simple__register_log_callback_impl(port, ptr, rust_vec_len, data_len)
         }
+        8 => wire__crate__api__simple__update_card_schedule_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__simple__update_card_schedule_simple_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
@@ -614,6 +728,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::FieldExt>
     for crate::api::simple::FieldExt
 {
     fn into_into_dart(self) -> crate::api::simple::FieldExt {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::simple::FsrsScheduleResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.due.into_into_dart().into_dart(),
+            self.stability.into_into_dart().into_dart(),
+            self.difficulty.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::simple::FsrsScheduleResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::FsrsScheduleResult>
+    for crate::api::simple::FsrsScheduleResult
+{
+    fn into_into_dart(self) -> crate::api::simple::FsrsScheduleResult {
         self
     }
 }
@@ -726,6 +862,13 @@ impl SseEncode for crate::api::simple::ExtractResult {
     }
 }
 
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for crate::api::simple::FieldExt {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -733,6 +876,15 @@ impl SseEncode for crate::api::simple::FieldExt {
         <i64>::sse_encode(self.notetype_id, serializer);
         <String>::sse_encode(self.name, serializer);
         <i64>::sse_encode(self.ord, serializer);
+    }
+}
+
+impl SseEncode for crate::api::simple::FsrsScheduleResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i64>::sse_encode(self.due, serializer);
+        <f64>::sse_encode(self.stability, serializer);
+        <f64>::sse_encode(self.difficulty, serializer);
     }
 }
 

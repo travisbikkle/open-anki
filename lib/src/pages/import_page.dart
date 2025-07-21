@@ -99,6 +99,23 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         int cardCount = (await getCardCountFromDeck(appDocDir: appDocDir.path, md5: result.md5)).toInt();
         // 在AppDb登记索引，保存version和cardCount
         await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version, cardCount: cardCount);
+        
+        // 为每张卡片初始化FSRS调度参数
+        final sqlitePath = p.join(appDocDir.path, 'anki_data', result.md5, 'collection.sqlite');
+        final db = await openDatabase(sqlitePath);
+        final cardIds = await db.rawQuery('SELECT id FROM notes');
+        await db.close();
+        
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000; // 转换为秒
+        for (final row in cardIds) {
+          final cardId = row['id'] as int;
+          await AppDb.upsertCardScheduling(CardScheduling(
+            cardId: cardId,
+            stability: 0.0, // 新卡片，稳定性为0
+            difficulty: 5.0, // 默认难度
+            due: now, // 立即可复习
+          ));
+        }
       }
       ref.invalidate(allDecksProvider);
       setState(() { importing = false; });

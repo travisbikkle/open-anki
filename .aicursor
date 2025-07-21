@@ -1,0 +1,77 @@
+{
+  "project": {
+    "name": "Open Anki",
+    "description": "一个基于 Flutter + Rust 的开源 Anki 客户端",
+    "guidelines": {
+      "code_style": {
+        "dart": {
+          "naming": {
+            "private_variables": "_camelCase",
+            "public_variables": "camelCase",
+            "classes": "PascalCase"
+          },
+          "organization": {
+            "providers": "lib/src/providers.dart",
+            "models": "lib/src/model.dart",
+            "database": "lib/src/db.dart",
+            "pages": "lib/src/pages/",
+            "widgets": "lib/src/widgets/"
+          }
+        },
+        "rust": {
+          "naming": {
+            "functions": "snake_case",
+            "types": "PascalCase",
+            "constants": "SCREAMING_SNAKE_CASE"
+          },
+          "organization": {
+            "ffi": "rust/src/api/simple.rs",
+            "generated": "rust/src/frb_generated.rs"
+          }
+        }
+      },
+      "important_rules": [
+        "禁止手动修改 FFI 生成的代码文件，仅需提醒用户使用 flutter_rust_bridge_codegen generate --watch 自动生成 FFI 代码",
+        "所有错误必须记录到全局日志系统"
+      ]
+    },
+    "commands": {
+      "ffi_generation": "flutter_rust_bridge_codegen generate --watch --rust-input crate::api --rust-root rust/",
+      "build_rust": "cd rust && cargo build",
+      "run_app": "flutter run"
+    },
+    "architecture": {
+      "database": {
+        "anki_index.db": {
+          "tables": [
+            "decks (管理已导入的牌组)",
+            "progress (记录复习进度)",
+            "recent_decks (最近使用的牌组)",
+            "user_settings (用户设置)",
+            "card_feedback (卡片反馈记录)",
+            "study_log (学习记录)",
+            "user_profile (用户资料)",
+            "card_scheduling (FSRS调度参数)"
+          ]
+        },
+        "collection.sqlite": "每个牌组的原始 Anki 数据库"
+      },
+      "features": {
+        "FSRS": {
+          "description": "使用 FSRS (Free Spaced Repetition Scheduler) 算法进行智能调度",
+          "files": {
+            "rust": "rust/src/api/simple.rs (updateCardSchedule)",
+            "dart": "lib/src/pages/card_review_page.dart"
+          }
+        },
+        "logging": {
+          "description": "全局日志系统，记录所有重要操作和错误",
+          "files": {
+            "rust": "rust/src/lib.rs (panic hook)",
+            "dart": "lib/src/log_helper.dart"
+          }
+        }
+      }
+    }
+  }
+} 

@@ -75,3 +75,35 @@ class DeckInfo {
     };
   }
 } 
+
+class CardScheduling {
+  final int cardId;
+  final double stability;
+  final double difficulty;
+  final int due; // 时间戳（秒）
+
+  CardScheduling({
+    required this.cardId,
+    required this.stability,
+    required this.difficulty,
+    required this.due,
+  });
+
+  factory CardScheduling.fromMap(Map<String, dynamic> map) {
+    return CardScheduling(
+      cardId: map['card_id'] as int,
+      stability: map['stability'] as double,
+      difficulty: map['difficulty'] as double,
+      due: map['due'] as int,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'card_id': cardId,
+      'stability': stability,
+      'difficulty': difficulty,
+      'due': due,
+    };
+  }
+} 
