@@ -115,6 +115,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             difficulty: 5.0, // 默认难度
             due: now, // 立即可复习
           ));
+          // 新增：插入卡片与牌组的映射
+          await AppDb.insertCardMapping(cardId, result.md5);
         }
       }
       ref.invalidate(allDecksProvider);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../model.dart';
 import '../pages/card_review_page.dart';
@@ -87,6 +88,12 @@ class DeckProgressTile extends StatelessWidget {
         );
         if (confirm == true) {
           await AppDb.deleteDeck(deck.deckId);
+          // 新增：刷新 provider
+          if (context.mounted) {
+            final container = ProviderScope.containerOf(context);
+            container.invalidate(allDecksProvider);
+            container.invalidate(recentDecksProvider);
+          }
         }
         break;
     }

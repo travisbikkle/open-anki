@@ -20,8 +20,9 @@ class AppDb {
     final path = join(dbPath, 'anki_index.db');
     return openDatabase(
       path,
-      version: 4, // 升级到版本4
+      version: 1,
       onCreate: (db, version) async {
+        // 创建题库表
         await db.execute('''
           CREATE TABLE decks (
             md5 TEXT PRIMARY KEY,
@@ -34,6 +35,8 @@ class AppDb {
             total_learned INTEGER DEFAULT 0
           )
         ''');
+
+        // 创建进度表
         await db.execute('''
           CREATE TABLE progress (
             deck_id TEXT NOT NULL,
@@ -42,18 +45,24 @@ class AppDb {
             PRIMARY KEY(deck_id)
           )
         ''');
+
+        // 创建最近题库表
         await db.execute('''
           CREATE TABLE recent_decks (
             deck_id TEXT PRIMARY KEY,
             last_reviewed INTEGER
           )
         ''');
+
+        // 创建用户设置表
         await db.execute('''
           CREATE TABLE user_settings (
             key TEXT PRIMARY KEY,
             value TEXT
           )
         ''');
+
+        // 创建卡片反馈表
         await db.execute('''
           CREATE TABLE card_feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +71,8 @@ class AppDb {
             timestamp INTEGER NOT NULL
           )
         ''');
+
+        // 创建学习日志表
         await db.execute('''
           CREATE TABLE study_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +81,8 @@ class AppDb {
             study_time INTEGER NOT NULL
           )
         ''');
+
+        // 创建用户档案表
         await db.execute('''
           CREATE TABLE user_profile (
             id INTEGER PRIMARY KEY,
@@ -77,6 +90,8 @@ class AppDb {
             avatar BLOB
           )
         ''');
+
+        // 创建卡片调度表
         await db.execute('''
           CREATE TABLE card_scheduling (
             card_id INTEGER PRIMARY KEY,
@@ -85,6 +100,8 @@ class AppDb {
             due INTEGER NOT NULL
           )
         ''');
+
+        // 创建学习计划设置表
         await db.execute('''
           CREATE TABLE study_plan_settings (
             deck_id TEXT PRIMARY KEY,
@@ -95,6 +112,8 @@ class AppDb {
             default_mode INTEGER NOT NULL DEFAULT 1
           )
         ''');
+
+        // 创建每日学习统计表
         await db.execute('''
           CREATE TABLE daily_study_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,6 +127,8 @@ class AppDb {
             UNIQUE(deck_id, date)
           )
         ''');
+
+        // 创建卡片状态表
         await db.execute('''
           CREATE TABLE card_states (
             card_id INTEGER PRIMARY KEY,
@@ -118,120 +139,22 @@ class AppDb {
             FOREIGN KEY(deck_id) REFERENCES decks(md5)
           )
         ''');
+
+        // 创建卡片表
+        await db.execute('''
+          CREATE TABLE cards (
+            card_id INTEGER PRIMARY KEY,
+            deck_id TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          // 版本1->2：添加调度表
-          await _createCardSchedulingTable(db);
-        }
-        if (oldVersion < 3) {
-          // 版本2->3：添加学习计划相关的表
-          await db.execute('''
-            CREATE TABLE study_plan_settings (
-              deck_id TEXT PRIMARY KEY,
-              new_cards_per_day INTEGER NOT NULL DEFAULT 20,
-              reviews_per_day INTEGER NOT NULL DEFAULT 100,
-              enable_time_limit INTEGER NOT NULL DEFAULT 0,
-              study_time_minutes INTEGER NOT NULL DEFAULT 30,
-              default_mode INTEGER NOT NULL DEFAULT 1
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE daily_study_stats (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              deck_id TEXT NOT NULL,
-              date INTEGER NOT NULL,
-              new_cards_learned INTEGER NOT NULL DEFAULT 0,
-              cards_reviewed INTEGER NOT NULL DEFAULT 0,
-              total_time INTEGER NOT NULL DEFAULT 0,
-              correct_count INTEGER NOT NULL DEFAULT 0,
-              total_count INTEGER NOT NULL DEFAULT 0,
-              UNIQUE(deck_id, date)
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE card_states (
-              card_id INTEGER PRIMARY KEY,
-              deck_id TEXT NOT NULL,
-              state INTEGER NOT NULL DEFAULT 0,
-              first_learned INTEGER,
-              last_reviewed INTEGER,
-              FOREIGN KEY(deck_id) REFERENCES decks(md5)
-            )
-          ''');
-        }
-        if (oldVersion < 4) {
-          // 版本3->4：添加总学习数量字段
-          await db.execute('ALTER TABLE decks ADD COLUMN total_learned INTEGER DEFAULT 0');
-        }
+        // 无升级逻辑
       },
     );
   }
 
-  static Future<void> _createTables(Database db) async {
-    await db.execute('''
-      CREATE TABLE decks (
-        md5 TEXT PRIMARY KEY,
-        apkg_path TEXT NOT NULL,
-        user_deck_name TEXT,
-        import_time INTEGER,
-        media_map TEXT,
-        version TEXT,
-        card_count INTEGER
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE progress (
-        deck_id TEXT NOT NULL,
-        current_card_id INTEGER,
-        last_reviewed INTEGER,
-        PRIMARY KEY(deck_id)
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE recent_decks (
-        deck_id TEXT PRIMARY KEY,
-        last_reviewed INTEGER
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE user_settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE card_feedback (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        card_id INTEGER NOT NULL,
-        feedback INTEGER NOT NULL,
-        timestamp INTEGER NOT NULL
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE study_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        deck_id TEXT NOT NULL,
-        card_id INTEGER NOT NULL,
-        study_time INTEGER NOT NULL
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE user_profile (
-        id INTEGER PRIMARY KEY,
-        nickname TEXT,
-        avatar BLOB
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE card_scheduling (
-        card_id INTEGER PRIMARY KEY,
-        stability REAL NOT NULL,
-        difficulty REAL NOT NULL,
-        due INTEGER NOT NULL
-      )
-    ''');
-  }
+  // 删除 _createTables 方法（未被调用，已被 onCreate 替代）
 
   static Future<void> _createCardSchedulingTable(Database db) async {
     // 检查 card_scheduling 表是否已存在
@@ -270,15 +193,23 @@ class AppDb {
   static Future<void> deleteDeck(String deckId) async {
     final dbClient = await db;
     await dbClient.transaction((txn) async {
+      // 先查出该牌组下所有卡片ID
+      final cardIdRows = await txn.query('cards', where: 'deck_id = ?', whereArgs: [deckId]);
+      final cardIds = cardIdRows.map((e) => e['card_id'] as int).toList();
+      String idList = cardIds.isNotEmpty ? '(${List.filled(cardIds.length, '?').join(',')})' : '(NULL)';
+
       // 删除题库相关的所有数据
       await txn.delete('recent_decks', where: 'deck_id = ?', whereArgs: [deckId]);
       await txn.delete('progress', where: 'deck_id = ?', whereArgs: [deckId]);
       await txn.delete('decks', where: 'md5 = ?', whereArgs: [deckId]);
-      await txn.delete('notes', where: 'deck_id = ?', whereArgs: [deckId]);
-      await txn.delete('card_scheduling', where: 'card_id IN (SELECT id FROM notes WHERE deck_id = ?)', whereArgs: [deckId]);
       await txn.delete('study_plan_settings', where: 'deck_id = ?', whereArgs: [deckId]);
       await txn.delete('daily_study_stats', where: 'deck_id = ?', whereArgs: [deckId]);
-      await txn.delete('card_states', where: 'deck_id = ?', whereArgs: [deckId]);
+      await txn.delete('cards', where: 'deck_id = ?', whereArgs: [deckId]); // 删除卡片映射
+      // 删除卡片相关的调度和状态
+      if (cardIds.isNotEmpty) {
+        await txn.delete('card_scheduling', where: 'card_id IN $idList', whereArgs: cardIds);
+        await txn.delete('card_states', where: 'card_id IN $idList', whereArgs: cardIds);
+      }
     });
 
     // 删除题库文件
@@ -806,5 +737,22 @@ class AppDb {
       'UPDATE decks SET total_learned = total_learned + 1 WHERE md5 = ?',
       [deckId]
     );
+  }
+
+  // 插入卡片与牌组的映射
+  static Future<void> insertCardMapping(int cardId, String deckId) async {
+    final dbClient = await db;
+    await dbClient.insert(
+      'cards',
+      {'card_id': cardId, 'deck_id': deckId},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  // 查询某牌组下所有卡片ID
+  static Future<List<int>> getCardIdsByDeck(String deckId) async {
+    final dbClient = await db;
+    final res = await dbClient.query('cards', where: 'deck_id = ?', whereArgs: [deckId]);
+    return res.map((e) => e['card_id'] as int).toList();
   }
 } 

@@ -180,27 +180,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
         if (firstStudyDate != null) {
           joinText = '${firstStudyDate.year}年${firstStudyDate.month}月加入';
         }
-        return Scaffold(
-          backgroundColor: const Color(0xffeaf6ff),
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings, color: Colors.grey),
-                onPressed: _showSettings,
-              ),
-            ],
+    return Scaffold(
+      backgroundColor: const Color(0xffeaf6ff),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.grey),
+            onPressed: _showSettings,
           ),
-          body: ListView(
-            children: [
-              // 顶部头像区
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
+        ],
+      ),
+      body: ListView(
+        children: [
+          // 顶部头像区
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
                       GestureDetector(
                         onTap: _pickAvatar,
                         child: CircleAvatar(
@@ -212,15 +212,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                               : null,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-              const SizedBox(height: 8),
-              // 用户名、ID、加入时间
-              Center(
-                child: Column(
-                  children: [
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 用户名、ID、加入时间
+          Center(
+            child: Column(
+              children: [
                     GestureDetector(
                       onTap: () async {
                         setState(() { _editingName = true; });
@@ -273,38 +273,38 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                     if (firstStudyDate != null)
                       Text(joinText, style: TextStyle(color: Colors.grey, fontSize: 14)),
                     // 不再显示“昵称其实可以点哦😉”等文字提示
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // 学习统计
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 学习统计
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
                     _StatCard(icon: Icons.psychology, label: '学习天数', value: totalStudyDays.toString()),
                     _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // 概览区块
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 概览区块
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
                   children: [
                     _OverviewCard(icon: Icons.local_fire_department, label: '连续学习', value: consecutiveDays.toString() + '天', color: Colors.orange),
                     _OverviewCard(icon: Icons.flash_on, label: '今日学习', value: todayCount.toString(), color: Colors.amber),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(height: 24),
+        ],
+      ),
         );
       },
     );
