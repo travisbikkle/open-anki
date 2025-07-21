@@ -31,16 +31,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         totalCards += d.cardCount;
       }
     }
-    return FutureBuilder<List<int>>(
+    return FutureBuilder<List<dynamic>>(
       future: Future.wait([
         AppDb.getConsecutiveStudyDays(),
         AppDb.getTodayStudyCount(),
         AppDb.getTotalStudyDays(),
+        AppDb.getFirstStudyDate(),
       ]),
       builder: (context, snapshot) {
-        final consecutiveDays = snapshot.data != null ? snapshot.data![0] : 0;
-        final todayCount = snapshot.data != null ? snapshot.data![1] : 0;
-        final totalStudyDays = snapshot.data != null ? snapshot.data![2] : 0;
+        final consecutiveDays = snapshot.data != null ? snapshot.data![0] as int : 0;
+        final todayCount = snapshot.data != null ? snapshot.data![1] as int : 0;
+        final totalStudyDays = snapshot.data != null ? snapshot.data![2] as int : 0;
+        final firstStudyDate = snapshot.data != null ? snapshot.data![3] as DateTime? : null;
+        String joinText = '加入时间未知';
+        if (firstStudyDate != null) {
+          joinText = '${firstStudyDate.year}年${firstStudyDate.month}月加入';
+        }
         return Scaffold(
           backgroundColor: const Color(0xffeaf6ff),
           appBar: AppBar(
@@ -86,7 +92,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 child: Column(
                   children: [
                     const Text('yu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-                    Text('@ph.7t7DN1 · 2025年5月加入', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    if (firstStudyDate != null)
+                      Text(joinText, style: TextStyle(color: Colors.grey, fontSize: 14)),
                   ],
                 ),
               ),

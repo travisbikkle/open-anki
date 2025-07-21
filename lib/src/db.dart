@@ -323,4 +323,14 @@ class AppDb {
     final diff = now.difference(DateTime(firstDay.year, firstDay.month, firstDay.day)).inDays + 1;
     return diff;
   }
+
+  static Future<DateTime?> getFirstStudyDate() async {
+    final dbClient = await db;
+    final res = await dbClient.rawQuery(
+      'SELECT MIN(study_time) as min_time FROM study_log',
+    );
+    if (res.isEmpty || res.first['min_time'] == null) return null;
+    final minTime = res.first['min_time'] as int;
+    return DateTime.fromMillisecondsSinceEpoch(minTime);
+  }
 } 
