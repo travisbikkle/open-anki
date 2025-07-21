@@ -8,6 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:io';
 import '../log_helper.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
+import 'package:archive/archive_io.dart';
+import 'package:path_provider/path_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -60,6 +63,40 @@ class _SettingsPageState extends State<SettingsPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('无法打开邮件客户端，请手动发送反馈邮件。')),
+      );
+    }
+  }
+
+  Future<String> zipLogFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final logFile = File('${dir.path}/open_anki.log');
+    final zipPath = '${dir.path}/open_anki_log.zip';
+    final encoder = ZipFileEncoder();
+    encoder.create(zipPath);
+    if (await logFile.exists()) {
+      encoder.addFile(logFile);
+    }
+    encoder.close();
+    return zipPath;
+  }
+
+  Future<void> sendFeedbackWithAttachment(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    final zipPath = await zipLogFile();
+    final body =
+        '请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: ${info.version} (${info.buildNumber})\n包名: ${info.packageName}\n平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n日志见附件。';
+    final email = Email(
+      body: body,
+      subject: 'Open Anki 问题反馈',
+      recipients: ['support@eusoftbank.com'],
+      attachmentPaths: [zipPath],
+      isHTML: false,
+    );
+    try {
+      await FlutterEmailSender.send(email);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('无法打开邮件客户端: $e')),
       );
     }
   }
@@ -249,7 +286,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           title: const Text('问题反馈'),
                           subtitle: const Text('报告问题或提出建议'),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () => sendFeedbackEmail(context),
+                          onTap: () => sendFeedbackWithAttachment(context),
                         ),
                       ],
                     ),

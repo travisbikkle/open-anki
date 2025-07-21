@@ -38,6 +38,8 @@ PODS:
     - DKImagePickerController/PhotoGallery
     - Flutter
   - Flutter (1.0.0)
+  - flutter_email_sender (0.0.1):
+    - Flutter
   - image_cropper (0.0.4):
     - Flutter
     - TOCropViewController (~> 2.6.1)
@@ -77,6 +79,7 @@ DEPENDENCIES:
   - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - Flutter (from `Flutter`)
+  - flutter_email_sender (from `.symlinks/plugins/flutter_email_sender/ios`)
   - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
@@ -106,6 +109,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/file_picker/ios"
   Flutter:
     :path: Flutter
+  flutter_email_sender:
+    :path: ".symlinks/plugins/flutter_email_sender/ios"
   image_cropper:
     :path: ".symlinks/plugins/image_cropper/ios"
   image_picker_ios:
@@ -136,6 +141,7 @@ SPEC CHECKSUMS:
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  flutter_email_sender: 2397f5e84aaacfb61af569637a963e7c687858d8
   image_cropper: 655b3ba703c9e15e3111e79151624d6154288774
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
