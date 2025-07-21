@@ -679,13 +679,26 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
             height: 0,
           ),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: WebViewWidget(
-                  key: ValueKey(_currentIndex),
-                  controller: _controller,
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity != null) {
+                  if (details.primaryVelocity! < 0) {
+                    // 左滑，下一题
+                    _nextCard();
+                  } else if (details.primaryVelocity! > 0) {
+                    // 右滑，上一题
+                    _prevCard();
+                  }
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: WebViewWidget(
+                    key: ValueKey(_currentIndex),
+                    controller: _controller,
+                  ),
                 ),
               ),
             ),
