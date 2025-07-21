@@ -57,16 +57,38 @@ Future<void> writeTestHtml() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await writeTestHtml();
-  try {
-    await RustLib.init();
-    await initRustLog();
-  } catch (e, st) {
-    print('init error: $e\n$st');
-  }
-  rustLogStream.stream.listen((msg) {
-    print('[RUST] $msg');
+  // 全局异常捕获
+  FlutterError.onError = (FlutterErrorDetails details) async {
+    FlutterError.presentError(details);
+    await _writeCrashLog('FlutterError: ' + details.toString());
+  };
+  runZonedGuarded<Future<void>>(() async {
+    try {
+      await RustLib.init();
+      await initRustLog();
+    } catch (e, st) {
+      print('init error: $e\n$st');
+      await _writeCrashLog('init error: $e\n$st');
+    }
+    rustLogStream.stream.listen((msg) {
+      print('[RUST] $msg');
+    });
+    runApp(const ProviderScope(child: MyApp()));
+  }, (error, stack) async {
+    print('Uncaught error: $error\n$stack');
+    await _writeCrashLog('Uncaught error: $error\n$stack');
   });
-  runApp(const ProviderScope(child: MyApp()));
+}
+
+Future<void> _writeCrashLog(String content) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/crash_log.txt');
+    final now = DateTime.now().toIso8601String();
+    await file.writeAsString('[$now] $content\n', mode: FileMode.append);
+  } catch (e) {
+    print('写入crash_log.txt失败: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {
