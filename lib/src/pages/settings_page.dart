@@ -4,6 +4,9 @@ import '../db.dart';
 import 'debug_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:io';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -35,6 +38,43 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _minFontSize = value;
     });
+  }
+
+  Future<String> _getRecentLog() async {
+    // 假设日志保存在 app 文档目录下的 open_anki.log
+    try {
+      final dir = await Directory.systemTemp.createTemp();
+      final logFile = File('/tmp/open_anki.log'); // 你可根据实际日志路径调整
+      if (await logFile.exists()) {
+        final lines = await logFile.readAsLines();
+        // 只取最后100行
+        return lines.length > 100 ? lines.sublist(lines.length - 100).join('\n') : lines.join('\n');
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  Future<void> sendFeedbackEmail(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    final log = await _getRecentLog();
+    final subject = Uri.encodeComponent('Open Anki 问题反馈');
+    final body = Uri.encodeComponent(
+      '请详细描述您的问题，并可在邮件中添加截图。\n\n'
+      '---\n'
+      'App版本: ${info.version} (${info.buildNumber})\n'
+      '包名: ${info.packageName}\n'
+      '平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n'
+      '最近日志(部分):\n$log\n'
+    );
+    final email = 'support@eusoftbank.com';
+    final uri = 'mailto:$email?subject=$subject&body=$body';
+    if (await canLaunch(uri)) {
+      await launch(uri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法打开邮件客户端，请手动发送反馈邮件。')),
+      );
+    }
   }
 
   @override
@@ -222,12 +262,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           title: const Text('问题反馈'),
                           subtitle: const Text('报告问题或提出建议'),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () {
-                            // TODO: 实现问题反馈功能
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('问题反馈功能开发中...')),
-                            );
-                          },
+                          onTap: () => sendFeedbackEmail(context),
                         ),
                       ],
                     ),
