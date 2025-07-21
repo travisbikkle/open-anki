@@ -90,8 +90,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         Slider(
                           value: _minFontSize,
                           min: 12,
-                          max: 32,
-                          divisions: 20,
+                          max: 128,
+                          divisions: 100,
                           activeColor: Colors.blue,
                           onChanged: _saveFontSize,
                         ),

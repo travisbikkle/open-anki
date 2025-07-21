@@ -11,7 +11,84 @@ class ProfilePage extends ConsumerStatefulWidget {
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends ConsumerState<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProviderStateMixin {
+  late Future<List<dynamic>> _profileFuture = _makeProfileFuture();
+  static Future<List<dynamic>> _makeProfileFuture() => Future.wait([
+    AppDb.getConsecutiveStudyDays(),
+    AppDb.getTodayStudyCount(),
+    AppDb.getTotalStudyDays(),
+    AppDb.getFirstStudyDate(),
+    AppDb.getUserName(),
+  ]);
+
+  late AnimationController _nickAnimController;
+  late Animation<double> _nickAnim;
+  bool _hasCustomName = false;
+  bool _showPencil = true;
+  bool _editingName = false;
+  final GlobalKey _nickKey = GlobalKey();
+  final TextEditingController _editController = TextEditingController();
+  final FocusNode _editFocusNode = FocusNode();
+  String _currentUserName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshProfile();
+    _nickAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _nickAnim = Tween(begin: 0.0, end: -1.0).animate(
+      CurvedAnimation(parent: _nickAnimController, curve: Curves.easeInOut),
+    );
+    _playNickAnim();
+    _editFocusNode.addListener(() {
+      if (!_editFocusNode.hasFocus && _editingName) {
+        _submitName();
+      }
+    });
+  }
+
+  void _refreshProfile() {
+    _profileFuture = _makeProfileFuture();
+  }
+
+  Future<void> _checkCustomName() async {
+    final name = await AppDb.getUserName();
+    setState(() { _hasCustomName = false; _showPencil = true; });
+    // 跳动2次
+    for (int i = 0; i < 2; i++) {
+      await _nickAnimController.forward();
+      await Future.delayed(const Duration(milliseconds: 120));
+      _nickAnimController.reverse();
+      await Future.delayed(const Duration(milliseconds: 120));
+    }
+    setState(() { _showPencil = false; });
+  }
+
+  Future<void> _playNickAnim() async {
+    for (int i = 0; i < 2; i++) {
+      await _nickAnimController.forward();
+      await _nickAnimController.reverse();
+    }
+  }
+
+  void _submitName() async {
+    final newName = _editController.text.trim();
+    if (newName.isNotEmpty && newName != _currentUserName) {
+      await AppDb.setUserName(newName);
+      _refreshProfile();
+    }
+    setState(() { _editingName = false; });
+  }
+
+  @override
+  void dispose() {
+    _nickAnimController.dispose();
+    super.dispose();
+  }
+
   void _showSettings() {
     Navigator.push(
       context,
@@ -32,18 +109,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       }
     }
     return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        AppDb.getConsecutiveStudyDays(),
-        AppDb.getTodayStudyCount(),
-        AppDb.getTotalStudyDays(),
-        AppDb.getFirstStudyDate(),
-      ]),
+      future: _profileFuture,
       builder: (context, snapshot) {
         final consecutiveDays = snapshot.data != null ? snapshot.data![0] as int : 0;
         final todayCount = snapshot.data != null ? snapshot.data![1] as int : 0;
         final totalStudyDays = snapshot.data != null ? snapshot.data![2] as int : 0;
         final firstStudyDate = snapshot.data != null ? snapshot.data![3] as DateTime? : null;
-        String joinText = '加入时间未知';
+        final userName = snapshot.data != null ? snapshot.data![4] as String : 'Player';
+        _currentUserName = userName;
+        String joinText = '';
         if (firstStudyDate != null) {
           joinText = '${firstStudyDate.year}年${firstStudyDate.month}月加入';
         }
@@ -91,9 +165,58 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               Center(
                 child: Column(
                   children: [
-                    const Text('yu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+                    GestureDetector(
+                      onTap: () async {
+                        setState(() { _editingName = true; });
+                      },
+                      child: SizedBox(
+                        height: 36,
+                        width: 260,
+                        child: Center(
+                          child: _editingName
+                              ? SizedBox(
+                                  width: 160,
+                                  child: Builder(
+                                    builder: (context) {
+                                      _editController.text = userName;
+                                      return TextField(
+                                        focusNode: _editFocusNode,
+                                        controller: _editController,
+                                        autofocus: true,
+                                        maxLength: 20,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                                        decoration: const InputDecoration(
+                                          border: InputBorder.none,
+                                          counterText: '',
+                                          isDense: true,
+                                          hintText: '请输入昵称',
+                                        ),
+                                        onSubmitted: (_) => _submitName(),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : AnimatedBuilder(
+                                  animation: _nickAnim,
+                                  builder: (context, child) {
+                                    final offsetY = _nickAnim.value * 8;
+                                    final scale = 1.0 + (_nickAnim.value.abs() * 0.10);
+                                    return Transform.translate(
+                                      offset: Offset(0, offsetY),
+                                      child: Transform.scale(
+                                        scale: scale,
+                                        child: Text(userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ),
+                    ),
                     if (firstStudyDate != null)
                       Text(joinText, style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    // 不再显示“昵称其实可以点哦😉”等文字提示
                   ],
                 ),
               ),

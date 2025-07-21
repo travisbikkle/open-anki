@@ -227,6 +227,21 @@ class AppDb {
     return res.isNotEmpty ? res.first['value'] as String : null;
   }
 
+  static Future<String> getUserName() async {
+    String? name = await getUserSetting('user_name');
+    if (name == null || name.isEmpty) {
+      // 生成随机用户名
+      final rand = (10000 + (DateTime.now().millisecondsSinceEpoch % 90000)).toString();
+      name = 'Player$rand';
+      await setUserName(name);
+    }
+    return name;
+  }
+
+  static Future<void> setUserName(String name) async {
+    await setUserSetting('user_name', name);
+  }
+
   static Future<Map<String, String>?> getDeckMediaMap(String md5) async {
     final dbClient = await db;
     final result = await dbClient.query(
