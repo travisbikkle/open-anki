@@ -99,7 +99,7 @@ class _MyAppState extends State<MyApp> {
   final _pages = [
     const HomePage(),
     const ImportPage(),
-    const NotesPage(),
+    // const NotesPage(), // 移除笔记页
     const ProfilePage(),
   ];
 
@@ -116,7 +116,7 @@ class _MyAppState extends State<MyApp> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
             BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '题库'),
-            BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'),
+            // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'), // 移除笔记入口
             BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
           ],
         ),
