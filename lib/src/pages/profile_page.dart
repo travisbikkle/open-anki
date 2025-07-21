@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'settings_page.dart';
+import '../providers.dart';
+import '../model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   void _showSettings() {
     Navigator.push(
       context,
@@ -17,6 +20,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final allDecksAsync = ref.watch(allDecksProvider);
+    int totalCards = 0;
+    int deckCount = 0;
+    if (allDecksAsync.asData != null) {
+      final decks = allDecksAsync.asData!.value;
+      deckCount = decks.length;
+      for (final d in decks) {
+        totalCards += d.cardCount;
+      }
+    }
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
       appBar: AppBar(
@@ -72,10 +85,10 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: const [
-                _StatCard(icon: Icons.menu_book, label: '题库数', value: '2'),
-                _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
-                _StatCard(icon: Icons.trending_up, label: '总卡片', value: '719'),
+              children: [
+                _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
+                const _StatCard(icon: Icons.psychology, label: '学习天数', value: '54'),
+                _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
               ],
             ),
           ),
