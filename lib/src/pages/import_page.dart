@@ -25,6 +25,7 @@ class ImportPage extends ConsumerStatefulWidget {
 class _ImportPageState extends ConsumerState<ImportPage> {
   String? error;
   bool loading = false;
+  bool importing = false;
   Map<String, Map<String, String>> _deckMediaFiles = {}; // deckId -> {文件名: 本地路径}
 
   // 自动修复：为_deckMediaFiles加安全getter，防止key不存在时抛异常
@@ -70,7 +71,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Future<void> importApkg() async {
     setState(() {
-      loading = true;
+      // loading = true; // 不再在按钮上转圈
       error = null;
     });
     try {
@@ -79,6 +80,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         setState(() { loading = false; });
         return;
       }
+      setState(() { importing = true; });
       final appDocDir = await getApplicationDocumentsDirectory();
       for (final file in picked.files) {
         String? path = file.path;
@@ -98,9 +100,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         // 在AppDb登记索引，保存version和cardCount
         await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version, cardCount: cardCount);
       }
-      // 强制刷新 provider
       ref.invalidate(allDecksProvider);
-      setState(() { loading = false; });
+      setState(() { importing = false; });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('导入成功'), duration: const Duration(seconds: 2)),
@@ -108,7 +109,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     } catch (e) {
       setState(() {
         error = e.toString();
-        loading = false;
+        importing = false;
       });
     }
   }
@@ -122,7 +123,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            if (loading)
+            if (importing)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Card(
@@ -241,18 +242,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           padding: const EdgeInsets.all(16.0),
           child: SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                elevation: 2,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: loading ? null : importApkg,
-              child: const Text('导入anki卡片'),
+            child: FloatingActionButton(
+              onPressed: loading || importing ? null : importApkg,
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add, size: 32),
             ),
           ),
         ),

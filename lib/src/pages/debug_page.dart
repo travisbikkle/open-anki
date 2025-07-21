@@ -19,6 +19,28 @@ class _DebugPageState extends State<DebugPage> {
   List<FileSystemEntity> _rootEntities = [];
   List<DeckInfo> _dbDecks = [];
   bool _showDbDecks = false;
+  String? _selectedDebugAction;
+  final List<Map<String, dynamic>> _debugActions = [
+    {
+      'label': '显示所有Deck记录',
+      'action': '_showAllDecks',
+    },
+    {
+      'label': '跳转到底部',
+      'action': '_scrollToBottom',
+    },
+    {
+      'label': '测试本地HTML加载',
+      'action': '_testWebView',
+    },
+    {
+      'label': '浏览题库文件树',
+      'action': '_showFileTree',
+    },
+  ];
+  List<Map<String, dynamic>> _allDeckRows = [];
+  bool _showAllDeckCards = false;
+  bool _showFileTree = false;
 
   @override
   void initState() {
@@ -51,6 +73,35 @@ class _DebugPageState extends State<DebugPage> {
     setState(() {
       _dbDecks = decks;
       _showDbDecks = true;
+    });
+  }
+
+  Future<void> _showAllDecks() async {
+    final dbClient = await AppDb.db;
+    final rows = await dbClient.rawQuery('SELECT md5, apkg_path, version, user_deck_name FROM decks');
+    setState(() {
+      _allDeckRows = rows;
+      _showAllDeckCards = true;
+    });
+  }
+
+  void _scrollToBottom() {
+    final scrollController = PrimaryScrollController.of(context);
+    scrollController?.animateTo(
+      scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
+  void _testWebView() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const TestWebViewPage()));
+  }
+
+  void _showFileTreeAction() {
+    setState(() {
+      _showFileTree = true;
+      _showAllDeckCards = false;
+      _showDbDecks = false;
     });
   }
 
@@ -160,32 +211,146 @@ class _DebugPageState extends State<DebugPage> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                ElevatedButton(
-                  onPressed: _loadDbDecks,
-                  child: const Text('显示题库索引(AppDb.getAllDecks)'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    final scrollController = PrimaryScrollController.of(context);
-                    scrollController?.animateTo(
-                      scrollController.position.maxScrollExtent,
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeInOut,
-                    );
+                DropdownButton<String>(
+                  value: _selectedDebugAction,
+                  hint: const Text('选择调试操作'),
+                  items: _debugActions.map((item) => DropdownMenuItem<String>(
+                    value: item['action'],
+                    child: Text(item['label']),
+                  )).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedDebugAction = val;
+                      _showAllDeckCards = false;
+                      _showFileTree = false;
+                      _showDbDecks = false;
+                    });
+                    if (val == '_showAllDecks') {
+                      setState(() { _showAllDeckCards = true; });
+                      _showAllDecks();
+                    }
+                    if (val == '_scrollToBottom') _scrollToBottom();
+                    if (val == '_testWebView') _testWebView();
+                    if (val == '_showFileTree') {
+                      setState(() { _showFileTree = true; });
+                    }
                   },
-                  child: const Text('跳转到底部'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TestWebViewPage()));
-                  },
-                  child: const Text('测试本地HTML加载'),
                 ),
               ],
             ),
           ),
+          if (_showAllDeckCards)
+            Expanded(
+              child: ListView.builder(
+                itemCount: _allDeckRows.length,
+                itemBuilder: (context, idx) {
+                  final row = _allDeckRows[idx];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (row['user_deck_name'] != null)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('名称: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Expanded(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      row['user_deck_name'] ?? '',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (row['user_deck_name'] != null) const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('md5: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                child: Text(
+                                  row['md5'] ?? '',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('apkg_path: '),
+                              Expanded(
+                                child: Text(
+                                  row['apkg_path'] ?? '',
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (row['version'] != null)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('version: '),
+                                Expanded(
+                                  child: Text(
+                                    row['version'] ?? '',
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          if (_showFileTree)
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text('错误: $_error'))
+                      : _ankiDataDir == null
+                          ? const Center(child: Text('anki_data 目录不存在'))
+                          : ListView(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.sd_storage),
+                                  title: Text(_ankiDataDir!.path),
+                                ),
+                                for (final entity in _rootEntities)
+                                  if (entity is Directory)
+                                    ExpansionTile(
+                                      leading: const Icon(Icons.folder),
+                                      title: Text(entity.path.split('/').last + '/'),
+                                      children: [
+                                        _buildDeckDirView(entity),
+                                      ],
+                                    ),
+                              ],
+                            ),
+            ),
           if (_showDbDecks)
             Expanded(
               child: ListView(
@@ -195,7 +360,7 @@ class _DebugPageState extends State<DebugPage> {
                 ],
               ),
             ),
-          if (!_showDbDecks)
+          if (!_showDbDecks && !_showAllDeckCards && !_showFileTree)
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
