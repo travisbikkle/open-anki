@@ -675,11 +675,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFeedbackButton('😫', '困难', 0), // 改为 0 (Again)
+                  _buildFeedbackButton('😄', '简单', 2), // 改为 2 (Good)
                   const SizedBox(width: 12),
                   _buildFeedbackButton('😐', '一般', 1), // 改为 1 (Hard)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😄', '简单', 2), // 改为 2 (Good)
+                  _buildFeedbackButton('😫', '困难', 0), // 改为 0 (Again)
                 ],
               ),
             ),
