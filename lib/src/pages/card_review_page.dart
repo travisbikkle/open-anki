@@ -177,11 +177,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
             _noteIds = [];
             break;
           }
-          // 获取新卡片，按ID排序，限制数量
-          final db = await openDatabase(sqlitePath);
-          final idRows = await db.rawQuery('SELECT id FROM notes ORDER BY id LIMIT ?', [newLimit]);
-          _noteIds = idRows.map((e) => e['id'] as int).toList();
-          await db.close();
+          // 通过 Rust FFI 获取新卡片 id
+          _noteIds = (await getNewNoteIds(sqlitePath: sqlitePath, limit: BigInt.from(newLimit), version: _deckVersion!)).map((e) => e.toInt()).toList();
           break;
           
         case StudyMode.review:
@@ -210,19 +207,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           break;
           
         case StudyMode.preview:
-          // 自由浏览模式，获取所有卡片
-          final db = await openDatabase(sqlitePath);
-          final idRows = await db.rawQuery('SELECT id FROM notes');
-          _noteIds = idRows.map((e) => e['id'] as int).toList();
-          await db.close();
+          // 通过 Rust FFI 获取所有卡片 id
+          _noteIds = (await getAllNoteIds(sqlitePath: sqlitePath, version: _deckVersion!)).map((e) => e.toInt()).toList();
           break;
           
         case StudyMode.custom:
-          // TODO: 自定义模式，暂时同 preview
-          final db = await openDatabase(sqlitePath);
-          final idRows = await db.rawQuery('SELECT id FROM notes');
-          _noteIds = idRows.map((e) => e['id'] as int).toList();
-          await db.close();
+          // 通过 Rust FFI 获取所有卡片 id
+          _noteIds = (await getAllNoteIds(sqlitePath: sqlitePath, version: _deckVersion!)).map((e) => e.toInt()).toList();
           break;
       }
       

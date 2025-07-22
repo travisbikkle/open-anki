@@ -73,6 +73,24 @@ Future<FsrsScheduleResult> updateCardSchedule({
   now: now,
 );
 
+Future<Int64List> getAllNoteIds({
+  required String sqlitePath,
+  required String version,
+}) => RustLib.instance.api.crateApiSimpleGetAllNoteIds(
+  sqlitePath: sqlitePath,
+  version: version,
+);
+
+Future<Int64List> getNewNoteIds({
+  required String sqlitePath,
+  required BigInt limit,
+  required String version,
+}) => RustLib.instance.api.crateApiSimpleGetNewNoteIds(
+  sqlitePath: sqlitePath,
+  limit: limit,
+  version: version,
+);
+
 class ExtractResult {
   final String dir;
   final String md5;

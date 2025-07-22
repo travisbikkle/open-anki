@@ -102,13 +102,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         
         // 为每张卡片初始化FSRS调度参数
         final sqlitePath = p.join(appDocDir.path, 'anki_data', result.md5, 'collection.sqlite');
-        final db = await openDatabase(sqlitePath);
-        final cardIds = await db.rawQuery('SELECT id FROM notes');
-        await db.close();
+        // 通过 Rust FFI 获取所有卡片 id
+        final cardIds = (await getAllNoteIds(sqlitePath: sqlitePath, version: result.version)).map((e) => e.toInt()).toList();
         
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000; // 转换为秒
-        for (final row in cardIds) {
-          final cardId = row['id'] as int;
+        for (final cardId in cardIds) {
           await AppDb.upsertCardScheduling(CardScheduling(
             cardId: cardId,
             stability: 0.0, // 新卡片，稳定性为0

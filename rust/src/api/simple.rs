@@ -653,3 +653,31 @@ pub fn update_card_schedule(
         difficulty: item.card.difficulty,
     })
 }
+
+#[flutter_rust_bridge::frb]
+pub fn get_all_note_ids(sqlite_path: String, version: String) -> Result<Vec<i64>, String> {
+    use rusqlite::Connection;
+    let conn = Connection::open(&sqlite_path).map_err(|e| format!("打开sqlite失败: {e}"))?;
+    let mut stmt = conn.prepare("SELECT id FROM notes ORDER BY id").map_err(|e| format!("准备SQL失败: {e}"))?;
+    let rows = stmt.query_map([], |row| row.get(0)).map_err(|e| format!("查询SQL失败: {e}"))?;
+    let mut ids = Vec::new();
+    for id_result in rows {
+        let id: i64 = id_result.map_err(|e| format!("读取id失败: {e}"))?;
+        ids.push(id);
+    }
+    Ok(ids)
+}
+
+#[flutter_rust_bridge::frb]
+pub fn get_new_note_ids(sqlite_path: String, limit: usize, version: String) -> Result<Vec<i64>, String> {
+    use rusqlite::Connection;
+    let conn = Connection::open(&sqlite_path).map_err(|e| format!("打开sqlite失败: {e}"))?;
+    let mut stmt = conn.prepare("SELECT id FROM notes ORDER BY id LIMIT ?").map_err(|e| format!("准备SQL失败: {e}"))?;
+    let rows = stmt.query_map([limit as i64], |row| row.get(0)).map_err(|e| format!("查询SQL失败: {e}"))?;
+    let mut ids = Vec::new();
+    for id_result in rows {
+        let id: i64 = id_result.map_err(|e| format!("读取id失败: {e}"))?;
+        ids.push(id);
+    }
+    Ok(ids)
+}
