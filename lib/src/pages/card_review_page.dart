@@ -24,6 +24,9 @@ import 'settings_page.dart';
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
 
+// A set to keep track of deckIds for which the network warning has been shown.
+final _shownNetworkWarningForDecks = <String>{};
+
 class CardReviewPage extends ConsumerStatefulWidget {
   final String deckId;
   final Map<String, Uint8List>? mediaFiles;
@@ -351,6 +354,9 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         });
       }
 
+      // Show network warning if necessary.
+      _showNetworkWarningIfNeeded(result.front, result.back, result.css);
+
       if (_frontHtmlPath != null) {
         await _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
       } else {
@@ -367,6 +373,33 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
     
     await _cardLoadCompleter!.future;
+  }
+
+  void _showNetworkWarningIfNeeded(String front, String back, String config) {
+    // Only show the warning once per deckId per app session.
+    if (!_shownNetworkWarningForDecks.contains(widget.deckId)) {
+      final mightConnect = AnkiTemplateRenderer.cardMightConnectToNetwork(
+        front: front,
+        back: back,
+        config: config,
+      );
+
+      if (mightConnect) {
+        // Mark this deck as having shown the warning.
+        _shownNetworkWarningForDecks.add(widget.deckId);
+        
+        // Show a temporary snackbar.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('提示：卡片内容可能需要连接网络'),
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _nextCard() async {

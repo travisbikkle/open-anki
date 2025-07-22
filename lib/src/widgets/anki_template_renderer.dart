@@ -396,4 +396,18 @@ $body
     
     return (frontPath, backPath);
   }
+
+  /// Checks if the card's templates (front, back, css/js) might connect to the network.
+  static bool cardMightConnectToNetwork({
+    required String front,
+    required String back,
+    required String config,
+  }) {
+    // Combine all template parts into a single string for checking.
+    final combinedContent = '$front $back $config';
+    
+    // A simple regex to detect http:// or https:// URLs.
+    final networkRegex = RegExp(r'https?://', caseSensitive: false);
+    return networkRegex.hasMatch(combinedContent);
+  }
 } 
