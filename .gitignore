@@ -50,3 +50,6 @@ target_21
 target_21b
 
 test.html
+test
+
+assets/*.apkg

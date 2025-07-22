@@ -82,6 +82,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       }
       setState(() { importing = true; });
       final appDocDir = await getApplicationDocumentsDirectory();
+      int successCount = 0;
       for (final file in picked.files) {
         String? path = file.path;
         if (path == null) continue;
@@ -95,6 +96,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         }
         // 调用Rust端解压
         final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
+        
+        // 检查是否存在
+        final existingDeck = await AppDb.getDeckById(result.md5);
+        if (existingDeck != null) {
+          if(mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('题库 "${existingDeck.deckName}" 已存在，已跳过。')),
+            );
+          }
+          continue;
+        }
+
         // 统计卡片总数
         int cardCount = (await getCardCountFromDeck(appDocDir: appDocDir.path, md5: result.md5)).toInt();
         // 在AppDb登记索引，保存version和cardCount
@@ -116,13 +129,16 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           // 新增：插入卡片与牌组的映射
           await AppDb.insertCardMapping(cardId, result.md5);
         }
+        successCount++;
       }
       ref.invalidate(allDecksProvider);
       setState(() { importing = false; });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('导入成功'), duration: const Duration(seconds: 2)),
-      );
+      if (successCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导入成功 $successCount 个题库'), duration: const Duration(seconds: 2)),
+        );
+      }
     } catch (e) {
       setState(() {
         error = e.toString();
@@ -257,15 +273,75 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: FloatingActionButton(
-              onPressed: loading || importing ? null : importApkg,
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: const CircleBorder(),
-              child: const Icon(Icons.add, size: 32),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FloatingActionButton(
+                  onPressed: loading || importing ? null : importApkg,
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.add, size: 32),
+                ),
+              ),
+              // 自动导入隐藏入口，仅在debug/profile模式下可见
+              if (!bool.fromEnvironment('dart.vm.product'))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: ElevatedButton(
+                    key: Key('auto_import_button'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      surfaceTintColor: Colors.transparent,
+                      elevation: 0,
+                      padding: EdgeInsets.zero,
+                    ),
+                    onPressed: () async {
+                      setState(() { importing = true; error = null; });
+                      try {
+                        final appDocDir = await getApplicationDocumentsDirectory();
+                        final file = File('${appDocDir.path}/anki21.apkg');
+                        if (!await file.exists()) {
+                          setState(() { error = '未找到anki21.apkg文件'; importing = false; });
+                          return;
+                        }
+                        final fileName = 'anki21';
+                        final deckName = fileName;
+                        final result = await extractApkg(apkgPath: file.path, baseDir: p.join(appDocDir.path, 'anki_data'));
+
+                        final existingDeck = await AppDb.getDeckById(result.md5);
+                        if (existingDeck == null) {
+                          int cardCount = (await getCardCountFromDeck(appDocDir: appDocDir.path, md5: result.md5)).toInt();
+                          await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version, cardCount: cardCount);
+                          final sqlitePath = p.join(appDocDir.path, 'anki_data', result.md5, 'collection.sqlite');
+                          final cardIds = (await getAllNoteIds(sqlitePath: sqlitePath, version: result.version)).map((e) => e.toInt()).toList();
+                          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+                          for (final cardId in cardIds) {
+                            await AppDb.upsertCardScheduling(CardScheduling(
+                              cardId: cardId,
+                              stability: 0.0,
+                              difficulty: 5.0,
+                              due: now,
+                            ));
+                            await AppDb.insertCardMapping(cardId, result.md5);
+                          }
+                          ref.invalidate(allDecksProvider);
+                        }
+                        
+                        setState(() { importing = false; });
+                        if (!mounted) return;
+                      } catch (e) {
+                        setState(() { error = e.toString(); importing = false; });
+                      }
+                    },
+                    child: const SizedBox(width: 1, height: 1), // 极小不可见
+                  ),
+                ),
+            ],
           ),
         ),
       ),
