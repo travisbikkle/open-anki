@@ -55,17 +55,21 @@ void main() {
     expect(find.text('anki21'), findsWidgets);
     
     // 3. 进入刷卡
+    print("进入刷卡");
     final deckTile = find.text('anki21');
     expect(deckTile, findsWidgets);
     await tester.tap(deckTile.first);
     await tester.pumpAndSettle();
 
+    print("显示答案");
     // 4. 模拟刷卡
     // 点击“显示答案”按钮
     final showAnswerBtn = find.text('显示答案');
     expect(showAnswerBtn, findsOneWidget);
     await tester.tap(showAnswerBtn);
     await tester.pumpAndSettle();
+    
+    print("返回正面");
 
     // 验证出现“返回正面”按钮
     final flipCardBtn = find.text('返回正面');

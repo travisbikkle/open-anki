@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
@@ -70,6 +71,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
   String? _frontHtmlPath;
   String? _backHtmlPath;
   String? _pendingShow; // 'front' or 'back'
+  Completer<void>? _flipCompleter;
+  Completer<void>? _cardLoadCompleter;
 
   @override
   void initState() {
@@ -85,26 +88,54 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       ..addJavaScriptChannel(
         'AnkiSave',
         onMessageReceived: (JavaScriptMessage message) {
-          if (message.message == 'saved' && _pendingShow != null) {
-            if (_pendingShow == 'back') {
-              _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
-            } else {
-              _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
+          // Wrap in an async IIFE (Immediately Invoked Function Expression) to handle futures
+          () async {
+            if (message.message == 'saved' && _pendingShow != null) {
+              final pageToShow = _pendingShow;
+              // Clear pending state immediately to prevent re-entry
+              _pendingShow = null;
+              
+              try {
+                // First, update the state, which schedules a rebuild
+                if (mounted) {
+                  setState(() {
+                    _showBack = !_showBack;
+                  });
+                }
+                // Then, trigger the page load. The completer will be handled
+                // in onPageFinished or onWebResourceError.
+                if (pageToShow == 'back') {
+                  if (_backHtmlPath != null) {
+                    await _controller.loadRequest(Uri.parse('file://$_backHtmlPath'));
+                  }
+                } else {
+                  if (_frontHtmlPath != null) {
+                    await _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
+                  }
+                }
+              } catch (e, s) {
+                LogHelper.log('Error in AnkiSave channel: $e\n$s');
+                if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+                  _flipCompleter!.completeError(e, s);
+                }
+              }
             }
-            setState(() {
-              _showBack = !_showBack;
-            });
-            _pendingShow = null;
-          }
+          }();
         },
       )
       ..setNavigationDelegate(
         NavigationDelegate(
           onWebResourceError: (WebResourceError error) {
             LogHelper.log('WebView Error: ${error.description}');
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.completeError(error);
+            }
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.completeError(error);
+            }
           },
           onPageFinished: (String url) async {
-            // 注入JS放大checkbox和radio
+            // Inject JS to scale checkboxes and radios
             await _controller.runJavaScript('''
               (function() {
                 var scale = 1.1;
@@ -117,6 +148,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                 document.head.appendChild(style);
               })();
             ''');
+            
+            // Complete the flip operation now that the page is fully loaded
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.complete();
+            }
+            // Complete the card load operation
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.complete();
+            }
           },
         ),
       );
@@ -248,76 +288,102 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
 
   Future<void> _loadCurrentCard() async {
+    // A new completer for each card load operation
+    _cardLoadCompleter = Completer<void>();
     LogHelper.log('[_loadCurrentCard] 开始加载卡片，索引: $_currentIndex');
-    if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
-      debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
-      LogHelper.log('_noteIds.isEmpty: ${_noteIds.isEmpty}');
-      LogHelper.log('_mediaDir: $_mediaDir');
-      LogHelper.log('_currentIndex: $_currentIndex');
-      LogHelper.log('_sqlitePath: $_sqlitePath');
-      LogHelper.log('_deckVersion: $_deckVersion');
-      return;
-    }
 
-    final noteId = _noteIds[_currentIndex];
-    
-    // 先获取调度信息
-    var scheduling = await AppDb.getCardScheduling(noteId);
-    if (scheduling == null) {
-      // 如果没有调度参数，创建默认值
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      scheduling = CardScheduling(
-        cardId: noteId,
-        stability: 0.0, // 新卡片从0开始
-        difficulty: 5.0,
-        due: now,
+    try {
+      if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
+        debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
+        if (!_cardLoadCompleter!.isCompleted) {
+          _cardLoadCompleter!.complete();
+        }
+        return;
+      }
+
+      final noteId = _noteIds[_currentIndex];
+      
+      // 先获取调度信息
+      var scheduling = await AppDb.getCardScheduling(noteId);
+      if (scheduling == null) {
+        // 如果没有调度参数，创建默认值
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        scheduling = CardScheduling(
+          cardId: noteId,
+          stability: 0.0, // 新卡片从0开始
+          difficulty: 5.0,
+          due: now,
+        );
+        await AppDb.upsertCardScheduling(scheduling);
+      }
+      
+      final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
+      
+      setState(() {
+        _selectedIndex = null;
+        _showAnswer = false;
+        _currentNote = result.note;
+        _currentNotetype = result.notetype;
+        _currentFields = result.fields;
+        _currentCardOrd = result.ord;
+        _currentQfmt = null;
+        _currentAfmt = null;
+        _currentConfig = result.css;
+        _currentFront = result.front;
+        _currentBack = result.back;
+        _showBack = false;
+        _currentScheduling = scheduling; // 使用获取到的调度信息
+      });
+
+      if (_currentNotetype == null || _currentNote == null) {
+        if (!_cardLoadCompleter!.isCompleted) {
+          _cardLoadCompleter!.complete();
+        }
+        return;
+      }
+      
+      final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
+      final fieldMap = <String, String>{};
+      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
+        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
+      }
+      final (frontPath, backPath) = await AnkiTemplateRenderer.renderFrontBackHtml(
+        front: _currentFront ?? '',
+        back: _currentBack ?? '',
+        config: _currentConfig ?? '',
+        fieldMap: fieldMap,
+        js: null,
+        mediaDir: _mediaDir,
+        minFontSize: _minFontSize,
+        deckId: widget.deckId,
       );
-      await AppDb.upsertCardScheduling(scheduling);
+      _frontHtmlPath = frontPath;
+      _backHtmlPath = backPath;
+      LogHelper.log('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
+      // 直接加载正面 HTML
+      if (_frontHtmlPath != null) {
+        await _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
+      } else {
+        // If there's no path, complete immediately.
+        if (!_cardLoadCompleter!.isCompleted) {
+          _cardLoadCompleter!.complete();
+        }
+      }
+    } catch (e, s) {
+      LogHelper.log('Error in _loadCurrentCard: $e\n$s');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载卡片失败: $e')));
+      }
+      if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+        _cardLoadCompleter!.completeError(e, s);
+      }
     }
-    
-    final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
-    
-    setState(() {
-      _selectedIndex = null;
-      _showAnswer = false;
-      _currentNote = result.note;
-      _currentNotetype = result.notetype;
-      _currentFields = result.fields;
-      _currentCardOrd = result.ord;
-      _currentQfmt = null;
-      _currentAfmt = null;
-      _currentConfig = result.css;
-      _currentFront = result.front;
-      _currentBack = result.back;
-      _showBack = false;
-      _currentScheduling = scheduling; // 使用获取到的调度信息
-    });
 
-    if (_currentNotetype == null || _currentNote == null) return;
-    
-    final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-    final fieldMap = <String, String>{};
-    for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
-      fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
-    }
-    final (frontPath, backPath) = await AnkiTemplateRenderer.renderFrontBackHtml(
-      front: _currentFront ?? '',
-      back: _currentBack ?? '',
-      config: _currentConfig ?? '',
-      fieldMap: fieldMap,
-      js: null,
-      mediaDir: _mediaDir,
-      minFontSize: _minFontSize,
-      deckId: widget.deckId,
-    );
-    _frontHtmlPath = frontPath;
-    _backHtmlPath = backPath;
-    LogHelper.log('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
-    // 直接加载正面 HTML
-    _controller.loadRequest(Uri.parse('file://$frontPath'));
+    // Wait for the future that will be completed by onPageFinished
+    await _cardLoadCompleter!.future;
   }
 
-  void _nextCard() async {
+  Future<void> _nextCard() async {
     if (_noteIds.isEmpty) return;
     
     int prevIndex = _currentIndex;
@@ -339,7 +405,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         break;
     }
     _saveProgress(_currentIndex);
-    _loadCurrentCard();
+    await _loadCurrentCard();
 
     // 新增：如果已经是最后一题，再点“下一题”时弹窗
     if (_noteIds.isNotEmpty && prevIndex == _noteIds.length - 1) {
@@ -386,7 +452,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
     
     _saveProgress(_currentIndex);
-    _loadCurrentCard();
+    await _loadCurrentCard();
   }
 
   Widget _buildFeedbackButton(String emoji, String label, int value) {
@@ -441,7 +507,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         // 保存反馈和学习记录
         await AppDb.saveCardFeedback(_currentNote!.id, value);
         await AppDb.logStudy(widget.deckId, _currentNote!.id);
-        _nextCard();
+        await _nextCard();
       },
       onLongPress: () async {
         // 预览此选项的复习时间
@@ -724,13 +790,19 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                   ElevatedButton(
                     onPressed: () async {
                       LogHelper.log('=== 显示答案按钮被点击 ===');
+
+                      // Prevent double-tapping while a flip is in progress
+                      if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+                        return;
+                      }
+                      _flipCompleter = Completer<void>();
+
                       if (!_showBack) {
                         // 只在从正面切到背面时计入已学习
                         await AppDb.incrementTotalLearned(widget.deckId);
                         if (context.mounted) {
-                          final container = ProviderScope.containerOf(context);
-                          container.invalidate(allDecksProvider);
-                          container.invalidate(recentDecksProvider);
+                          ref.invalidate(allDecksProvider);
+                          ref.invalidate(recentDecksProvider);
                         }
                       }
                       if (_showBack) {
@@ -738,8 +810,17 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                       } else {
                         _pendingShow = 'back';
                       }
-                      await _controller.runJavaScript('trigger_save()');
-                      // 不直接切页面，等 onMessageReceived 回调
+                      
+                      try {
+                        await _controller.runJavaScript('trigger_save()');
+                        // Wait for the JS roundtrip and subsequent page load to complete
+                        await _flipCompleter!.future;
+                      } catch (e, s) {
+                        // If JS fails or page load fails, this will catch it
+                        LogHelper.log('Error during flip operation: $e\n$s');
+                        // Fail the test gracefully if something goes wrong
+                        // fail('Flip operation failed: $e'); // This line was removed as per the edit hint
+                      }
                     },
                     child: Text(_showBack ? '返回正面' : '显示答案'),
                   ),
