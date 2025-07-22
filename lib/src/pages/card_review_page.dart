@@ -180,7 +180,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     setState(() {
       _minFontSize = prefs.getDouble('minFontSize') ?? 18;
     });
-    _loadDeck();
+    await _loadDeck();
   }
 
   Future<void> _loadDeck() async {
@@ -260,17 +260,22 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       // 使用 deckId 获取进度
       final progress = await AppDb.getProgress(widget.deckId);
       final idx = progress?['current_card_id'] ?? 0;
-      _currentIndex = _noteIds.indexOf(idx);
-      if (_currentIndex < 0) _currentIndex = 0;
-      await _loadCurrentCard();
+      
+      // Load the card at the saved index, or the first one.
+      await _loadCurrentCard(initialIndex: idx);
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
+      }
     } finally {
-      setState(() { _loading = false; });
+      if (mounted) {
+        setState(() { _loading = false; });
+      }
     }
   }
 
-  void _saveProgress(int idx) async {
+  Future<void> _saveProgress(int idx) async {
     await AppDb.saveProgress(widget.deckId, idx);
     await AppDb.upsertRecentDeck(widget.deckId);
     // 刷新 provider 来更新界面显示
@@ -287,87 +292,69 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
       }
     }
 
-  Future<void> _loadCurrentCard() async {
-    // A new completer for each card load operation
+  Future<void> _loadCurrentCard({int? initialIndex}) async {
     _cardLoadCompleter = Completer<void>();
-    LogHelper.log('[_loadCurrentCard] 开始加载卡片，索引: $_currentIndex');
+    
+    // Use the provided index or the existing one.
+    // The switch to the new index happens inside setState after data is loaded.
+    final indexToLoad = initialIndex ?? _currentIndex;
 
+    LogHelper.log('[_loadCurrentCard] 开始加载卡片，索引: $indexToLoad');
+    if (_noteIds.isEmpty || _mediaDir == null || indexToLoad < 0 || indexToLoad >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
+      debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
+      if (!_cardLoadCompleter!.isCompleted) _cardLoadCompleter!.complete();
+      return;
+    }
+    
     try {
-      if (_noteIds.isEmpty || _mediaDir == null || _currentIndex < 0 || _currentIndex >= _noteIds.length || _sqlitePath == null || _deckVersion == null) {
-        debugPrint('[_loadCurrentCard] 条件不足，无法加载卡片');
-        if (!_cardLoadCompleter!.isCompleted) {
-          _cardLoadCompleter!.complete();
-        }
-        return;
-      }
-
-      final noteId = _noteIds[_currentIndex];
+      final noteId = _noteIds[indexToLoad];
       
-      // 先获取调度信息
       var scheduling = await AppDb.getCardScheduling(noteId);
       if (scheduling == null) {
-        // 如果没有调度参数，创建默认值
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        scheduling = CardScheduling(
-          cardId: noteId,
-          stability: 0.0, // 新卡片从0开始
-          difficulty: 5.0,
-          due: now,
-        );
+        scheduling = CardScheduling(cardId: noteId, stability: 0.0, difficulty: 5.0, due: now);
         await AppDb.upsertCardScheduling(scheduling);
       }
       
       final result = await getDeckNote(sqlitePath: _sqlitePath!, noteId: noteId, version: _deckVersion!);
       
-      setState(() {
-        _selectedIndex = null;
-        _showAnswer = false;
-        _currentNote = result.note;
-        _currentNotetype = result.notetype;
-        _currentFields = result.fields;
-        _currentCardOrd = result.ord;
-        _currentQfmt = null;
-        _currentAfmt = null;
-        _currentConfig = result.css;
-        _currentFront = result.front;
-        _currentBack = result.back;
-        _showBack = false;
-        _currentScheduling = scheduling; // 使用获取到的调度信息
-      });
-
-      if (_currentNotetype == null || _currentNote == null) {
-        if (!_cardLoadCompleter!.isCompleted) {
-          _cardLoadCompleter!.complete();
-        }
-        return;
+      final fieldsForType = List<FieldExt>.from(result.fields)..sort((a, b) => a.ord.compareTo(b.ord));
+      final fieldMap = <String, String>{};
+      for (int i = 0; i < fieldsForType.length && i < result.note.flds.length; i++) {
+        fieldMap[fieldsForType[i].name] = result.note.flds[i];
       }
       
-      final fieldsForType = List<FieldExt>.from(_currentFields)..sort((a, b) => a.ord.compareTo(b.ord));
-      final fieldMap = <String, String>{};
-      for (int i = 0; i < fieldsForType.length && i < _currentNote!.flds.length; i++) {
-        fieldMap[fieldsForType[i].name] = _currentNote!.flds[i];
-      }
       final (frontPath, backPath) = await AnkiTemplateRenderer.renderFrontBackHtml(
-        front: _currentFront ?? '',
-        back: _currentBack ?? '',
-        config: _currentConfig ?? '',
-        fieldMap: fieldMap,
-        js: null,
-        mediaDir: _mediaDir,
-        minFontSize: _minFontSize,
-        deckId: widget.deckId,
+        front: result.front, back: result.back, config: result.css,
+        fieldMap: fieldMap, js: null, mediaDir: _mediaDir,
+        minFontSize: _minFontSize, deckId: widget.deckId,
       );
-      _frontHtmlPath = frontPath;
-      _backHtmlPath = backPath;
-      LogHelper.log('设置HTML路径 - 正面: $frontPath, 反面: $backPath');
-      // 直接加载正面 HTML
+
+      // --- ATOMIC STATE UPDATE ---
+      // All data is ready. Now update the state in one go.
+      if (mounted) {
+        setState(() {
+          _currentIndex = indexToLoad;
+          _selectedIndex = null;
+          _showAnswer = false;
+          _currentNote = result.note;
+          _currentNotetype = result.notetype;
+          _currentFields = result.fields;
+          _currentCardOrd = result.ord;
+          _currentConfig = result.css;
+          _currentFront = result.front;
+          _currentBack = result.back;
+          _showBack = false;
+          _currentScheduling = scheduling;
+          _frontHtmlPath = frontPath;
+          _backHtmlPath = backPath;
+        });
+      }
+
       if (_frontHtmlPath != null) {
         await _controller.loadRequest(Uri.parse('file://$_frontHtmlPath'));
       } else {
-        // If there's no path, complete immediately.
-        if (!_cardLoadCompleter!.isCompleted) {
-          _cardLoadCompleter!.complete();
-        }
+        if (!_cardLoadCompleter!.isCompleted) _cardLoadCompleter!.complete();
       }
     } catch (e, s) {
       LogHelper.log('Error in _loadCurrentCard: $e\n$s');
@@ -378,8 +365,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         _cardLoadCompleter!.completeError(e, s);
       }
     }
-
-    // Wait for the future that will be completed by onPageFinished
+    
     await _cardLoadCompleter!.future;
   }
 
@@ -387,25 +373,10 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     if (_noteIds.isEmpty) return;
     
     int prevIndex = _currentIndex;
-    switch (widget.mode) {
-      case StudyMode.learn:
-      case StudyMode.preview:
-      case StudyMode.custom:
-        setState(() {
-          _currentIndex = (_currentIndex + 1) % _noteIds.length;
-        });
-        break;
-      case StudyMode.review:
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        _dueCards = await AppDb.getDueCards(now);
-        setState(() {
-          _noteIds = _dueCards.map((e) => e.cardId).toList();
-          _currentIndex = 0;
-        });
-        break;
-    }
-    _saveProgress(_currentIndex);
-    await _loadCurrentCard();
+    final int newIndex = (_currentIndex + 1) % _noteIds.length;
+    
+    await _loadCurrentCard(initialIndex: newIndex);
+    await _saveProgress(newIndex);
 
     // 新增：如果已经是最后一题，再点“下一题”时弹窗
     if (_noteIds.isNotEmpty && prevIndex == _noteIds.length - 1) {
@@ -427,32 +398,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     }
   }
 
-  void _prevCard() async {
+  Future<void> _prevCard() async {
     if (_noteIds.isEmpty) return;
     
-    switch (widget.mode) {
-      case StudyMode.learn:
-      case StudyMode.preview:
-      case StudyMode.custom:
-        // 顺序浏览模式，直接上一张
-        setState(() {
-          _currentIndex = (_currentIndex - 1 + _noteIds.length) % _noteIds.length;
-        });
-        break;
-        
-      case StudyMode.review:
-        // 复习模式，重新获取到期卡片
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        _dueCards = await AppDb.getDueCards(now);
-        setState(() {
-          _noteIds = _dueCards.map((e) => e.cardId).toList();
-          _currentIndex = _dueCards.length - 1; // 从最后一张到期卡片开始
-        });
-        break;
-    }
-    
-    _saveProgress(_currentIndex);
-    await _loadCurrentCard();
+    final int newIndex = (_currentIndex - 1 + _noteIds.length) % _noteIds.length;
+    await _loadCurrentCard(initialIndex: newIndex);
+    await _saveProgress(newIndex);
   }
 
   Widget _buildFeedbackButton(String emoji, String label, int value) {

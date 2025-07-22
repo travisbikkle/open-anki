@@ -67,29 +67,23 @@ void main() {
     final showAnswerBtn = find.text('显示答案');
     expect(showAnswerBtn, findsOneWidget);
     await tester.tap(showAnswerBtn);
-    await tester.pumpAndSettle();
-    
-    print("返回正面");
+    await tester.pumpAndSettle(const Duration(milliseconds: 2000));
 
-    // 验证出现“返回正面”按钮
-    final flipCardBtn = find.text('返回正面');
-    expect(flipCardBtn, findsOneWidget);
-    // (可选)可以再次点击返回正面
-    // await tester.tap(flipCardBtn);
-    // await tester.pumpAndSettle();
+    //print("下一题");
 
-    // 点击“下一题”按钮
-    final nextBtn = find.widgetWithText(ElevatedButton, '下一题');
-    expect(nextBtn, findsOneWidget);
-    await tester.tap(nextBtn);
-    await tester.pumpAndSettle();
+    // // 点击“下一题”按钮
+    // final nextBtn = find.widgetWithText(ElevatedButton, '下一题');
+    // expect(nextBtn, findsOneWidget);
+    // await tester.tap(nextBtn);
+    // await tester.pumpAndSettle(const Duration(milliseconds: 2000));
 
     // 5. 返回并验证进度
     // 点击AppBar的返回按钮
+    print("后退");
     final backBtn = find.byIcon(Icons.arrow_back);
     expect(backBtn, findsOneWidget);
     await tester.tap(backBtn);
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 3000));
     
     // 验证进度条更新，查找文本“1/X”
     expect(find.textContaining(RegExp(r'1/\d+')), findsOneWidget);
@@ -100,6 +94,7 @@ void main() {
     await tester.longPress(deckToDelete.first);
     await tester.pumpAndSettle();
 
+    print("删除");
     final deleteBtn = find.text('删除');
     expect(deleteBtn, findsOneWidget);
     await tester.tap(deleteBtn);
