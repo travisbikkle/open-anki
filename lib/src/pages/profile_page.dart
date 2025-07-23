@@ -247,7 +247,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                                           border: InputBorder.none,
                                           counterText: '',
                                           isDense: true,
-                                          hintText: '请输入昵称',
+                                          hintText: 'Please input your nickname',
                                         ),
                                         onSubmitted: (_) => _submitName(),
                                       );
@@ -273,7 +273,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                     ),
                     if (firstStudyDate != null)
                       Text(joinText, style: TextStyle(color: Colors.grey, fontSize: 14)),
-                    // 不再显示“昵称其实可以点哦😉”等文字提示
               ],
             ),
           ),
@@ -294,13 +293,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
           // 概览区块
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-                  children: [
-                    _OverviewCard(icon: Icons.local_fire_department, label: AppLocalizations.of(context)!.profileConsecutive, value: consecutiveDays.toString() + AppLocalizations.of(context)!.studyDays, color: Colors.orange),
-                    _OverviewCard(icon: Icons.flash_on, label: AppLocalizations.of(context)!.profileToday, value: todayCount.toString(), color: Colors.amber),
-                  ],
+            child: Row(
+              children: [
+                Expanded(
+                  child: _OverviewCard(
+                    icon: Icons.local_fire_department,
+                    label: AppLocalizations.of(context)!.profileConsecutive,
+                    value: consecutiveDays.toString(),
+                    color: Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _OverviewCard(
+                    icon: Icons.flash_on,
+                    label: AppLocalizations.of(context)!.profileToday,
+                    value: todayCount.toString(),
+                    color: Colors.amber,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -338,7 +350,6 @@ class _OverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 120,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -346,11 +357,13 @@ class _OverviewCard extends StatelessWidget {
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13), textAlign: TextAlign.center),
         ],
       ),
     );

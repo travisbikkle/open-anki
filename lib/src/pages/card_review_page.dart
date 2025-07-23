@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../log_helper.dart';
 import 'settings_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -685,7 +686,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                                 ),
                                 Align(
                                   alignment: Alignment.centerRight,
-                                  child: TextButton(
+                                  child: kReleaseMode ? const SizedBox.shrink() : TextButton(
                                     onPressed: () async {
                                       // 显示当前加载的 HTML 文件内容
                                       final currentPath = _showBack ? _backHtmlPath! : _frontHtmlPath!;
@@ -699,7 +700,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                                         );
                                       }
                                     },
-                                    child: Text(AppLocalizations.of(context)!.viewCardSource, style: TextStyle(color: Colors.blue)),
+                                    child: Text(AppLocalizations.of(context)!.viewCardSource, style: const TextStyle(color: Colors.blue)),
                                   ),
                                 ),
                               ],
