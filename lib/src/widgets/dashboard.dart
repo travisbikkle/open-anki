@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class Dashboard extends StatelessWidget {
   final int totalCards;
@@ -13,9 +14,9 @@ class Dashboard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _StatItem(label: '总卡片', value: totalCards.toString()),
-          _StatItem(label: '已学习', value: learnedCards.toString()),
-          _StatItem(label: '题库数', value: deckCount.toString()),
+          _StatItem(label: AppLocalizations.of(context)!.totalCards, value: totalCards.toString()),
+          _StatItem(label: AppLocalizations.of(context)!.learnedCards, value: learnedCards.toString()),
+          _StatItem(label: AppLocalizations.of(context)!.deckCount, value: deckCount.toString()),
         ],
       ),
     );

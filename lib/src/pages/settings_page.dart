@@ -11,6 +11,8 @@ import '../log_helper.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,11 +23,24 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   double _minFontSize = 18;
   bool _isLoading = true;
+  Locale? _selectedLocale;
+
+  static const supportedLocales = [
+    Locale('system', ''),
+    Locale('en'),
+    Locale('zh'),
+    Locale('de'),
+    Locale('ru'),
+    Locale('fr'),
+    Locale('ja'),
+    Locale('ko'),
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadLocale();
   }
 
   String _schedulingAlgorithm = 'fsrs';
@@ -112,12 +127,33 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _loadLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('locale');
+    setState(() {
+      _selectedLocale = code == null || code == 'system' ? null : Locale(code);
+    });
+  }
+
+  Future<void> _saveLocale(String? code) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (code == null || code == 'system') {
+      await prefs.remove('locale');
+      setState(() { _selectedLocale = null; });
+    } else {
+      await prefs.setString('locale', code);
+      setState(() { _selectedLocale = Locale(code); });
+    }
+    // 通知全局刷新
+    MyApp.setLocale(context, _selectedLocale);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Text(AppLocalizations.of(context)!.settings),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -143,16 +179,16 @@ class _SettingsPageState extends State<SettingsPage> {
                           children: [
                             Icon(Icons.text_fields, color: Colors.blue[600]),
                             const SizedBox(width: 12),
-                            const Text(
-                              '字体设置',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            Text(
+                              AppLocalizations.of(context)!.fontSize,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
                         Row(
                           children: [
-                            const Text('最小字体大小'),
+                            Text(AppLocalizations.of(context)!.minFontSize),
                             const Spacer(),
                             Text(
                               '${_minFontSize.toInt()}px',
@@ -175,9 +211,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Text('12px', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                            Text('128px', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          children: [
+                            Text('12px', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text('128px', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -190,13 +226,13 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                '预览效果',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                              Text(
+                                'Preview', // TODO: Add to ARB
+                                style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '这是一段预览文字，当前最小字体大小为 ${_minFontSize.toInt()}px。',
+                                AppLocalizations.of(context)!.fontSize + ': ${_minFontSize.toInt()}px',
                                 style: TextStyle(
                                   fontSize: _minFontSize,
                                   color: Colors.black87,
@@ -223,27 +259,27 @@ class _SettingsPageState extends State<SettingsPage> {
                           children: [
                             Icon(Icons.schedule, color: Colors.blue[600]),
                             const SizedBox(width: 12),
-                            const Text(
-                              '复习调度',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            Text(
+                              AppLocalizations.of(context)!.schedulingAlgorithm,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
                         Row(
                           children: [
-                            const Text('调度算法'),
+                            Text(AppLocalizations.of(context)!.schedulingAlgorithm),
                             const Spacer(),
                             DropdownButton<String>(
                               value: _schedulingAlgorithm,
                               items: const [
                                 DropdownMenuItem(
                                   value: 'fsrs',
-                                  child: Text('FSRS (智能算法)'),
+                                  child: Text('FSRS (AI)'), // TODO: Add to ARB
                                 ),
                                 DropdownMenuItem(
                                   value: 'simple',
-                                  child: Text('简单算法'),
+                                  child: Text('Simple'), // TODO: Add to ARB
                                 ),
                               ],
                               onChanged: (value) {
@@ -265,18 +301,81 @@ class _SettingsPageState extends State<SettingsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _schedulingAlgorithm == 'fsrs' ? 'FSRS 算法' : '简单算法',
+                                _schedulingAlgorithm == 'fsrs' ? 'FSRS (AI)' : 'Simple', // TODO: Add to ARB
                                 style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 _schedulingAlgorithm == 'fsrs' 
-                                  ? '使用 FSRS (Free Spaced Repetition Scheduler) 智能算法，根据记忆曲线自动调整复习间隔。'
-                                  : '使用简单的固定间隔算法：困难(5分钟) → 一般(10分钟) → 简单(30分钟)',
+                                  ? AppLocalizations.of(context)!.fsrsDesc
+                                  : AppLocalizations.of(context)!.simpleDesc,
                                 style: const TextStyle(fontSize: 14, color: Colors.black87),
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 语言切换卡片
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.language, color: Colors.blue[600]),
+                            const SizedBox(width: 12),
+                            Text(AppLocalizations.of(context)!.language,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        DropdownButton<Locale?>(
+                          value: _selectedLocale ?? const Locale('system', ''),
+                          items: [
+                            DropdownMenuItem(
+                              value: const Locale('system', ''),
+                              child: Text(AppLocalizations.of(context)!.systemDefault),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('en'),
+                              child: Text(AppLocalizations.of(context)!.english),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('zh'),
+                              child: Text(AppLocalizations.of(context)!.chinese),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('de'),
+                              child: Text(AppLocalizations.of(context)!.german),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('ru'),
+                              child: Text(AppLocalizations.of(context)!.russian),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('fr'),
+                              child: Text(AppLocalizations.of(context)!.french),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('ja'),
+                              child: Text(AppLocalizations.of(context)!.japanese),
+                            ),
+                            DropdownMenuItem(
+                              value: const Locale('ko'),
+                              child: Text(AppLocalizations.of(context)!.korean),
+                            ),
+                          ],
+                          onChanged: (locale) {
+                            _saveLocale(locale?.languageCode == 'system' ? null : locale?.languageCode);
+                          },
                         ),
                       ],
                     ),
@@ -297,17 +396,17 @@ class _SettingsPageState extends State<SettingsPage> {
                             children: [
                               Icon(Icons.developer_mode, color: Colors.blue[600]),
                               const SizedBox(width: 12),
-                              const Text(
-                                '开发者选项',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              Text(
+                                'Developer Options', // TODO: Add to ARB
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
                           ListTile(
                             leading: const Icon(Icons.bug_report),
-                            title: const Text('调试工具'),
-                            subtitle: const Text('查看数据库、文件系统等调试信息'),
+                            title: Text(AppLocalizations.of(context)!.debugTool),
+                            subtitle: Text(AppLocalizations.of(context)!.debugToolDesc),
                             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: () {
                               Navigator.push(
@@ -334,16 +433,16 @@ class _SettingsPageState extends State<SettingsPage> {
                           children: [
                             Icon(Icons.info_outline, color: Colors.blue[600]),
                             const SizedBox(width: 12),
-                            const Text(
-                              '关于',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            Text(
+                              AppLocalizations.of(context)!.about,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
                         ListTile(
                           leading: const Icon(Icons.info),
-                          title: const Text('版本信息'),
+                          title: Text(AppLocalizations.of(context)!.versionInfo),
                           subtitle: const Text('Open Anki v1.0.0'),
                           onTap: () {
                             showAboutDialog(
@@ -358,8 +457,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
-                              children: const [
-                                Text('一个开源的 Anki 卡片学习应用'),
+                              children: [
+                                 Text('An open-source Anki flashcard app'), // TODO: Add to ARB
                               ],
                             );
                           },
@@ -367,8 +466,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         const Divider(),
                         ListTile(
                           leading: const Icon(Icons.bug_report),
-                          title: const Text('问题反馈'),
-                          subtitle: const Text('报告问题或提出建议'),
+                          title: Text(AppLocalizations.of(context)!.feedback),
+                          subtitle: Text(AppLocalizations.of(context)!.feedbackDesc),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () => sendFeedbackWithAttachment(context),
                         ),

@@ -6,6 +6,7 @@ import '../widgets/deck_progress_tile.dart';
 import '../widgets/dashboard.dart';
 import '../db.dart';
 import '../pages/card_review_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -42,9 +43,9 @@ class HomePage extends ConsumerWidget {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Text('最近刷题', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Text(AppLocalizations.of(context)!.recentReview, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ),
             Expanded(
               child: Padding(

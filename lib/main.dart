@@ -11,6 +11,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'src/log_helper.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 Future<void> writeTestHtml() async {
   final dir = await getApplicationDocumentsDirectory();
@@ -90,12 +93,19 @@ Future<void> _writeCrashLog(String content) async {
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  static void setLocale(BuildContext context, Locale? newLocale) {
+    final _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
+    state?.setLocale(newLocale);
+  }
+
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
   int _selectedIndex = 0;
+  Locale? _locale;
   final _pages = [
     const HomePage(),
     const ImportPage(),
@@ -103,22 +113,38 @@ class _MyAppState extends State<MyApp> {
     const ProfilePage(),
   ];
 
+  void setLocale(Locale? locale) {
+    setState(() {
+      _locale = locale;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final safeIndex = _selectedIndex.clamp(0, _pages.length - 1);
     return MaterialApp(
+      locale: _locale,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       home: Scaffold(
         body: _pages[safeIndex],
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: safeIndex,
-          onTap: (idx) => setState(() => _selectedIndex = idx),
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
-            BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '题库'),
-            // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '笔记'), // 移除笔记入口
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
-          ],
+        bottomNavigationBar: Builder(
+          builder: (context) => BottomNavigationBar(
+            currentIndex: safeIndex,
+            onTap: (idx) => setState(() => _selectedIndex = idx),
+            type: BottomNavigationBarType.fixed,
+            items: [
+              BottomNavigationBarItem(icon: const Icon(Icons.home), label: AppLocalizations.of(context)?.home ?? '首页'),
+              BottomNavigationBarItem(icon: const Icon(Icons.menu_book), label: AppLocalizations.of(context)?.decks ?? '题库'),
+              BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppLocalizations.of(context)?.profile ?? '我'),
+            ],
+          ),
         ),
       ),
     );

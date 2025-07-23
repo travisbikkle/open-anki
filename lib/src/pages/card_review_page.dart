@@ -20,6 +20,7 @@ import 'package:open_anki/src/pages/html_source_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../log_helper.dart';
 import 'settings_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -392,7 +393,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('提示：卡片内容可能需要连接网络'),
+              content: Text('提示：此卡片可能需要连接网络'),
               duration: Duration(seconds: 3),
               behavior: SnackBarBehavior.floating,
             ),
@@ -535,22 +536,22 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('如果选择"$label"'),
+            title: Text(AppLocalizations.of(context)!.ifYouChoose + '"$label"'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('下次复习时间: $dueText'),
-                Text('具体时间: ${dueDate.toString().substring(0, 16)}'),
+                Text(AppLocalizations.of(context)!.nextReviewTime + ': $dueText'),
+                Text(AppLocalizations.of(context)!.specificTime + ': ${dueDate.toString().substring(0, 16)}'),
                 const SizedBox(height: 8),
-                Text('稳定性将变为: ${result.stability.toStringAsFixed(1)}'),
-                Text('难度将变为: ${result.difficulty.toStringAsFixed(1)}'),
+                Text(AppLocalizations.of(context)!.stabilityWillBecome + ': ${result.stability.toStringAsFixed(1)}'),
+                Text(AppLocalizations.of(context)!.difficultyWillBecome + ': ${result.difficulty.toStringAsFixed(1)}'),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('关闭'),
+                child: Text(AppLocalizations.of(context)!.close),
               ),
             ],
           ),
@@ -586,13 +587,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('稳定性: ${_currentScheduling!.stability.toStringAsFixed(1)}'),
-              Text('难度: ${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
-              Text('下次复习: $dueText'),
-              Text('具体时间: ${dueDate.toString().substring(0, 16)}'),
+              Text(AppLocalizations.of(context)!.stability + ': ${_currentScheduling!.stability.toStringAsFixed(1)}'),
+              Text(AppLocalizations.of(context)!.difficulty + ': ${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+              Text(AppLocalizations.of(context)!.nextReview + ': $dueText'),
+              Text(AppLocalizations.of(context)!.specificTime + ': ${dueDate.toString().substring(0, 16)}'),
               const SizedBox(height: 4),
-              const Text('长按反馈按钮可预览下次复习时间', 
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              Text(AppLocalizations.of(context)!.longPressFeedbackButtonToPreviewNextReviewTime, 
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
@@ -625,7 +626,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     // 合并模式下，切换正反面用JS，不再重新loadHtmlString
     return Scaffold(
       appBar: AppBar(
-        title: Text('今日卡片 ( ${_currentIndex + 1}/${_noteIds.length})'),
+        title: Text(AppLocalizations.of(context)!.todayCards + ' ( ${_currentIndex + 1}/${_noteIds.length})'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -659,27 +660,27 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('卡片信息', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(AppLocalizations.of(context)!.cardInfo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 const SizedBox(height: 12),
-                                Text('牌组ID: $deckId'),
-                                Text('模板名称: $notetype'),
+                                Text(AppLocalizations.of(context)!.overview + ': $deckId'),
+                                Text(AppLocalizations.of(context)!.notetypeName + ': $notetype'),
                                 const SizedBox(height: 8),
-                                Text('卡片ID: $cardId'),
-                                Text('版本: $version'),
-                                Text('字段: $flds'),
+                                Text(AppLocalizations.of(context)!.cardId + ': $cardId'),
+                                Text(AppLocalizations.of(context)!.version + ': $version'),
+                                Text(AppLocalizations.of(context)!.fields + ': $flds'),
                                 // 新增调度信息
                                 if (_currentScheduling != null) ...[
                                   const SizedBox(height: 8),
-                                  Text('稳定性: 	${_currentScheduling!.stability.toStringAsFixed(1)}'),
-                                  Text('难度: 	${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
-                                  Text('下次复习: 	${DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000).toString().substring(0, 16)}'),
+                                  Text(AppLocalizations.of(context)!.stability + ': \t${_currentScheduling!.stability.toStringAsFixed(1)}'),
+                                  Text(AppLocalizations.of(context)!.difficulty + ': \t${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+                                  Text(AppLocalizations.of(context)!.nextReview + ': \t${DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000).toString().substring(0, 16)}'),
                                 ],
                                 const SizedBox(height: 12),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
                                     onPressed: () => Navigator.pop(context),
-                                    child: const Text('关闭', style: TextStyle(color: Colors.black)),
+                                    child: Text(AppLocalizations.of(context)!.close, style: TextStyle(color: Colors.black)),
                                   ),
                                 ),
                                 Align(
@@ -698,7 +699,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                                         );
                                       }
                                     },
-                                    child: const Text('查看卡片源码', style: TextStyle(color: Colors.blue)),
+                                    child: Text(AppLocalizations.of(context)!.viewCardSource, style: TextStyle(color: Colors.blue)),
                                   ),
                                 ),
                               ],
@@ -763,56 +764,52 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.navigate_before),
-                    label: const Text('上一题'),
-                    onPressed: _prevCard,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.navigate_before),
+                      label: FittedBox(child: Text(AppLocalizations.of(context)!.previousCard)),
+                      onPressed: _prevCard,
+                    ),
                   ),
-                  const SizedBox(width: 24),
-                  ElevatedButton(
-                    onPressed: () async {
-                      LogHelper.log('=== 显示答案按钮被点击 ===');
-
-                      // Prevent double-tapping while a flip is in progress
-                      if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
-                        return;
-                      }
-                      _flipCompleter = Completer<void>();
-
-                      if (!_showBack) {
-                        // 只在从正面切到背面时计入已学习
-                        await AppDb.incrementTotalLearned(widget.deckId);
-                        if (context.mounted) {
-                          ref.invalidate(allDecksProvider);
-                          ref.invalidate(recentDecksProvider);
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        LogHelper.log('=== 显示答案按钮被点击 ===');
+                        if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+                          return;
                         }
-                      }
-                      if (_showBack) {
-                        _pendingShow = 'front';
-                      } else {
-                        _pendingShow = 'back';
-                      }
-                      
-                      try {
-                        await _controller.runJavaScript('trigger_save()');
-                        // Wait for the JS roundtrip and subsequent page load to complete
-                        await _flipCompleter!.future;
-                      } catch (e, s) {
-                        // If JS fails or page load fails, this will catch it
-                        LogHelper.log('Error during flip operation: $e\n$s');
-                        // Fail the test gracefully if something goes wrong
-                        // fail('Flip operation failed: $e'); // This line was removed as per the edit hint
-                      }
-                    },
-                    child: Text(_showBack ? '返回正面' : '显示答案'),
+                        _flipCompleter = Completer<void>();
+                        if (!_showBack) {
+                          await AppDb.incrementTotalLearned(widget.deckId);
+                          if (context.mounted) {
+                            ref.invalidate(allDecksProvider);
+                            ref.invalidate(recentDecksProvider);
+                          }
+                        }
+                        if (_showBack) {
+                          _pendingShow = 'front';
+                        } else {
+                          _pendingShow = 'back';
+                        }
+                        try {
+                          await _controller.runJavaScript('trigger_save()');
+                          await _flipCompleter!.future;
+                        } catch (e, s) {
+                          LogHelper.log('Error during flip operation: $e\n$s');
+                        }
+                      },
+                      child: FittedBox(child: Text(_showBack ? AppLocalizations.of(context)!.backToFront : AppLocalizations.of(context)!.showAnswer)),
+                    ),
                   ),
-                  const SizedBox(width: 24),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.navigate_next),
-                    label: const Text('下一题'),
-                    onPressed: _nextCard,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.navigate_next),
+                      label: FittedBox(child: Text(AppLocalizations.of(context)!.nextCard)),
+                      onPressed: _nextCard,
+                    ),
                   ),
                 ],
               ),

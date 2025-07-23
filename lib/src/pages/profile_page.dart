@@ -7,6 +7,7 @@ import '../db.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -283,9 +284,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _StatCard(icon: Icons.menu_book, label: '题库数', value: deckCount.toString()),
-                    _StatCard(icon: Icons.psychology, label: '学习天数', value: totalStudyDays.toString()),
-                    _StatCard(icon: Icons.trending_up, label: '总卡片', value: totalCards.toString()),
+                    _StatCard(icon: Icons.menu_book, label: AppLocalizations.of(context)!.profileDeckCount, value: deckCount.toString()),
+                    _StatCard(icon: Icons.psychology, label: AppLocalizations.of(context)!.profileStudyDays, value: totalStudyDays.toString()),
+                    _StatCard(icon: Icons.trending_up, label: AppLocalizations.of(context)!.profileTotalCards, value: totalCards.toString()),
               ],
             ),
           ),
@@ -297,9 +298,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
               spacing: 12,
               runSpacing: 12,
                   children: [
-                    _OverviewCard(icon: Icons.local_fire_department, label: '连续学习', value: consecutiveDays.toString() + '天', color: Colors.orange),
-                    _OverviewCard(icon: Icons.flash_on, label: '今日学习', value: todayCount.toString(), color: Colors.amber),
-              ],
+                    _OverviewCard(icon: Icons.local_fire_department, label: AppLocalizations.of(context)!.profileConsecutive, value: consecutiveDays.toString() + AppLocalizations.of(context)!.studyDays, color: Colors.orange),
+                    _OverviewCard(icon: Icons.flash_on, label: AppLocalizations.of(context)!.profileToday, value: todayCount.toString(), color: Colors.amber),
+                  ],
             ),
           ),
           const SizedBox(height: 24),
