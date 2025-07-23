@@ -13,6 +13,7 @@ import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../main.dart';
+import '../constants.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,7 +22,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  double _minFontSize = 18;
+  double _minFontSize = 22;
   bool _isLoading = true;
   Locale? _selectedLocale;
 
@@ -48,7 +49,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _minFontSize = prefs.getDouble('minFontSize') ?? 18;
+      _minFontSize = prefs.getDouble('minFontSize') ?? 22;
       _schedulingAlgorithm = prefs.getString('schedulingAlgorithm') ?? 'fsrs';
       _isLoading = false;
     });
@@ -73,16 +74,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> sendFeedbackEmail(BuildContext context) async {
     final info = await PackageInfo.fromPlatform();
     final log = await LogHelper.getRecentLog();
-    final subject = Uri.encodeComponent('Open Anki 问题反馈');
+    final subject = Uri.encodeComponent('$kAppName 问题反馈');
     final body = Uri.encodeComponent(
       '请详细描述您的问题，并可在邮件中添加截图。\n\n'
       '---\n'
-      'App版本: ${info.version} (${info.buildNumber})\n'
+      'App版本:  {info.version} (${info.buildNumber})\n'
       '包名: ${info.packageName}\n'
       '平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n'
       '最近日志(部分):\n$log\n'
     );
-    final email = 'support@example.com'; // TODO: 替换为你的支持邮箱
+    final email = kSupportEmail;
     final uri = 'mailto:$email?subject=$subject&body=$body';
     if (await canLaunch(uri)) {
       await launch(uri);
@@ -113,8 +114,8 @@ class _SettingsPageState extends State<SettingsPage> {
         '请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: ${info.version} (${info.buildNumber})\n包名: ${info.packageName}\n平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n日志见附件。';
     final email = Email(
       body: body,
-      subject: 'Open Anki 问题反馈',
-      recipients: ['support@eusoftbank.com'],
+      subject: '$kAppName 问题反馈',
+      recipients: [kSupportEmail],
       attachmentPaths: [zipPath],
       isHTML: false,
     );
@@ -443,11 +444,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         ListTile(
                           leading: const Icon(Icons.info),
                           title: Text(AppLocalizations.of(context)!.versionInfo),
-                          subtitle: const Text('Open Anki v1.0.0'),
+                          subtitle: Text('$kAppName v1.0.0'),
                           onTap: () {
                             showAboutDialog(
                               context: context,
-                              applicationName: 'Open Anki',
+                              applicationName: kAppName,
                               applicationVersion: '1.0.0',
                               applicationIcon: ClipOval(
                                 child: SvgPicture.asset(
