@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.open_anki"
+    namespace = "com.eusoftbank.anki"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
