@@ -72,5 +72,8 @@
   "previousCard": "前へ",
   "backToFront": "表面に戻る",
   "showAnswer": "答え",
-  "nextCard": "次へ"
+  "nextCard": "次へ",
+  "feedbackMailSubject": "{appName} フィードバック",
+  "feedbackMailBody": "問題を詳しく記載し、必要に応じてスクリーンショットを添付してください。\n\n---\nアプリバージョン: {version} ({buildNumber})\nパッケージ: {packageName}\nプラットフォーム: {platform} {platformVersion}\n最近のログ:\n{log}",
+  "feedbackMailBodyWithAttachment": "問題を詳しく記載し、必要に応じてスクリーンショットを添付してください。\n\n---\nアプリバージョン: {version} ({buildNumber})\nパッケージ: {packageName}\nプラットフォーム: {platform} {platformVersion}\nログは添付ファイルを参照してください。"
 } 

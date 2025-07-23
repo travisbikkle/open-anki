@@ -72,5 +72,8 @@
   "previousCard": "Prev",
   "backToFront": "Back to Front",
   "showAnswer": "Answer",
-  "nextCard": "Next"
+  "nextCard": "Next",
+  "feedbackMailSubject": "{appName} Feedback",
+  "feedbackMailBody": "Please describe your issue in detail and attach screenshots if needed.\n\n---\nApp Version: {version} ({buildNumber})\nPackage: {packageName}\nPlatform: {platform} {platformVersion}\nRecent logs:\n{log}",
+  "feedbackMailBodyWithAttachment": "Please describe your issue in detail and attach screenshots if needed.\n\n---\nApp Version: {version} ({buildNumber})\nPackage: {packageName}\nPlatform: {platform} {platformVersion}\nSee attachment for logs."
 } 

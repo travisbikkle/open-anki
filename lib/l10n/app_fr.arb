@@ -72,5 +72,8 @@
   "previousCard": "Préc.",
   "backToFront": "Retour à l'avant",
   "showAnswer": "Réponse",
-  "nextCard": "Suiv."
+  "nextCard": "Suiv.",
+  "feedbackMailSubject": "Retour {appName}",
+  "feedbackMailBody": "Veuillez décrire votre problème en détail et joindre des captures d'écran si nécessaire.\n\n---\nVersion de l'application: {version} ({buildNumber})\nPackage: {packageName}\nPlateforme: {platform} {platformVersion}\nDerniers journaux:\n{log}",
+  "feedbackMailBodyWithAttachment": "Veuillez décrire votre problème en détail et joindre des captures d'écran si nécessaire.\n\n---\nVersion de l'application: {version} ({buildNumber})\nPackage: {packageName}\nPlateforme: {platform} {platformVersion}\nVoir la pièce jointe pour les journaux."
 } 

@@ -72,5 +72,8 @@
   "previousCard": "Zurück",
   "backToFront": "Zurück zur Vorderseite",
   "showAnswer": "Antwort",
-  "nextCard": "Weiter"
+  "nextCard": "Weiter",
+  "feedbackMailSubject": "{appName} Feedback",
+  "feedbackMailBody": "Bitte beschreiben Sie Ihr Problem ausführlich und fügen Sie ggf. Screenshots bei.\n\n---\nApp-Version: {version} ({buildNumber})\nPaket: {packageName}\nPlattform: {platform} {platformVersion}\nLetzte Logs:\n{log}",
+  "feedbackMailBodyWithAttachment": "Bitte beschreiben Sie Ihr Problem ausführlich und fügen Sie ggf. Screenshots bei.\n\n---\nApp-Version: {version} ({buildNumber})\nPaket: {packageName}\nPlattform: {platform} {platformVersion}\nSiehe Anhang für Logs."
 } 

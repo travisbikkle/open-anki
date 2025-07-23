@@ -72,5 +72,8 @@
   "previousCard": "Назад",
   "backToFront": "Вернуться к лицевой стороне",
   "showAnswer": "Ответ",
-  "nextCard": "Вперёд"
+  "nextCard": "Вперёд",
+  "feedbackMailSubject": "{appName} Обратная связь",
+  "feedbackMailBody": "Пожалуйста, подробно опишите вашу проблему и при необходимости приложите скриншоты.\n\n---\nВерсия приложения: {version} ({buildNumber})\nПакет: {packageName}\nПлатформа: {platform} {platformVersion}\nПоследние логи:\n{log}",
+  "feedbackMailBodyWithAttachment": "Пожалуйста, подробно опишите вашу проблему и при необходимости приложите скриншоты.\n\n---\nВерсия приложения: {version} ({buildNumber})\nПакет: {packageName}\nПлатформа: {platform} {platformVersion}\nСм. вложение для логов."
 } 

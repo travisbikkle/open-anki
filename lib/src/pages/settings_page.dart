@@ -74,14 +74,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> sendFeedbackEmail(BuildContext context) async {
     final info = await PackageInfo.fromPlatform();
     final log = await LogHelper.getRecentLog();
-    final subject = Uri.encodeComponent('$kAppName 问题反馈');
+    final subject = Uri.encodeComponent(AppLocalizations.of(context)!.feedbackMailSubject(kAppName));
     final body = Uri.encodeComponent(
-      '请详细描述您的问题，并可在邮件中添加截图。\n\n'
-      '---\n'
-      'App版本:  {info.version} (${info.buildNumber})\n'
-      '包名: ${info.packageName}\n'
-      '平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n'
-      '最近日志(部分):\n$log\n'
+      AppLocalizations.of(context)!.feedbackMailBody(
+        info.version,
+        info.buildNumber,
+        info.packageName,
+        Platform.operatingSystem,
+        Platform.operatingSystemVersion,
+        log,
+      ),
     );
     final email = kSupportEmail;
     final uri = 'mailto:$email?subject=$subject&body=$body';
@@ -110,11 +112,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> sendFeedbackWithAttachment(BuildContext context) async {
     final info = await PackageInfo.fromPlatform();
     final zipPath = await zipLogFile();
-    final body =
-        '请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: ${info.version} (${info.buildNumber})\n包名: ${info.packageName}\n平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n日志见附件。';
+    final body = AppLocalizations.of(context)!.feedbackMailBodyWithAttachment(
+      info.version,
+      info.buildNumber,
+      info.packageName,
+      Platform.operatingSystem,
+      Platform.operatingSystemVersion,
+    );
     final email = Email(
       body: body,
-      subject: '$kAppName 问题反馈',
+      subject: AppLocalizations.of(context)!.feedbackMailSubject(kAppName),
       recipients: [kSupportEmail],
       attachmentPaths: [zipPath],
       isHTML: false,

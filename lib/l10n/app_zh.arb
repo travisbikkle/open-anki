@@ -71,5 +71,8 @@
   "cardInfo": "卡片信息",
   "previousCard": "上一题",
   "showAnswer": "答案",
-  "nextCard": "下一题"
+  "nextCard": "下一题",
+  "feedbackMailSubject": "{appName} 问题反馈",
+  "feedbackMailBody": "请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: {version} ({buildNumber})\n包名: {packageName}\n平台: {platform} {platformVersion}\n最近日志(部分):\n{log}",
+  "feedbackMailBodyWithAttachment": "请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: {version} ({buildNumber})\n包名: {packageName}\n平台: {platform} {platformVersion}\n日志见附件。"
 } 

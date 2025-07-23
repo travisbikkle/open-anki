@@ -72,5 +72,8 @@
   "previousCard": "이전",
   "backToFront": "앞면으로 돌아가기",
   "showAnswer": "정답",
-  "nextCard": "다음"
+  "nextCard": "다음",
+  "feedbackMailSubject": "{appName} 피드백",
+  "feedbackMailBody": "문제를 자세히 설명하고 필요시 스크린샷을 첨부해 주세요.\n\n---\n앱 버전: {version} ({buildNumber})\n패키지: {packageName}\n플랫폼: {platform} {platformVersion}\n최근 로그:\n{log}",
+  "feedbackMailBodyWithAttachment": "문제를 자세히 설명하고 필요시 스크린샷을 첨부해 주세요.\n\n---\n앱 버전: {version} ({buildNumber})\n패키지: {packageName}\n플랫폼: {platform} {platformVersion}\n로그는 첨부 파일을 참조하세요."
 } 
