@@ -271,7 +271,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载题库失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.loadDeckFailed(e.toString()))));
       }
     } finally {
       if (mounted) {
@@ -367,7 +367,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     } catch (e, s) {
       LogHelper.log('Error in _loadCurrentCard: $e\n$s');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('加载卡片失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.loadCardFailed(e.toString()))));
       }
       if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
         _cardLoadCompleter!.completeError(e, s);
@@ -393,8 +393,8 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         // Show a temporary snackbar.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('提示：此卡片可能需要连接网络'),
+            SnackBar(
+              content: Text('⚠️ ' + AppLocalizations.of(context)!.cardMightNeedNetwork),
               duration: Duration(seconds: 3),
               behavior: SnackBarBehavior.floating,
             ),
@@ -419,12 +419,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('今日计划已完成！'),
-            content: const Text('如需多刷题，请在题库点击齿轮按钮，增加每日刷题数。'),
+            title: Text(AppLocalizations.of(context)!.planCompleted),
+            content: Text(AppLocalizations.of(context)!.planCompletedTip),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('知道了'),
+                child: Text(AppLocalizations.of(context)!.gotIt),
               ),
             ],
           ),
@@ -526,11 +526,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         final dueIn = result.due - now;
         String dueText;
         if (dueIn < 3600) {
-          dueText = '${(dueIn / 60).round()} 分钟后';
+          dueText = '${(dueIn / 60).round()} ' + AppLocalizations.of(context)!.minutesLater;
         } else if (dueIn < 86400) {
-          dueText = '${(dueIn / 3600).round()} 小时后';
+          dueText = '${(dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursLater;
         } else {
-          dueText = '${(dueIn / 86400).round()} 天后';
+          dueText = '${(dueIn / 86400).round()} ' + AppLocalizations.of(context)!.daysLater;
         }
 
         if (!mounted) return;
@@ -571,13 +571,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     
     String dueText;
     if (dueIn < 0) {
-      dueText = '已过期 ${(-dueIn / 3600).round()} 小时';
+      dueText = '${(-dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursAgo;
     } else if (dueIn < 3600) {
-      dueText = '${(dueIn / 60).round()} 分钟后复习';
+      dueText = '${(dueIn / 60).round()} ' + AppLocalizations.of(context)!.minutesLater;
     } else if (dueIn < 86400) {
-      dueText = '${(dueIn / 3600).round()} 小时后复习';
+      dueText = '${(dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursLater;
     } else {
-      dueText = '${(dueIn / 86400).round()} 天后复习';
+      dueText = '${(dueIn / 86400).round()} ' + AppLocalizations.of(context)!.daysLater;
     }
     
     return Padding(
@@ -612,15 +612,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     if (_noteIds.isEmpty) {
       debugPrint('[build] _noteIds 为空');
       return Scaffold(
-        appBar: AppBar(title: const Text('刷卡')),
-        body: const Center(child: Text('无卡片')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.review)),
+        body: Center(child: Text(AppLocalizations.of(context)!.noCard)),
       );
     }
     if (_currentNote == null) {
       debugPrint('[build] _currentNote 为空');
       return Scaffold(
-        appBar: AppBar(title: const Text('刷卡')),
-        body: const Center(child: Text('卡片加载失败')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.review)),
+        body: Center(child: Text(AppLocalizations.of(context)!.cardLoadFailed)),
       );
     }
     final note = _currentNote;
@@ -766,11 +766,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFeedbackButton('😄', '简单', 2), // 改为 2 (Good)
+                  _buildFeedbackButton('😄', AppLocalizations.of(context)!.easy, 2), // 改为 2 (Good)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😐', '一般', 1), // 改为 1 (Hard)
+                  _buildFeedbackButton('😐', AppLocalizations.of(context)!.hard, 1), // 改为 1 (Hard)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😫', '困难', 0), // 改为 0 (Again)
+                  _buildFeedbackButton('😫', AppLocalizations.of(context)!.again, 0), // 改为 0 (Again)
                 ],
               ),
             ),

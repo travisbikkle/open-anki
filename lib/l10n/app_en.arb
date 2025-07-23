@@ -80,5 +80,21 @@
   "importSuccess": "Successfully imported {count} deck(s)",
   "confirmDeleteDeck": "Are you sure you want to delete deck \"{deckName}\"? This action cannot be undone.",
   "loadFailed": "Load failed: {error}",
-  "fileNotFound": "File not found: {fileName}"
+  "fileNotFound": "File not found: {fileName}",
+  "review": "Review",
+  "noCard": "No card",
+  "cardLoadFailed": "Card load failed",
+  "loadDeckFailed": "Failed to load deck: {error}",
+  "loadCardFailed": "Failed to load card: {error}",
+  "cardMightNeedNetwork": "This card might need network connection.",
+  "planCompleted": "Today's plan completed!",
+  "planCompletedTip": "To review more, increase daily cards in deck settings.",
+  "gotIt": "Got it",
+  "easy": "Easy",
+  "hard": "Hard",
+  "again": "Again",
+  "minutesLater": "minutes later",
+  "hoursLater": "hours later",
+  "daysLater": "days later",
+  "hoursAgo": "hours ago"
 } 

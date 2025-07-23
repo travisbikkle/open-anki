@@ -3,6 +3,7 @@
 ### frb watch rust code
 ```
 flutter_rust_bridge_codegen generate --watch
+flutter gen-l10n
 ```
 
 ### Package manually

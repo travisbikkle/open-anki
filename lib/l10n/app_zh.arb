@@ -79,5 +79,21 @@
   "importSuccess": "导入成功 {count} 个题库",
   "confirmDeleteDeck": "确定要删除题库\"{deckName}\"吗？此操作不可撤销。",
   "loadFailed": "加载失败: {error}",
-  "fileNotFound": "未找到文件: {fileName}"
+  "fileNotFound": "未找到文件: {fileName}",
+  "review": "刷卡",
+  "noCard": "无卡片",
+  "cardLoadFailed": "卡片加载失败",
+  "loadDeckFailed": "加载题库失败: {error}",
+  "loadCardFailed": "加载卡片失败: {error}",
+  "cardMightNeedNetwork": "此卡片可能需要连接网络。",
+  "planCompleted": "今日计划已完成！",
+  "planCompletedTip": "如需多刷题，请在题库点击齿轮按钮，增加每日刷题数。",
+  "gotIt": "知道了",
+  "easy": "简单",
+  "hard": "一般",
+  "again": "困难",
+  "minutesLater": "分钟后",
+  "hoursLater": "小时后",
+  "daysLater": "天后",
+  "hoursAgo": "小时前"
 } 

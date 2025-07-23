@@ -80,5 +80,21 @@
   "importSuccess": "{count} Stapel erfolgreich importiert",
   "confirmDeleteDeck": "Möchten Sie den Stapel \"{deckName}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
   "loadFailed": "Laden fehlgeschlagen: {error}",
-  "fileNotFound": "Datei nicht gefunden: {fileName}"
+  "fileNotFound": "Datei nicht gefunden: {fileName}",
+  "review": "Review",
+  "noCard": "No card",
+  "cardLoadFailed": "Card load failed",
+  "loadDeckFailed": "Failed to load deck: {error}",
+  "loadCardFailed": "Failed to load card: {error}",
+  "cardMightNeedNetwork": "This card might need network connection.",
+  "planCompleted": "Today's plan completed!",
+  "planCompletedTip": "To review more, increase daily cards in deck settings.",
+  "gotIt": "Got it",
+  "easy": "Easy",
+  "hard": "Hard",
+  "again": "Again",
+  "minutesLater": "minutes later",
+  "hoursLater": "hours later",
+  "daysLater": "days later",
+  "hoursAgo": "hours ago"
 } 

@@ -80,5 +80,21 @@
   "importSuccess": "{count}개의 덱을 성공적으로 가져왔습니다",
   "confirmDeleteDeck": "덱 \"{deckName}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
   "loadFailed": "로드 실패: {error}",
-  "fileNotFound": "파일을 찾을 수 없음: {fileName}"
+  "fileNotFound": "파일을 찾을 수 없음: {fileName}",
+  "review": "Review",
+  "noCard": "No card",
+  "cardLoadFailed": "Card load failed",
+  "loadDeckFailed": "Failed to load deck: {error}",
+  "loadCardFailed": "Failed to load card: {error}",
+  "cardMightNeedNetwork": "This card might need network connection.",
+  "planCompleted": "Today's plan completed!",
+  "planCompletedTip": "To review more, increase daily cards in deck settings.",
+  "gotIt": "Got it",
+  "easy": "Easy",
+  "hard": "Hard",
+  "again": "Again",
+  "minutesLater": "minutes later",
+  "hoursLater": "hours later",
+  "daysLater": "days later",
+  "hoursAgo": "hours ago"
 } 
