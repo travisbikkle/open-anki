@@ -627,7 +627,21 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     // 合并模式下，切换正反面用JS，不再重新loadHtmlString
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.todayCards + ' ( ${_currentIndex + 1}/${_noteIds.length})'),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(AppLocalizations.of(context)!.todayCards),
+            if (_noteIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '${_currentIndex + 1}/${_noteIds.length}',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),

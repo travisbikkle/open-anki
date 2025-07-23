@@ -75,5 +75,10 @@
   "nextCard": "Вперёд",
   "feedbackMailSubject": "{appName} Обратная связь",
   "feedbackMailBody": "Пожалуйста, подробно опишите вашу проблему и при необходимости приложите скриншоты.\n\n---\nВерсия приложения: {version} ({buildNumber})\nПакет: {packageName}\nПлатформа: {platform} {platformVersion}\nПоследние логи:\n{log}",
-  "feedbackMailBodyWithAttachment": "Пожалуйста, подробно опишите вашу проблему и при необходимости приложите скриншоты.\n\n---\nВерсия приложения: {version} ({buildNumber})\nПакет: {packageName}\nПлатформа: {platform} {platformVersion}\nСм. вложение для логов."
+  "feedbackMailBodyWithAttachment": "Пожалуйста, подробно опишите вашу проблему и при необходимости приложите скриншоты.\n\n---\nВерсия приложения: {version} ({buildNumber})\nПакет: {packageName}\nПлатформа: {platform} {platformVersion}\nСм. вложение для логов.",
+  "deckExists": "Колода \"{deckName}\" уже существует, пропущено.",
+  "importSuccess": "Успешно импортировано {count} колод(ы)",
+  "confirmDeleteDeck": "Вы уверены, что хотите удалить колоду \"{deckName}\"? Это действие необратимо.",
+  "loadFailed": "Ошибка загрузки: {error}",
+  "fileNotFound": "Файл не найден: {fileName}"
 } 

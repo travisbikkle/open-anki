@@ -15,6 +15,8 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/deck_progress_tile.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../widgets/snack_bar.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -44,11 +46,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('输入题库名称'),
+        title: Text(AppLocalizations.of(context)!.inputDeckName),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)!.confirm)),
         ],
       ),
     );
@@ -59,11 +61,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('重命名题库'),
+        title: Text(AppLocalizations.of(context)!.renameDeck),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)!.confirm)),
         ],
       ),
     );
@@ -101,8 +103,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         final existingDeck = await AppDb.getDeckById(result.md5);
         if (existingDeck != null) {
           if(mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('题库 "${existingDeck.deckName}" 已存在，已跳过。')),
+            showCartoonSnackBar(
+              context,
+              AppLocalizations.of(context)!.deckExists(existingDeck.deckName),
+              backgroundColor: Colors.deepOrangeAccent,
+              icon: Icons.warning_amber_rounded,
             );
           }
           continue;
@@ -135,8 +140,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       setState(() { importing = false; });
       if (!mounted) return;
       if (successCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入成功 $successCount 个题库'), duration: const Duration(seconds: 2)),
+        showCartoonSnackBar(
+          context,
+          AppLocalizations.of(context)!.importSuccess(successCount),
+          backgroundColor: Colors.green,
+          icon: Icons.check_circle_outline,
         );
       }
     } catch (e) {
@@ -208,14 +216,14 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                   children: [
                                     ListTile(
                                       leading: const Icon(Icons.edit),
-                                      title: const Text('重命名'),
+                                      title: Text(AppLocalizations.of(context)!.rename),
                                       onTap: () {
                                         Navigator.pop(context, 'rename');
                                       },
                                     ),
                                     ListTile(
                                       leading: const Icon(Icons.delete),
-                                      title: const Text('删除'),
+                                      title: Text(AppLocalizations.of(context)!.delete),
                                       onTap: () {
                                         Navigator.pop(context, 'delete');
                                       },
@@ -236,16 +244,16 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('确认删除'),
-                                  content: Text('确定要删除题库 "${deck.deckName}" 吗？此操作不可撤销。'),
+                                  content: Text(AppLocalizations.of(context)!.confirmDeleteDeck(deck.deckName)),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(context, false),
-                                      child: const Text('取消'),
+                                      child: Text(AppLocalizations.of(context)!.cancel),
                                     ),
                                     TextButton(
                                       onPressed: () => Navigator.pop(context, true),
                                       style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                      child: const Text('删除'),
+                                      child: Text(AppLocalizations.of(context)!.delete),
                                     ),
                                   ],
                                 ),
@@ -264,7 +272,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('加载失败: $e')),
+                error: (e, _) => Center(child: Text(AppLocalizations.of(context)!.loadFailed(e.toString()))),
               ),
             ),
           ],
@@ -306,7 +314,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                         final appDocDir = await getApplicationDocumentsDirectory();
                         final file = File('${appDocDir.path}/anki21.apkg');
                         if (!await file.exists()) {
-                          setState(() { error = '未找到anki21.apkg文件'; importing = false; });
+                          setState(() { error = AppLocalizations.of(context)!.fileNotFound('anki21.apkg'); importing = false; });
                           return;
                         }
                         final fileName = 'anki21';

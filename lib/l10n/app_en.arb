@@ -75,5 +75,10 @@
   "nextCard": "Next",
   "feedbackMailSubject": "{appName} Feedback",
   "feedbackMailBody": "Please describe your issue in detail and attach screenshots if needed.\n\n---\nApp Version: {version} ({buildNumber})\nPackage: {packageName}\nPlatform: {platform} {platformVersion}\nRecent logs:\n{log}",
-  "feedbackMailBodyWithAttachment": "Please describe your issue in detail and attach screenshots if needed.\n\n---\nApp Version: {version} ({buildNumber})\nPackage: {packageName}\nPlatform: {platform} {platformVersion}\nSee attachment for logs."
+  "feedbackMailBodyWithAttachment": "Please describe your issue in detail and attach screenshots if needed.\n\n---\nApp Version: {version} ({buildNumber})\nPackage: {packageName}\nPlatform: {platform} {platformVersion}\nSee attachment for logs.",
+  "deckExists": "Deck \"{deckName}\" already exists, skipped.",
+  "importSuccess": "Successfully imported {count} deck(s)",
+  "confirmDeleteDeck": "Are you sure you want to delete deck \"{deckName}\"? This action cannot be undone.",
+  "loadFailed": "Load failed: {error}",
+  "fileNotFound": "File not found: {fileName}"
 } 

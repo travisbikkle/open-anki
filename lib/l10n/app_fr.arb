@@ -75,5 +75,10 @@
   "nextCard": "Suiv.",
   "feedbackMailSubject": "Retour {appName}",
   "feedbackMailBody": "Veuillez décrire votre problème en détail et joindre des captures d'écran si nécessaire.\n\n---\nVersion de l'application: {version} ({buildNumber})\nPackage: {packageName}\nPlateforme: {platform} {platformVersion}\nDerniers journaux:\n{log}",
-  "feedbackMailBodyWithAttachment": "Veuillez décrire votre problème en détail et joindre des captures d'écran si nécessaire.\n\n---\nVersion de l'application: {version} ({buildNumber})\nPackage: {packageName}\nPlateforme: {platform} {platformVersion}\nVoir la pièce jointe pour les journaux."
+  "feedbackMailBodyWithAttachment": "Veuillez décrire votre problème en détail et joindre des captures d'écran si nécessaire.\n\n---\nVersion de l'application: {version} ({buildNumber})\nPackage: {packageName}\nPlateforme: {platform} {platformVersion}\nVoir la pièce jointe pour les journaux.",
+  "deckExists": "Le deck \"{deckName}\" existe déjà, ignoré.",
+  "importSuccess": "{count} deck(s) importé(s) avec succès",
+  "confirmDeleteDeck": "Êtes-vous sûr de vouloir supprimer le deck \"{deckName}\" ? Cette action est irréversible.",
+  "loadFailed": "Échec du chargement : {error}",
+  "fileNotFound": "Fichier introuvable : {fileName}"
 } 

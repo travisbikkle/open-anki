@@ -75,5 +75,10 @@
   "nextCard": "Weiter",
   "feedbackMailSubject": "{appName} Feedback",
   "feedbackMailBody": "Bitte beschreiben Sie Ihr Problem ausführlich und fügen Sie ggf. Screenshots bei.\n\n---\nApp-Version: {version} ({buildNumber})\nPaket: {packageName}\nPlattform: {platform} {platformVersion}\nLetzte Logs:\n{log}",
-  "feedbackMailBodyWithAttachment": "Bitte beschreiben Sie Ihr Problem ausführlich und fügen Sie ggf. Screenshots bei.\n\n---\nApp-Version: {version} ({buildNumber})\nPaket: {packageName}\nPlattform: {platform} {platformVersion}\nSiehe Anhang für Logs."
+  "feedbackMailBodyWithAttachment": "Bitte beschreiben Sie Ihr Problem ausführlich und fügen Sie ggf. Screenshots bei.\n\n---\nApp-Version: {version} ({buildNumber})\nPaket: {packageName}\nPlattform: {platform} {platformVersion}\nSiehe Anhang für Logs.",
+  "deckExists": "Stapel \"{deckName}\" existiert bereits, übersprungen.",
+  "importSuccess": "{count} Stapel erfolgreich importiert",
+  "confirmDeleteDeck": "Möchten Sie den Stapel \"{deckName}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+  "loadFailed": "Laden fehlgeschlagen: {error}",
+  "fileNotFound": "Datei nicht gefunden: {fileName}"
 } 

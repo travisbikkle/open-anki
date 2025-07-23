@@ -75,5 +75,10 @@
   "nextCard": "다음",
   "feedbackMailSubject": "{appName} 피드백",
   "feedbackMailBody": "문제를 자세히 설명하고 필요시 스크린샷을 첨부해 주세요.\n\n---\n앱 버전: {version} ({buildNumber})\n패키지: {packageName}\n플랫폼: {platform} {platformVersion}\n최근 로그:\n{log}",
-  "feedbackMailBodyWithAttachment": "문제를 자세히 설명하고 필요시 스크린샷을 첨부해 주세요.\n\n---\n앱 버전: {version} ({buildNumber})\n패키지: {packageName}\n플랫폼: {platform} {platformVersion}\n로그는 첨부 파일을 참조하세요."
+  "feedbackMailBodyWithAttachment": "문제를 자세히 설명하고 필요시 스크린샷을 첨부해 주세요.\n\n---\n앱 버전: {version} ({buildNumber})\n패키지: {packageName}\n플랫폼: {platform} {platformVersion}\n로그는 첨부 파일을 참조하세요.",
+  "deckExists": "덱 \"{deckName}\"이(가) 이미 존재하여 건너뜀.",
+  "importSuccess": "{count}개의 덱을 성공적으로 가져왔습니다",
+  "confirmDeleteDeck": "덱 \"{deckName}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+  "loadFailed": "로드 실패: {error}",
+  "fileNotFound": "파일을 찾을 수 없음: {fileName}"
 } 

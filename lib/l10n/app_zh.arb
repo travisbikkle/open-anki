@@ -74,5 +74,10 @@
   "nextCard": "下一题",
   "feedbackMailSubject": "{appName} 问题反馈",
   "feedbackMailBody": "请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: {version} ({buildNumber})\n包名: {packageName}\n平台: {platform} {platformVersion}\n最近日志(部分):\n{log}",
-  "feedbackMailBodyWithAttachment": "请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: {version} ({buildNumber})\n包名: {packageName}\n平台: {platform} {platformVersion}\n日志见附件。"
+  "feedbackMailBodyWithAttachment": "请详细描述您的问题，并可在邮件中添加截图。\n\n---\nApp版本: {version} ({buildNumber})\n包名: {packageName}\n平台: {platform} {platformVersion}\n日志见附件。",
+  "deckExists": "题库\"{deckName}\"已存在，已跳过。",
+  "importSuccess": "导入成功 {count} 个题库",
+  "confirmDeleteDeck": "确定要删除题库\"{deckName}\"吗？此操作不可撤销。",
+  "loadFailed": "加载失败: {error}",
+  "fileNotFound": "未找到文件: {fileName}"
 } 
