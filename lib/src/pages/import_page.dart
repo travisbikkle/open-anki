@@ -28,11 +28,28 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   String? error;
   bool loading = false;
   bool importing = false;
+  final List<Color> _macaronColors = [
+    Color(0xFFFFB7B2), // 粉
+    Color(0xFFFFDAC1), // 橙
+    Color(0xFFE2F0CB), // 绿
+    Color(0xFFB5EAD7), // 青
+    Color(0xFFC7CEEA), // 蓝紫
+    Color(0xFFFFF1BA), // 黄
+    Color(0xFFF6DFEB), // 淡紫
+    Color(0xFFD4F1F4), // 淡蓝
+  ];
+  final Map<String, Color> _deckColors = {};
   Map<String, Map<String, String>> _deckMediaFiles = {}; // deckId -> {文件名: 本地路径}
 
   // 自动修复：为_deckMediaFiles加安全getter，防止key不存在时抛异常
   Map<String, String> getDeckMediaFiles(String deckId) {
     return _deckMediaFiles[deckId] ?? {};
+  }
+
+  Color getDeckColor(String deckId) {
+    if (deckId.isEmpty) return Colors.grey[200]!;
+    final idx = deckId.codeUnits.fold(0, (a, b) => a + b) % _macaronColors.length;
+    return _macaronColors[idx];
   }
 
   Future<String> _calcFileMd5(String path) async {
@@ -73,7 +90,6 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Future<void> importApkg() async {
     setState(() {
-      // loading = true; // 不再在按钮上转圈
       error = null;
     });
     try {
@@ -90,16 +106,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         if (path == null) continue;
         final fileName = p.basenameWithoutExtension(path);
         String? deckName;
-        if (picked.files.length == 1) {
-          deckName = await _inputDeckNameDialog(fileName);
-          if (deckName == null || deckName.isEmpty) deckName = fileName;
-        } else {
-          deckName = fileName;
-        }
-        // 调用Rust端解压
+        deckName = fileName;
         final result = await extractApkg(apkgPath: path, baseDir: p.join(appDocDir.path, 'anki_data'));
-        
-        // 检查是否存在
         final existingDeck = await AppDb.getDeckById(result.md5);
         if (existingDeck != null) {
           if(mounted) {
@@ -112,28 +120,21 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           }
           continue;
         }
-
-        // 统计卡片总数
         int cardCount = (await getCardCountFromDeck(appDocDir: appDocDir.path, md5: result.md5)).toInt();
-        // 在AppDb登记索引，保存version和cardCount
         await AppDb.insertDeck(result.md5, deckName, result.md5, mediaMap: result.mediaMap, version: result.version, cardCount: cardCount);
-        
-        // 为每张卡片初始化FSRS调度参数
         final sqlitePath = p.join(appDocDir.path, 'anki_data', result.md5, 'collection.sqlite');
-        // 通过 Rust FFI 获取所有卡片 id
         final cardIds = (await getAllNoteIds(sqlitePath: sqlitePath, version: result.version)).map((e) => e.toInt()).toList();
-        
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000; // 转换为秒
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         for (final cardId in cardIds) {
           await AppDb.upsertCardScheduling(CardScheduling(
             cardId: cardId,
-            stability: 0.0, // 新卡片，稳定性为0
-            difficulty: 5.0, // 默认难度
-            due: now, // 立即可复习
+            stability: 0.0,
+            difficulty: 5.0,
+            due: now,
           ));
-          // 新增：插入卡片与牌组的映射
           await AppDb.insertCardMapping(cardId, result.md5);
         }
+        _deckColors[result.md5] = _macaronColors[DateTime.now().millisecondsSinceEpoch % _macaronColors.length];
         successCount++;
       }
       ref.invalidate(allDecksProvider);
@@ -202,7 +203,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     itemBuilder: (context, idx) {
                       final deck = decks[idx];
                       final showCount = (nameCount[deck.deckName] ?? 0) > 1;
+                      final color = getDeckColor(deck.deckId);
                       return Card(
+                        color: color,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         elevation: 1,
                         child: InkWell(
@@ -291,7 +294,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
                   shape: const CircleBorder(),
-                  child: const Icon(Icons.add, size: 32),
+                  child: importing
+                      ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                      : const Icon(Icons.add, size: 32),
                 ),
               ),
               // 自动导入隐藏入口，仅在debug/profile模式下可见
