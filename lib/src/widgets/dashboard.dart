@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../constants.dart';
 
 class Dashboard extends StatelessWidget {
   final int totalCards;
@@ -14,27 +15,63 @@ class Dashboard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _StatItem(label: AppLocalizations.of(context)!.totalCards, value: totalCards.toString()),
-          _StatItem(label: AppLocalizations.of(context)!.learnedCards, value: learnedCards.toString()),
-          _StatItem(label: AppLocalizations.of(context)!.deckCount, value: deckCount.toString()),
+          Expanded(
+            child: _DashboardCard(
+              icon: Icons.menu_book,
+              label: AppLocalizations.of(context)!.deckCount,
+              value: deckCount.toString(),
+              color: kMacaronColors[0],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _DashboardCard(
+              icon: Icons.psychology,
+              label: AppLocalizations.of(context)!.learnedCards,
+              value: learnedCards.toString(),
+              color: kMacaronColors[2],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _DashboardCard(
+              icon: Icons.trending_up,
+              label: AppLocalizations.of(context)!.totalCards,
+              value: totalCards.toString(),
+              color: kMacaronColors[4],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
+class _DashboardCard extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
-  const _StatItem({required this.label, required this.value});
+  final Color color;
+  const _DashboardCard({required this.icon, required this.label, required this.value, required this.color});
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 28),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13), textAlign: TextAlign.center),
+        ],
+      ),
     );
   }
 } 

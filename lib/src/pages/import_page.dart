@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/deck_progress_tile.dart';
+import '../constants.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../widgets/snack_bar.dart';
@@ -28,16 +29,6 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   String? error;
   bool loading = false;
   bool importing = false;
-  final List<Color> _macaronColors = [
-    Color(0xFFFFB7B2), // 粉
-    Color(0xFFFFDAC1), // 橙
-    Color(0xFFE2F0CB), // 绿
-    Color(0xFFB5EAD7), // 青
-    Color(0xFFC7CEEA), // 蓝紫
-    Color(0xFFFFF1BA), // 黄
-    Color(0xFFF6DFEB), // 淡紫
-    Color(0xFFD4F1F4), // 淡蓝
-  ];
   final Map<String, Color> _deckColors = {};
   Map<String, Map<String, String>> _deckMediaFiles = {}; // deckId -> {文件名: 本地路径}
 
@@ -48,8 +39,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Color getDeckColor(String deckId) {
     if (deckId.isEmpty) return Colors.grey[200]!;
-    final idx = deckId.codeUnits.fold(0, (a, b) => a + b) % _macaronColors.length;
-    return _macaronColors[idx];
+    final idx = deckId.codeUnits.fold(0, (a, b) => a + b) % kMacaronColors.length;
+    return kMacaronColors[idx];
   }
 
   Future<String> _calcFileMd5(String path) async {
@@ -134,7 +125,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           ));
           await AppDb.insertCardMapping(cardId, result.md5);
         }
-        _deckColors[result.md5] = _macaronColors[DateTime.now().millisecondsSinceEpoch % _macaronColors.length];
+        _deckColors[result.md5] = kMacaronColors[DateTime.now().millisecondsSinceEpoch % kMacaronColors.length];
         successCount++;
       }
       ref.invalidate(allDecksProvider);
