@@ -22,6 +22,7 @@ import '../log_helper.dart';
 import 'settings_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
+import 'package:open_anki/src/widgets/snack_bar.dart';
 
 const String kAutoMatchChoiceTemplate = '自动匹配-选择题模板';
 const String kSqliteDBFileName = 'collection.sqlite';
@@ -392,13 +393,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         
         // Show a temporary snackbar.
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('⚠️ ' + AppLocalizations.of(context)!.cardMightNeedNetwork),
-              duration: Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showCartoonSnackBar(
+            context, 
+            AppLocalizations.of(context)!.cardMightNeedNetwork, 
+            backgroundColor: Colors.deepOrangeAccent, 
+            icon: Icons.warning_amber_rounded);
         }
       }
     }

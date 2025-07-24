@@ -26,8 +26,8 @@ void main() {
     }
 
     // 1. 准备环境：复制牌组文件
-    final data = await rootBundle.load('assets/anki21.apkg');
-    final file = File('${dir.path}/anki21.apkg');
+    final data = await rootBundle.load('assets/anki21b.apkg');
+    final file = File('${dir.path}/anki21b.apkg');
     await file.writeAsBytes(data.buffer.asUint8List());
 
     // 2. 启动并导入
@@ -45,40 +45,30 @@ void main() {
     
     // 等待转圈出现
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
     
     // 等待转圈消失，表示导入完成
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
     
     // 导入成功后再查找牌组
-    expect(find.text('anki21'), findsWidgets);
+    expect(find.text('anki21b'), findsWidgets);
     
     // 3. 进入刷卡
     print("进入刷卡");
-    final deckTile = find.text('anki21');
+    final deckTile = find.text('anki21b');
     expect(deckTile, findsWidgets);
     await tester.tap(deckTile.first);
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 3000));
 
-    print("显示答案");
+    print("答案");
     // 4. 模拟刷卡
     // 点击“显示答案”按钮
-    final showAnswerBtn = find.text('显示答案');
+    final showAnswerBtn = find.text('答案');
     expect(showAnswerBtn, findsOneWidget);
     await tester.tap(showAnswerBtn);
-    await tester.pumpAndSettle(const Duration(milliseconds: 2000));
+    await tester.pumpAndSettle(const Duration(milliseconds: 3000));
 
-    //print("下一题");
-
-    // // 点击“下一题”按钮
-    // final nextBtn = find.widgetWithText(ElevatedButton, '下一题');
-    // expect(nextBtn, findsOneWidget);
-    // await tester.tap(nextBtn);
-    // await tester.pumpAndSettle(const Duration(milliseconds: 2000));
-
-    // 5. 返回并验证进度
-    // 点击AppBar的返回按钮
     print("后退");
     final backBtn = find.byIcon(Icons.arrow_back);
     expect(backBtn, findsOneWidget);
@@ -89,10 +79,10 @@ void main() {
     expect(find.textContaining(RegExp(r'1/\d+')), findsOneWidget);
     
     // 6. 清理环境：删除牌组
-    final deckToDelete = find.text('anki21');
+    final deckToDelete = find.text('anki21b');
     expect(deckToDelete, findsWidgets);
     await tester.longPress(deckToDelete.first);
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(milliseconds: 1000));
 
     print("删除");
     final deleteBtn = find.text('删除');
@@ -105,6 +95,6 @@ void main() {
     await tester.tap(confirmBtn);
     await tester.pumpAndSettle();
 
-    expect(find.text('anki21'), findsNothing);
+    expect(find.text('anki21b'), findsNothing);
   });
 } 

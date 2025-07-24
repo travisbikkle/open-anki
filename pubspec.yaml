@@ -86,7 +86,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/icon.svg
-    - assets/anki21.apkg
+    - assets/anki21b.apkg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

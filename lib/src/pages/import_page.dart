@@ -308,12 +308,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                       setState(() { importing = true; error = null; });
                       try {
                         final appDocDir = await getApplicationDocumentsDirectory();
-                        final file = File('${appDocDir.path}/anki21.apkg');
+                        final file = File('${appDocDir.path}/anki21b.apkg');
                         if (!await file.exists()) {
-                          setState(() { error = AppLocalizations.of(context)!.fileNotFound('anki21.apkg'); importing = false; });
+                          setState(() { error = AppLocalizations.of(context)!.fileNotFound('anki21b.apkg'); importing = false; });
                           return;
                         }
-                        final fileName = 'anki21';
+                        final fileName = 'anki21b';
                         final deckName = fileName;
                         final result = await extractApkg(apkgPath: file.path, baseDir: p.join(appDocDir.path, 'anki_data'));
 

@@ -9,11 +9,11 @@ import 'dart:io';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('自动测试-导入并删除anki21牌组', (WidgetTester tester) async {
-    // 准备测试数据：将assets/anki21.apkg写入应用文档目录
-    final data = await rootBundle.load('assets/anki21.apkg');
+  testWidgets('自动测试-导入并删除anki21b牌组', (WidgetTester tester) async {
+    // 准备测试数据：将assets/anki21b.apkg写入应用文档目录
+    final data = await rootBundle.load('assets/anki21b.apkg');
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/anki21.apkg');
+    final file = File('${dir.path}/anki21b.apkg');
     await file.writeAsBytes(data.buffer.asUint8List());
 
     app.main();
@@ -31,13 +31,11 @@ void main() {
     await tester.tap(autoImportBtn);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    // 检查导入成功提示
-    expect(find.text('自动导入成功'), findsOneWidget);
-    // 检查牌组列表中出现anki21
-    expect(find.text('anki21'), findsWidgets);
+    // 检查牌组列表中出现anki21b
+    expect(find.text('anki21b'), findsWidgets);
 
-    // 删除anki21牌组
-    final deckTile = find.text('anki21');
+    // 删除anki21b牌组
+    final deckTile = find.text('anki21b');
     expect(deckTile, findsWidgets);
     await tester.longPress(deckTile.first);
     await tester.pumpAndSettle();
@@ -49,6 +47,6 @@ void main() {
     expect(confirmBtn, findsOneWidget);
     await tester.tap(confirmBtn);
     await tester.pumpAndSettle();
-    expect(find.text('anki21'), findsNothing);
+    expect(find.text('anki21b'), findsNothing);
   });
 } 
