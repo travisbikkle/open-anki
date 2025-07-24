@@ -96,5 +96,7 @@
   "minutesLater": "minutes later",
   "hoursLater": "hours later",
   "daysLater": "days later",
-  "hoursAgo": "hours ago"
+  "hoursAgo": "hours ago",
+  "eula": "エンドユーザーライセンス契約 (EULA)",
+  "privacyPolicy": "プライバシーポリシー"
 } 

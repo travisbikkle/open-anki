@@ -473,6 +473,26 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const Divider(),
                         ListTile(
+                          leading: const Icon(Icons.article_outlined),
+                          title: Text(AppLocalizations.of(context)!.eula),
+                          onTap: () async {
+                            final url = Uri.parse('https://anki.eusoftbank.com/en/eula');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.privacy_tip_outlined),
+                          title: Text(AppLocalizations.of(context)!.privacyPolicy),
+                          onTap: () async {
+                            final url = Uri.parse('https://anki.eusoftbank.com/en/policy');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.bug_report),
                           title: Text(AppLocalizations.of(context)!.feedback),
                           subtitle: Text(AppLocalizations.of(context)!.feedbackDesc),

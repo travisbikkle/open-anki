@@ -95,5 +95,7 @@
   "minutesLater": "分钟后",
   "hoursLater": "小时后",
   "daysLater": "天后",
-  "hoursAgo": "小时前"
+  "hoursAgo": "小时前",
+  "eula": "用户协议（EULA）",
+  "privacyPolicy": "隐私政策"
 } 

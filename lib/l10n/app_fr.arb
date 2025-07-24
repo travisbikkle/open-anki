@@ -96,5 +96,7 @@
   "minutesLater": "minutes later",
   "hoursLater": "hours later",
   "daysLater": "days later",
-  "hoursAgo": "hours ago"
+  "hoursAgo": "hours ago",
+  "eula": "Contrat de licence utilisateur final (EULA)",
+  "privacyPolicy": "Politique de confidentialité"
 } 
