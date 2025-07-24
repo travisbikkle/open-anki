@@ -14,6 +14,7 @@ import 'src/log_helper.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'src/pages/splash_page.dart';
 
 Future<void> writeTestHtml() async {
   final dir = await getApplicationDocumentsDirectory();
@@ -61,23 +62,63 @@ Future<void> writeTestHtml() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LogHelper.init();
+  runApp(const SplashApp());
+}
 
-  await writeTestHtml();
-  // 全局异常捕获
-  FlutterError.onError = (FlutterErrorDetails details) async {
-    FlutterError.presentError(details);
-    LogHelper.log('FlutterError: ' + details.toString());
-  };
-  try {
-    await RustLib.init();
-    await initRustLog();
-  } catch (e, st) {
-    LogHelper.log('init error: $e\n$st');
+class SplashApp extends StatelessWidget {
+  const SplashApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SplashPageWrapper(),
+    );
   }
-  rustLogStream.stream.listen((msg) {
-    LogHelper.log('[RUST] $msg');
-  });
-  runApp(const ProviderScope(child: MyApp()));
+}
+
+class SplashPageWrapper extends StatefulWidget {
+  @override
+  State<SplashPageWrapper> createState() => _SplashPageWrapperState();
+}
+
+class _SplashPageWrapperState extends State<SplashPageWrapper> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAsync();
+  }
+
+  Future<void> _initAsync() async {
+    await writeTestHtml();
+    // 全局异常捕获
+    FlutterError.onError = (FlutterErrorDetails details) async {
+      FlutterError.presentError(details);
+      LogHelper.log('FlutterError: ' + details.toString());
+    };
+    try {
+      await RustLib.init();
+      await initRustLog();
+    } catch (e, st) {
+      LogHelper.log('init error: $e\n$st');
+    }
+    rustLogStream.stream.listen((msg) {
+      LogHelper.log('[RUST] $msg');
+    });
+    await Future.delayed(const Duration(milliseconds: 1200)); // 保证动画至少显示1.2秒
+    setState(() {
+      _ready = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const SplashPage();
+    }
+    return const ProviderScope(child: MyApp());
+  }
 }
 
 Future<void> _writeCrashLog(String content) async {
