@@ -70,6 +70,8 @@
   "longPressFeedbackButtonToPreviewNextReviewTime": "长按反馈按钮可预览下次复习时间",
   "cardInfo": "卡片信息",
   "previousCard": "上一题",
+  "backToFront": "返回正面",
+  "showAnswer": "Answer",
   "showAnswer": "答案",
   "nextCard": "下一题",
   "feedbackMailSubject": "{appName} 问题反馈",

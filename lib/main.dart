@@ -164,6 +164,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final safeIndex = _selectedIndex.clamp(0, _pages.length - 1);
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       locale: _locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
