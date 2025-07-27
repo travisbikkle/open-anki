@@ -272,7 +272,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
 
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.loadDeckFailed(e.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)?.loadDeckFailed(e.toString()) ?? 'Load deck failed: ${e.toString()}')));
       }
     } finally {
       if (mounted) {
@@ -368,7 +368,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     } catch (e, s) {
       LogHelper.log('Error in _loadCurrentCard: $e\n$s');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.loadCardFailed(e.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)?.loadCardFailed(e.toString()) ?? 'Load card failed: ${e.toString()}')));
       }
       if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
         _cardLoadCompleter!.completeError(e, s);
@@ -395,7 +395,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         if (mounted) {
           showCartoonSnackBar(
             context, 
-            AppLocalizations.of(context)!.cardMightNeedNetwork, 
+            AppLocalizations.of(context)?.cardMightNeedNetwork ?? 'Card might need network', 
             backgroundColor: Colors.deepOrangeAccent, 
             icon: Icons.warning_amber_rounded);
         }
@@ -418,12 +418,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text(AppLocalizations.of(context)!.planCompleted),
-            content: Text(AppLocalizations.of(context)!.planCompletedTip),
+                    title: Text(AppLocalizations.of(context)?.planCompleted ?? 'Plan Completed'),
+        content: Text(AppLocalizations.of(context)?.planCompletedTip ?? 'Plan completed tip'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context)!.gotIt),
+                                  child: Text(AppLocalizations.of(context)?.gotIt ?? 'Got it'),
               ),
             ],
           ),
@@ -525,33 +525,33 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
         final dueIn = result.due - now;
         String dueText;
         if (dueIn < 3600) {
-          dueText = '${(dueIn / 60).round()} ' + AppLocalizations.of(context)!.minutesLater;
+          dueText = '${(dueIn / 60).round()} ' + (AppLocalizations.of(context)?.minutesLater ?? 'minutes later');
         } else if (dueIn < 86400) {
-          dueText = '${(dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursLater;
+          dueText = '${(dueIn / 3600).round()} ' + (AppLocalizations.of(context)?.hoursLater ?? 'hours later');
         } else {
-          dueText = '${(dueIn / 86400).round()} ' + AppLocalizations.of(context)!.daysLater;
+          dueText = '${(dueIn / 86400).round()} ' + (AppLocalizations.of(context)?.daysLater ?? 'days later');
         }
 
         if (!mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text(AppLocalizations.of(context)!.ifYouChoose + '"$label"'),
+            title: Text('${AppLocalizations.of(context)?.ifYouChoose ?? 'If you choose'} "$label"'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppLocalizations.of(context)!.nextReviewTime + ': $dueText'),
-                Text(AppLocalizations.of(context)!.specificTime + ': ${dueDate.toString().substring(0, 16)}'),
+                Text('${AppLocalizations.of(context)?.nextReviewTime ?? 'Next Review Time'}: $dueText'),
+                Text('${AppLocalizations.of(context)?.specificTime ?? 'Specific Time'}: ${dueDate.toString().substring(0, 16)}'),
                 const SizedBox(height: 8),
-                Text(AppLocalizations.of(context)!.stabilityWillBecome + ': ${result.stability.toStringAsFixed(1)}'),
-                Text(AppLocalizations.of(context)!.difficultyWillBecome + ': ${result.difficulty.toStringAsFixed(1)}'),
+                Text('${AppLocalizations.of(context)?.stabilityWillBecome ?? 'Stability will become'}: ${result.stability.toStringAsFixed(1)}'),
+                Text('${AppLocalizations.of(context)?.difficultyWillBecome ?? 'Difficulty will become'}: ${result.difficulty.toStringAsFixed(1)}'),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context)!.close),
+                child: Text(AppLocalizations.of(context)?.close ?? 'Close'),
               ),
             ],
           ),
@@ -570,13 +570,13 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     
     String dueText;
     if (dueIn < 0) {
-      dueText = '${(-dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursAgo;
+      dueText = '${(-dueIn / 3600).round()} ' + (AppLocalizations.of(context)?.hoursAgo ?? 'hours ago');
     } else if (dueIn < 3600) {
-      dueText = '${(dueIn / 60).round()} ' + AppLocalizations.of(context)!.minutesLater;
+      dueText = '${(dueIn / 60).round()} ' + (AppLocalizations.of(context)?.minutesLater ?? 'minutes later');
     } else if (dueIn < 86400) {
-      dueText = '${(dueIn / 3600).round()} ' + AppLocalizations.of(context)!.hoursLater;
+      dueText = '${(dueIn / 3600).round()} ' + (AppLocalizations.of(context)?.hoursLater ?? 'hours later');
     } else {
-      dueText = '${(dueIn / 86400).round()} ' + AppLocalizations.of(context)!.daysLater;
+      dueText = '${(dueIn / 86400).round()} ' + (AppLocalizations.of(context)?.daysLater ?? 'days later');
     }
     
     return Padding(
@@ -587,12 +587,12 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(AppLocalizations.of(context)!.stability + ': ${_currentScheduling!.stability.toStringAsFixed(1)}'),
-              Text(AppLocalizations.of(context)!.difficulty + ': ${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
-              Text(AppLocalizations.of(context)!.nextReview + ': $dueText'),
-              Text(AppLocalizations.of(context)!.specificTime + ': ${dueDate.toString().substring(0, 16)}'),
+              Text('${AppLocalizations.of(context)?.stability ?? 'Stability'}: ${_currentScheduling!.stability.toStringAsFixed(1)}'),
+              Text('${AppLocalizations.of(context)?.difficulty ?? 'Difficulty'}: ${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+              Text('${AppLocalizations.of(context)?.nextReview ?? 'Next Review'}: $dueText'),
+              Text('${AppLocalizations.of(context)?.specificTime ?? 'Specific Time'}: ${dueDate.toString().substring(0, 16)}'),
               const SizedBox(height: 4),
-              Text(AppLocalizations.of(context)!.longPressFeedbackButtonToPreviewNextReviewTime, 
+              Text(AppLocalizations.of(context)?.longPressFeedbackButtonToPreviewNextReviewTime ?? 'Long press feedback button to preview next review time', 
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
@@ -611,15 +611,15 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     if (_noteIds.isEmpty) {
       debugPrint('[build] _noteIds 为空');
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context)!.review)),
-        body: Center(child: Text(AppLocalizations.of(context)!.noCard)),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)?.review ?? 'Review')),
+        body: Center(child: Text(AppLocalizations.of(context)?.noCard ?? 'No Card')),
       );
     }
     if (_currentNote == null) {
       debugPrint('[build] _currentNote 为空');
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context)!.review)),
-        body: Center(child: Text(AppLocalizations.of(context)!.cardLoadFailed)),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)?.review ?? 'Review')),
+        body: Center(child: Text(AppLocalizations.of(context)?.cardLoadFailed ?? 'Card Load Failed')),
       );
     }
     final note = _currentNote;
@@ -630,7 +630,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(AppLocalizations.of(context)!.todayCards),
+            Text(AppLocalizations.of(context)?.todayCards ?? 'Today Cards'),
             if (_noteIds.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -674,27 +674,27 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(AppLocalizations.of(context)!.cardInfo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(AppLocalizations.of(context)?.cardInfo ?? 'Card Info', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 const SizedBox(height: 12),
-                                Text(AppLocalizations.of(context)!.overview + ': $deckId'),
-                                Text(AppLocalizations.of(context)!.notetypeName + ': $notetype'),
+                                Text('${AppLocalizations.of(context)?.overview ?? 'Overview'}: $deckId'),
+                                Text('${AppLocalizations.of(context)?.notetypeName ?? 'Note Type'}: $notetype'),
                                 const SizedBox(height: 8),
-                                Text(AppLocalizations.of(context)!.cardId + ': $cardId'),
-                                Text(AppLocalizations.of(context)!.version + ': $version'),
-                                Text(AppLocalizations.of(context)!.fields + ': $flds'),
+                                Text('${AppLocalizations.of(context)?.cardId ?? 'Card ID'}: $cardId'),
+                                Text('${AppLocalizations.of(context)?.version ?? 'Version'}: $version'),
+                                Text('${AppLocalizations.of(context)?.fields ?? 'Fields'}: $flds'),
                                 // 新增调度信息
                                 if (_currentScheduling != null) ...[
                                   const SizedBox(height: 8),
-                                  Text(AppLocalizations.of(context)!.stability + ': \t${_currentScheduling!.stability.toStringAsFixed(1)}'),
-                                  Text(AppLocalizations.of(context)!.difficulty + ': \t${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
-                                  Text(AppLocalizations.of(context)!.nextReview + ': \t${DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000).toString().substring(0, 16)}'),
+                                  Text('${AppLocalizations.of(context)?.stability ?? 'Stability'}: \t${_currentScheduling!.stability.toStringAsFixed(1)}'),
+                                  Text('${AppLocalizations.of(context)?.difficulty ?? 'Difficulty'}: \t${_currentScheduling!.difficulty.toStringAsFixed(1)}'),
+                                  Text('${AppLocalizations.of(context)?.nextReview ?? 'Next Review'}: \t${DateTime.fromMillisecondsSinceEpoch(_currentScheduling!.due * 1000).toString().substring(0, 16)}'),
                                 ],
                                 const SizedBox(height: 12),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
                                     onPressed: () => Navigator.pop(context),
-                                    child: Text(AppLocalizations.of(context)!.close, style: TextStyle(color: Colors.black)),
+                                    child: Text(AppLocalizations.of(context)?.close ?? 'Close', style: TextStyle(color: Colors.black)),
                                   ),
                                 ),
                                 Align(
@@ -713,7 +713,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                                         );
                                       }
                                     },
-                                    child: Text(AppLocalizations.of(context)!.viewCardSource, style: const TextStyle(color: Colors.blue)),
+                                    child: Text(AppLocalizations.of(context)?.viewCardSource ?? 'View Source', style: const TextStyle(color: Colors.blue)),
                                   ),
                                 ),
                               ],
@@ -765,11 +765,11 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFeedbackButton('😄', AppLocalizations.of(context)!.easy, 2), // 改为 2 (Good)
+                  _buildFeedbackButton('😄', AppLocalizations.of(context)?.easy ?? 'Easy', 2), // 改为 2 (Good)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😐', AppLocalizations.of(context)!.hard, 1), // 改为 1 (Hard)
+                  _buildFeedbackButton('😐', AppLocalizations.of(context)?.hard ?? 'Hard', 1), // 改为 1 (Hard)
                   const SizedBox(width: 12),
-                  _buildFeedbackButton('😫', AppLocalizations.of(context)!.again, 0), // 改为 0 (Again)
+                  _buildFeedbackButton('😫', AppLocalizations.of(context)?.again ?? 'Again', 0), // 改为 0 (Again)
                 ],
               ),
             ),
@@ -782,7 +782,7 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.navigate_before),
-                      label: FittedBox(child: Text(AppLocalizations.of(context)!.previousCard)),
+                      label: FittedBox(child: Text(AppLocalizations.of(context)?.previousCard ?? 'Previous Card')),
                       onPressed: _prevCard,
                     ),
                   ),
@@ -814,14 +814,14 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
                           LogHelper.log('Error during flip operation: $e\n$s');
                         }
                       },
-                      child: FittedBox(child: Text(_showBack ? AppLocalizations.of(context)!.backToFront : AppLocalizations.of(context)!.showAnswer)),
+                      child: FittedBox(child: Text(_showBack ? (AppLocalizations.of(context)?.backToFront ?? 'Back to Front') : (AppLocalizations.of(context)?.showAnswer ?? 'Show Answer'))),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.navigate_next),
-                      label: FittedBox(child: Text(AppLocalizations.of(context)!.nextCard)),
+                      label: FittedBox(child: Text(AppLocalizations.of(context)?.nextCard ?? 'Next Card')),
                       onPressed: _nextCard,
                     ),
                   ),

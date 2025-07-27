@@ -161,7 +161,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.settings),
+        title: Text(AppLocalizations.of(context)?.settings ?? 'Settings'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(

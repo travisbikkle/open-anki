@@ -18,7 +18,7 @@ class Dashboard extends StatelessWidget {
           Expanded(
             child: _DashboardCard(
               icon: Icons.menu_book,
-              label: AppLocalizations.of(context)!.deckCount,
+              label: AppLocalizations.of(context)?.deckCount ?? 'Deck Count',
               value: deckCount.toString(),
               color: kMacaronColors[0],
             ),
@@ -27,7 +27,7 @@ class Dashboard extends StatelessWidget {
           Expanded(
             child: _DashboardCard(
               icon: Icons.psychology,
-              label: AppLocalizations.of(context)!.learnedCards,
+              label: AppLocalizations.of(context)?.learnedCards ?? 'Learned Cards',
               value: learnedCards.toString(),
               color: kMacaronColors[2],
             ),
@@ -36,7 +36,7 @@ class Dashboard extends StatelessWidget {
           Expanded(
             child: _DashboardCard(
               icon: Icons.trending_up,
-              label: AppLocalizations.of(context)!.totalCards,
+              label: AppLocalizations.of(context)?.totalCards ?? 'Total Cards',
               value: totalCards.toString(),
               color: kMacaronColors[4],
             ),

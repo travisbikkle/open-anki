@@ -51,7 +51,7 @@ class HomePage extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Text(AppLocalizations.of(context)!.recentReview, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              child: Text(AppLocalizations.of(context)?.recentReview ?? 'Recent Review', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ),
             Expanded(
               child: Padding(

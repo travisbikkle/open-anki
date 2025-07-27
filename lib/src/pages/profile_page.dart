@@ -283,9 +283,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _StatCard(icon: Icons.menu_book, label: AppLocalizations.of(context)!.profileDeckCount, value: deckCount.toString()),
-                    _StatCard(icon: Icons.psychology, label: AppLocalizations.of(context)!.profileStudyDays, value: totalStudyDays.toString()),
-                    _StatCard(icon: Icons.trending_up, label: AppLocalizations.of(context)!.profileTotalCards, value: totalCards.toString()),
+                            _StatCard(icon: Icons.menu_book, label: AppLocalizations.of(context)?.profileDeckCount ?? 'Deck Count', value: deckCount.toString()),
+        _StatCard(icon: Icons.psychology, label: AppLocalizations.of(context)?.profileStudyDays ?? 'Study Days', value: totalStudyDays.toString()),
+        _StatCard(icon: Icons.trending_up, label: AppLocalizations.of(context)?.profileTotalCards ?? 'Total Cards', value: totalCards.toString()),
               ],
             ),
           ),
@@ -298,7 +298,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                 Expanded(
                   child: _OverviewCard(
                     icon: Icons.local_fire_department,
-                    label: AppLocalizations.of(context)!.profileConsecutive,
+                    label: AppLocalizations.of(context)?.profileConsecutive ?? 'Consecutive',
                     value: consecutiveDays.toString(),
                     color: Colors.orange,
                   ),
@@ -307,7 +307,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
                 Expanded(
                   child: _OverviewCard(
                     icon: Icons.flash_on,
-                    label: AppLocalizations.of(context)!.profileToday,
+                    label: AppLocalizations.of(context)?.profileToday ?? 'Today',
                     value: todayCount.toString(),
                     color: Colors.amber,
                   ),

@@ -54,11 +54,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.inputDeckName),
+        title: Text(AppLocalizations.of(context)?.inputDeckName ?? 'Input Deck Name'),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)!.confirm)),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)?.confirm ?? 'Confirm')),
         ],
       ),
     );
@@ -69,11 +69,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.renameDeck),
+        title: Text(AppLocalizations.of(context)?.renameDeck ?? 'Rename Deck'),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)!.confirm)),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(AppLocalizations.of(context)?.confirm ?? 'Confirm')),
         ],
       ),
     );
@@ -104,7 +104,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           if(mounted) {
             showCartoonSnackBar(
               context,
-              AppLocalizations.of(context)!.deckExists(existingDeck.deckName),
+              AppLocalizations.of(context)?.deckExists(existingDeck.deckName) ?? 'Deck exists: ${existingDeck.deckName}',
               backgroundColor: Colors.deepOrangeAccent,
               icon: Icons.warning_amber_rounded,
             );
@@ -134,7 +134,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (successCount > 0) {
         showCartoonSnackBar(
           context,
-          AppLocalizations.of(context)!.importSuccess(successCount),
+          AppLocalizations.of(context)?.importSuccess(successCount) ?? 'Import success: $successCount',
           backgroundColor: Colors.green,
           icon: Icons.check_circle_outline,
         );
