@@ -26,7 +26,7 @@ mkdir -p assets/icons
 echo "📱 生成图标..."
 sizes=(16 29 32 40 48 60 64 72 76 80 87 96 120 128 144 152 167 180 192 384 512 1024)
 for size in "${sizes[@]}"; do
-    $IMG_CMD assets/icon.svg -resize ${size}x${size} assets/icons/icon_${size}.png
+    $IMG_CMD assets/icon.png -resize ${size}x${size} assets/icons/icon_${size}.png
 done
 
 # 替换 iOS 图标
