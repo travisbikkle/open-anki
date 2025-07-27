@@ -39,5 +39,24 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	
+	<!-- 照片库访问权限 -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library to allow users to select images for their study cards.</string>
+	
+	<!-- 相机访问权限 -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera to allow users to take photos for their study cards.</string>
+	
+	<!-- 文件访问权限 -->
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to documents folder to import and export Anki deck files.</string>
+	
+	<!-- 网络访问权限 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
