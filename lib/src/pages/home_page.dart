@@ -217,8 +217,8 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
     final bool trialUsed = trialStatus['trialUsed'] ?? false;
     final bool trialExpired = trialStatus['trialExpired'] ?? false;
     final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
-    // 只有未试用且未购买完整版且试用已过期才弹窗
-    if (currentTabIndex == 0 && !_iapDialogShown && !trialUsed && !fullVersionPurchased && trialExpired) {
+    // 只有未试用且未购买完整版才弹窗
+    if (currentTabIndex == 0 && !_iapDialogShown && !trialUsed && !fullVersionPurchased) {
       _iapDialogShown = true;
       Future.microtask(() {
         showDialog(
