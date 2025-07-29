@@ -57,6 +57,12 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
 	</dict>
+	
+	<!-- 内购权限 -->
+	<key>SKPaymentTransactionObserverClass</key>
+	<string>$(PRODUCT_MODULE_NAME).PaymentTransactionObserver</string>
 </dict>
 </plist>

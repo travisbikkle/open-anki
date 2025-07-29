@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'iap_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -155,6 +156,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
       MaterialPageRoute(builder: (context) => const SettingsPage()),
     );
   }
+  
+  void _showIAPPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const IAPPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +195,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.star, color: Colors.amber),
+            onPressed: _showIAPPage,
+          ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
             onPressed: _showSettings,

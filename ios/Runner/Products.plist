@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>iap.trial.14</key>
+	<dict>
+		<key>type</key>
+		<string>non_consumable</string>
+		<key>title</key>
+		<string>14天试用</string>
+		<key>description</key>
+		<string>免费试用14天，体验完整功能</string>
+		<key>price</key>
+		<string>0.00</string>
+		<key>currency</key>
+		<string>CNY</string>
+	</dict>
+	<key>iap.fullversion</key>
+	<dict>
+		<key>type</key>
+		<string>non_consumable</string>
+		<key>title</key>
+		<string>完整版本</string>
+		<key>description</key>
+		<string>解锁所有功能，永久使用</string>
+		<key>price</key>
+		<string>18.00</string>
+		<key>currency</key>
+		<string>CNY</string>
+	</dict>
+</dict>
+</plist> 
