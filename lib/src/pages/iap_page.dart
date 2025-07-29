@@ -256,10 +256,10 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                     ),
                   ],
                   
-                  const SizedBox(height: 20),
+                  // const SizedBox(height: 20),
                   
                   // 功能列表
-                  _buildFeaturesList(),
+                  // _buildFeaturesList(),
                 ],
               ),
             ),
