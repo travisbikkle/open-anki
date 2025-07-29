@@ -4,9 +4,11 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'dart:io';
 import '../providers.dart';
 import '../services/iap_service.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class IAPPage extends ConsumerStatefulWidget {
-  const IAPPage({super.key});
+  final VoidCallback? onClose;
+  const IAPPage({super.key, this.onClose});
 
   @override
   ConsumerState<IAPPage> createState() => _IAPPageState();
@@ -21,12 +23,12 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('购买成功'),
-        content: const Text('感谢您的支持，您已解锁全部功能！'),
+        title: Text(AppLocalizations.of(context)?.iapPurchaseSuccess ?? '购买成功'),
+        content: Text(AppLocalizations.of(context)?.iapThankYou ?? '感谢您的支持，您已解锁全部功能！'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('确定'),
+            child: Text(AppLocalizations.of(context)?.ok ?? '确定'),
           ),
         ],
       ),
@@ -46,10 +48,23 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
       appBar: AppBar(
-        title: const Text('升级到完整版'),
+        title: Text(AppLocalizations.of(context)?.iapUpgradeTitle ?? '升级到完整版'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Close',
+            onPressed: () {
+              if (widget.onClose != null) {
+                widget.onClose!();
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+        ],
       ),
       body: iapService.loading
           ? Center(
@@ -58,15 +73,15 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 16),
-                  const Text('正在加载内购信息...'),
+                  Text(AppLocalizations.of(context)?.iapLoading ?? '正在加载内购信息...'),
                   const SizedBox(height: 8),
-                  const Text('请确保网络连接正常', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(AppLocalizations.of(context)?.iapCheckNetwork ?? '请确保网络连接正常', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       iapService.initialize();
                     },
-                    child: const Text('重新加载'),
+                    child: Text(AppLocalizations.of(context)?.reload ?? '重新加载'),
                   ),
                 ],
               ),
@@ -98,7 +113,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                           color: Colors.green[700],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Open Anki',
                           style: TextStyle(
                             fontSize: 24,
@@ -106,7 +121,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '基于科学记忆算法的智能学习工具',
                           style: TextStyle(
                             fontSize: 16,
@@ -144,9 +159,9 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       context,
                       ref,
                       iapService.trialProduct,
-                      '试用版',
-                      '免费试用14天',
-                      '开始试用',
+                      AppLocalizations.of(context)?.iapTrialTitle ?? '试用版',
+                      AppLocalizations.of(context)?.iapTrialDesc ?? '免费试用14天',
+                      AppLocalizations.of(context)?.iapTrialStart ?? '开始试用',
                       Colors.blue,
                       () async {
                         try {
@@ -155,7 +170,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('购买失败:  {e.toString()}'),
+                                content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -170,9 +185,9 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       context,
                       ref,
                       iapService.fullVersionProduct,
-                      '完整版',
-                      '解锁所有功能，永久使用',
-                      '立即购买',
+                      AppLocalizations.of(context)?.iapFullTitle ?? '完整版',
+                      AppLocalizations.of(context)?.iapFullDesc ?? '解锁所有功能，永久使用',
+                      AppLocalizations.of(context)?.iapFullBuy ?? '立即购买',
                       Colors.green,
                       () async {
                         try {
@@ -181,7 +196,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('购买失败:  {e.toString()}'),
+                                content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -196,7 +211,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                     ElevatedButton.icon(
                       onPressed: iapService.purchasePending ? null : () => iapService.restorePurchases(),
                       icon: const Icon(Icons.restore),
-                      label: const Text('恢复购买'),
+                      label: Text(AppLocalizations.of(context)?.iapRestore ?? '恢复购买'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey[200],
                         foregroundColor: Colors.black,
@@ -218,8 +233,8 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                         children: [
                           const Icon(Icons.warning, color: Colors.orange, size: 32),
                           const SizedBox(height: 8),
-                          const Text(
-                            '内购产品暂不可用',
+                          Text(
+                            AppLocalizations.of(context)?.iapInAppPurchaseUnavailable ?? '内购产品暂不可用',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -229,9 +244,9 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                           Text(
                             iapService.isAvailable 
                               ? (Platform.isIOS && !Platform.environment.containsKey('FLUTTER_TEST') 
-                                  ? '产品已配置，请在真实设备上测试购买' 
-                                  : '产品已配置，模拟器不支持购买')
-                              : '请检查网络连接或稍后重试',
+                                  ? AppLocalizations.of(context)?.iapInAppPurchaseConfiguredForRealDevice ?? '产品已配置，请在真实设备上测试购买' 
+                                  : AppLocalizations.of(context)?.iapInAppPurchaseConfiguredForSimulator ?? '产品已配置，模拟器不支持购买')
+                              : AppLocalizations.of(context)?.iapCheckNetworkOrRetry ?? '请检查网络连接或稍后重试',
                             style: const TextStyle(color: Colors.grey),
                           ),
                           const SizedBox(height: 8),
@@ -268,13 +283,13 @@ class _IAPPageState extends ConsumerState<IAPPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.green[200]!),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 24),
-            SizedBox(width: 12),
+            const Icon(Icons.check_circle, color: Colors.green, size: 24),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '您已拥有完整版本',
+                AppLocalizations.of(context)?.iapFullVersionPurchased ?? '您已拥有完整版本',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -301,7 +316,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '试用期剩余 $remainingDays 天',
+                (AppLocalizations.of(context)?.iapTrialRemainingDays?.toString() ?? '试用期剩余 ${remainingDays.toString()} 天'),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -322,13 +337,13 @@ class _IAPPageState extends ConsumerState<IAPPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.red[200]!),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.warning, color: Colors.red, size: 24),
-            SizedBox(width: 12),
+            const Icon(Icons.warning, color: Colors.red, size: 24),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '试用期已结束，请购买完整版',
+                AppLocalizations.of(context)?.iapTrialExpired ?? '试用期已结束，请购买完整版',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -348,13 +363,13 @@ class _IAPPageState extends ConsumerState<IAPPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.orange[200]!),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info, color: Colors.orange, size: 24),
-          SizedBox(width: 12),
+          const Icon(Icons.info, color: Colors.orange, size: 24),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '开始您的14天免费试用',
+              AppLocalizations.of(context)?.iapTrialStart ?? '开始您的14天免费试用',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -404,7 +419,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  title == '试用版' ? Icons.access_time : Icons.star,
+                  (title == (AppLocalizations.of(context)?.iapTrialTitle ?? '试用版')) ? Icons.access_time : Icons.star,
                   color: color,
                   size: 24,
                 ),
@@ -480,20 +495,19 @@ class _IAPPageState extends ConsumerState<IAPPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '完整版功能',
+          Text(
+            AppLocalizations.of(context)?.iapFullFeatures ?? '完整版功能',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
-          _buildFeatureItem(Icons.all_inclusive, '无限卡片数量'),
-          _buildFeatureItem(Icons.analytics, '详细学习统计'),
-          _buildFeatureItem(Icons.backup, '云端同步备份'),
-          _buildFeatureItem(Icons.settings, '自定义学习计划'),
-          _buildFeatureItem(Icons.extension, '高级记忆算法'),
-          _buildFeatureItem(Icons.support_agent, '优先技术支持'),
+          _buildFeatureItem(Icons.all_inclusive, AppLocalizations.of(context)?.iapUnlimitedCards ?? '无限卡片数量'),
+          _buildFeatureItem(Icons.analytics, AppLocalizations.of(context)?.iapDetailedStats ?? '详细学习统计'),
+          _buildFeatureItem(Icons.settings, AppLocalizations.of(context)?.iapCustomPlan ?? '自定义学习计划'),
+          _buildFeatureItem(Icons.extension, AppLocalizations.of(context)?.iapAdvancedAlgo ?? '高级记忆算法'),
+          _buildFeatureItem(Icons.support_agent, AppLocalizations.of(context)?.iapPrioritySupport ?? '优先技术支持'),
         ],
       ),
     );

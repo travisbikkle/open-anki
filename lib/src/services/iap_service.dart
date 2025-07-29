@@ -111,15 +111,22 @@ class IAPService extends ChangeNotifier {
   }
   
   void _setupProducts() {
-    _trialProduct = _products.firstWhere(
-      (product) => product.id == _trialProductId,
-      orElse: () => _createFallbackTrialProduct(),
-    );
-    
-    _fullVersionProduct = _products.firstWhere(
-      (product) => product.id == _fullVersionProductId,
-      orElse: () => _createFallbackFullVersionProduct(),
-    );
+    _trialProduct = null;
+    _fullVersionProduct = null;
+    for (final product in _products) {
+      if (product.id == _trialProductId) {
+        _trialProduct = product;
+      }
+      if (product.id == _fullVersionProductId) {
+        _fullVersionProduct = product;
+      }
+    }
+    if (_trialProduct == null) {
+      _trialProduct = _createFallbackTrialProduct();
+    }
+    if (_fullVersionProduct == null) {
+      _fullVersionProduct = _createFallbackFullVersionProduct();
+    }
   }
   
   void _setupFallbackProducts() {

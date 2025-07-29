@@ -8,6 +8,12 @@ import '../db.dart';
 import '../pages/card_review_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../constants.dart';
+import '../pages/iap_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// 只在每次启动App时弹一次IAP弹窗
+bool _iapDialogShown = false;
+Future<void>? _iapDialogFuture;
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -161,6 +167,94 @@ class HomePage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class HomePageWrapper extends ConsumerStatefulWidget {
+  const HomePageWrapper({super.key});
+  @override
+  ConsumerState<HomePageWrapper> createState() => _HomePageWrapperState();
+}
+
+class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
+  bool _navigated = false;
+
+  Future<void> _clearIapPrefsAndRestart() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('trial_used');
+    await prefs.remove('full_version_purchased');
+    await prefs.remove('trial_start_date');
+    if (mounted) {
+      _iapDialogShown = false;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomePageWrapper()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _showIapDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: IAPPage(
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentTabIndex = ref.watch(currentIndexProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('首页'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.cleaning_services),
+            tooltip: '清理IAP状态',
+            onPressed: _clearIapPrefsAndRestart,
+          ),
+        ],
+      ),
+      body: Builder(
+        builder: (context) {
+          final trialStatusAsync = ref.watch(trialStatusProvider);
+          if (currentTabIndex == 0 && _iapDialogFuture == null && trialStatusAsync.asData != null) {
+            final trialStatus = trialStatusAsync.asData!.value;
+            final bool isFree = !(trialStatus['trialUsed'] ?? false) && !(trialStatus['fullVersionPurchased'] ?? false);
+            if (isFree) {
+              Future.microtask(() {
+                if (_iapDialogFuture == null) {
+                  _iapDialogFuture = showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    useRootNavigator: false,
+                    builder: (context) => WillPopScope(
+                      onWillPop: () async => false,
+                      child: IAPPage(
+                        onClose: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                  ).whenComplete(() {
+                    _iapDialogFuture = null;
+                  });
+                }
+              });
+            }
+          }
+          return const HomePage();
+        },
       ),
     );
   }
