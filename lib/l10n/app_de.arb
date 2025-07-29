@@ -126,5 +126,6 @@
   "iapCloudSync": "Cloud-Synchronisierung & Backup",
   "iapCustomPlan": "Individueller Lernplan",
   "iapAdvancedAlgo": "Erweiterter Gedächtnisalgorithmus",
-  "iapPrioritySupport": "Priorisierter Support"
+  "iapPrioritySupport": "Priorisierter Support",
+  "iapFullBuyOrRestore": "Vollversion kaufen oder wiederherstellen"
 } 

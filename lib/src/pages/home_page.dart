@@ -213,6 +213,29 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
   @override
   Widget build(BuildContext context) {
     final currentTabIndex = ref.watch(currentIndexProvider);
+    final trialStatus = ref.watch(trialStatusProvider);
+    final bool trialUsed = trialStatus['trialUsed'] ?? false;
+    final bool trialExpired = trialStatus['trialExpired'] ?? false;
+    final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
+    // 只有未试用且未购买完整版且试用已过期才弹窗
+    if (currentTabIndex == 0 && !_iapDialogShown && !trialUsed && !fullVersionPurchased && trialExpired) {
+      _iapDialogShown = true;
+      Future.microtask(() {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          useRootNavigator: false,
+          builder: (context) => WillPopScope(
+            onWillPop: () async => false,
+            child: IAPPage(
+              onClose: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ),
+        );
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('首页'),
@@ -220,28 +243,6 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
       ),
       body: Builder(
         builder: (context) {
-          final trialStatus = ref.watch(trialStatusProvider);
-          if (currentTabIndex == 0 && !_iapDialogShown) {
-            final bool isFree = !(trialStatus['trialUsed'] ?? false) && !(trialStatus['fullVersionPurchased'] ?? false);
-            if (isFree) {
-              _iapDialogShown = true;
-              Future.microtask(() {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  useRootNavigator: false,
-                  builder: (context) => WillPopScope(
-                    onWillPop: () async => false,
-                    child: IAPPage(
-                      onClose: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ),
-                );
-              });
-            }
-          }
           return const HomePage();
         },
       ),

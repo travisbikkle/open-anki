@@ -198,11 +198,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
           Consumer(
             builder: (context, ref, child) {
               final trialStatus = ref.watch(trialStatusProvider);
-              Color crownColor = Colors.green; // 默认绿色（试用期或免费版）
               final bool isFullVersion = trialStatus['fullVersionPurchased'] ?? false;
-              if (isFullVersion) {
-                crownColor = Colors.amber; // 完整版为金黄色
-              }
+              Color crownColor = isFullVersion ? Colors.amber : Colors.green;
               return IconButton(
                 icon: Icon(Icons.workspace_premium, color: crownColor),
                 onPressed: _showIAPPage,

@@ -126,5 +126,6 @@
   "iapCloudSync": "クラウド同期とバックアップ",
   "iapCustomPlan": "カスタム学習プラン",
   "iapAdvancedAlgo": "高度な記憶アルゴリズム",
-  "iapPrioritySupport": "優先サポート"
+  "iapPrioritySupport": "優先サポート",
+  "iapFullBuyOrRestore": "フルバージョンを購入または復元"
 } 

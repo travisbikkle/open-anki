@@ -127,5 +127,6 @@
   "iapCloudSync": "云端同步备份",
   "iapCustomPlan": "自定义学习计划",
   "iapAdvancedAlgo": "高级记忆算法",
-  "iapPrioritySupport": "优先技术支持"
+  "iapPrioritySupport": "优先技术支持",
+  "iapFullBuyOrRestore": "购买或恢复完整版"
 } 

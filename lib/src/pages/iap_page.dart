@@ -192,7 +192,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       iapService.fullVersionProduct,
                       AppLocalizations.of(context)?.iapFullTitle ?? '完整版',
                       AppLocalizations.of(context)?.iapFullDesc ?? '解锁所有功能，永久使用',
-                      AppLocalizations.of(context)?.iapFullBuy ?? '立即购买',
+                      AppLocalizations.of(context)?.iapFullBuyOrRestore ?? '购买或恢复完整版',
                       Colors.green,
                       () async {
                         try {
@@ -218,20 +218,6 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                     
                     const SizedBox(height: 20),
                     
-                    // 恢复购买按钮
-                    ElevatedButton.icon(
-                      onPressed: iapService.purchasePending ? null : () => iapService.restorePurchases(),
-                      icon: const Icon(Icons.restore),
-                      label: Text(AppLocalizations.of(context)?.iapRestore ?? '恢复购买'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
                   ] else ...[
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -285,7 +271,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     final bool trialExpired = trialStatus['trialExpired'] ?? false;
     final int? remainingDays = trialStatus['remainingDays'];
     final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
-    
+    // 优先显示完整版
     if (fullVersionPurchased) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -300,7 +286,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                AppLocalizations.of(context)?.iapFullVersionPurchased ?? '您已拥有完整版本',
+                AppLocalizations.of(context)?.iapFullVersionPurchased ?? '您已拥有完整版',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
