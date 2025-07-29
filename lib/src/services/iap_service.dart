@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 
 class IAPService extends ChangeNotifier {
   static const String _trialProductId = 'iap.trial.14';
@@ -37,20 +36,10 @@ class IAPService extends ChangeNotifier {
     super.dispose();
   }
   
-  Future<void> _listenToStoreKit2TransactionUpdates() async {
-    if (Platform.isIOS) {
-      final storeKitPlatform = InAppPurchaseStoreKitPlatform();
-      storeKitPlatform.addTransactionListener((PurchaseDetails purchaseDetails) {
-        debugPrint('[StoreKit2] Transaction update: ${purchaseDetails.productID}, status: ${purchaseDetails.status}');
-        _onPurchaseUpdate([purchaseDetails]);
-      });
-    }
-  }
-
   Future<void> initialize() async {
     try {
       debugPrint('=== IAP Service Initialization Start ===');
-      debugPrint('Platform:  {Platform.operatingSystem}');
+      debugPrint('Platform: ${Platform.operatingSystem}');
       
       // 检查网络连接
       try {
@@ -105,8 +94,8 @@ class IAPService extends ChangeNotifier {
         onDone: () => debugPrint('Purchase stream done'),
         onError: (error) => debugPrint('Purchase stream error: $error'),
       );
-
-      await _listenToStoreKit2TransactionUpdates();
+      // 启动时主动恢复一次
+      await _inAppPurchase.restorePurchases();
       
       debugPrint('IAP service initialized successfully');
     } catch (e) {
