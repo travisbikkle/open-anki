@@ -216,13 +216,7 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('首页'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.cleaning_services),
-            tooltip: '清理IAP状态',
-            onPressed: _clearIapPrefsAndRestart,
-          ),
-        ],
+        // 移除actions中的清理按钮
       ),
       body: Builder(
         builder: (context) {

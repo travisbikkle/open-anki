@@ -27,7 +27,15 @@ class _IAPPageState extends ConsumerState<IAPPage> {
         content: Text(AppLocalizations.of(context)?.iapThankYou ?? '感谢您的支持，您已解锁全部功能！'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 关闭IAPPage
+              if (widget.onClose != null) {
+                widget.onClose!();
+              } else {
+                if (mounted) Navigator.of(context).pop();
+              }
+            },
             child: Text(AppLocalizations.of(context)?.ok ?? '确定'),
           ),
         ],
@@ -316,7 +324,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                (AppLocalizations.of(context)?.iapTrialRemainingDays?.toString() ?? '试用期剩余 ${remainingDays.toString()} 天'),
+                AppLocalizations.of(context)!.iapTrialRemainingDays(remainingDays),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
