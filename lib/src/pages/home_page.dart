@@ -13,7 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // 只在每次启动App时弹一次IAP弹窗
 bool _iapDialogShown = false;
-Future<void>? _iapDialogFuture;
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -228,28 +227,25 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
       body: Builder(
         builder: (context) {
           final trialStatusAsync = ref.watch(trialStatusProvider);
-          if (currentTabIndex == 0 && _iapDialogFuture == null && trialStatusAsync.asData != null) {
+          if (currentTabIndex == 0 && !_iapDialogShown && trialStatusAsync.asData != null) {
             final trialStatus = trialStatusAsync.asData!.value;
             final bool isFree = !(trialStatus['trialUsed'] ?? false) && !(trialStatus['fullVersionPurchased'] ?? false);
             if (isFree) {
+              _iapDialogShown = true;
               Future.microtask(() {
-                if (_iapDialogFuture == null) {
-                  _iapDialogFuture = showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    useRootNavigator: false,
-                    builder: (context) => WillPopScope(
-                      onWillPop: () async => false,
-                      child: IAPPage(
-                        onClose: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  useRootNavigator: false,
+                  builder: (context) => WillPopScope(
+                    onWillPop: () async => false,
+                    child: IAPPage(
+                      onClose: () {
+                        Navigator.of(context).pop();
+                      },
                     ),
-                  ).whenComplete(() {
-                    _iapDialogFuture = null;
-                  });
-                }
+                  ),
+                );
               });
             }
           }
