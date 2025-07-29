@@ -22,18 +22,20 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     _purchaseDialogShown = true;
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: Text(AppLocalizations.of(context)?.iapPurchaseSuccess ?? '购买成功'),
         content: Text(AppLocalizations.of(context)?.iapThankYou ?? '感谢您的支持，您已解锁全部功能！'),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              // 关闭IAPPage
-              if (widget.onClose != null) {
-                widget.onClose!();
-              } else {
-                if (mounted) Navigator.of(context).pop();
+              if (mounted) {
+                Navigator.of(context, rootNavigator: true).pop(); // 关闭弹窗
+                if (widget.onClose != null) {
+                  widget.onClose!(); // 关闭IAP页面
+                } else {
+                  if (mounted) Navigator.of(context).pop();
+                }
               }
             },
             child: Text(AppLocalizations.of(context)?.ok ?? '确定'),
@@ -46,7 +48,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
   @override
   Widget build(BuildContext context) {
     final iapService = ref.watch(iapServiceProvider);
-    final trialStatusAsync = ref.watch(trialStatusProvider);
+    final trialStatus = ref.watch(trialStatusProvider);
     
     // 添加调试信息
     debugPrint('IAP Service - Loading: ${iapService.loading}, Available: ${iapService.isAvailable}');
@@ -146,23 +148,12 @@ class _IAPPageState extends ConsumerState<IAPPage> {
 
                   
                   // 试用状态
-                  trialStatusAsync.when(
-                    data: (trialStatus) {
-                      if (trialStatus['fullVersionPurchased'] == true) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _showPurchaseSuccessDialog();
-                        });
-                      }
-                      return _buildTrialStatusCard(context, trialStatus);
-                    },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) => const SizedBox.shrink(),
-                  ),
+                  _buildTrialStatusCard(context, trialStatus),
                   
                   const SizedBox(height: 20),
                   
                   // 购买选项
-                  if (trialStatusAsync.asData?.value['fullVersionPurchased'] != true && iapService.isAvailable && iapService.products.isNotEmpty) ...[
+                  if (trialStatus['fullVersionPurchased'] != true && iapService.isAvailable && iapService.products.isNotEmpty) ...[
                     _buildPurchaseOption(
                       context,
                       ref,
@@ -174,6 +165,12 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       () async {
                         try {
                           await iapService.purchaseTrial();
+                          // 购买成功后刷新状态并显示成功对话框
+                          ref.invalidate(trialStatusProvider);
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          if (mounted) {
+                            _showPurchaseSuccessDialog();
+                          }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -200,6 +197,12 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       () async {
                         try {
                           await iapService.purchaseFullVersion();
+                          // 购买成功后刷新状态并显示成功对话框
+                          ref.invalidate(trialStatusProvider);
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          if (mounted) {
+                            _showPurchaseSuccessDialog();
+                          }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -280,7 +283,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
   Widget _buildTrialStatusCard(BuildContext context, Map<String, dynamic> trialStatus) {
     final bool trialUsed = trialStatus['trialUsed'] ?? false;
     final bool trialExpired = trialStatus['trialExpired'] ?? false;
-    final int remainingDays = trialStatus['remainingDays'] ?? 14;
+    final int? remainingDays = trialStatus['remainingDays'];
     final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
     
     if (fullVersionPurchased) {
@@ -310,7 +313,34 @@ class _IAPPageState extends ConsumerState<IAPPage> {
       );
     }
     
-    if (trialUsed && !trialExpired) {
+    if (!trialUsed) {
+      // 未试用状态
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange[200]!),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info, color: Colors.orange, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)?.iapTrialStart ?? '开始您的14天免费试用',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (trialUsed && !trialExpired && remainingDays != null) {
+      // 试用中状态
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -335,9 +365,8 @@ class _IAPPageState extends ConsumerState<IAPPage> {
           ],
         ),
       );
-    }
-    
-    if (trialExpired) {
+    } else if (trialExpired) {
+      // 试用已过期状态
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -364,24 +393,25 @@ class _IAPPageState extends ConsumerState<IAPPage> {
       );
     }
     
+    // 默认状态（理论上不会到达这里）
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange[50],
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange[200]!),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info, color: Colors.orange, size: 24),
+          const Icon(Icons.help, color: Colors.grey, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              AppLocalizations.of(context)?.iapTrialStart ?? '开始您的14天免费试用',
+              '试用状态未知',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.orange,
+                color: Colors.grey,
               ),
             ),
           ),

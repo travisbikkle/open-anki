@@ -5,14 +5,19 @@ import '../db.dart';
 import '../model.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/iap_service.dart';
+import '../providers.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'dart:async';
 
-class DebugPage extends StatefulWidget {
+class DebugPage extends ConsumerStatefulWidget {
   const DebugPage({super.key});
   @override
-  State<DebugPage> createState() => _DebugPageState();
+  ConsumerState<DebugPage> createState() => _DebugPageState();
 }
 
-class _DebugPageState extends State<DebugPage> {
+class _DebugPageState extends ConsumerState<DebugPage> {
   Directory? _ankiDataDir;
   bool _loading = true;
   String? _error;
@@ -45,17 +50,44 @@ class _DebugPageState extends State<DebugPage> {
       'label': '浏览题库文件树',
       'action': '_showFileTree',
     },
+    {
+      'label': '调试IAP服务器返回结果',
+      'action': '_showIapDebug',
+    },
   ];
   List<Map<String, dynamic>> _allDeckRows = [];
   List<Map<String, dynamic>> _allSchedulingRows = [];
   bool _showAllDeckCards = false;
   bool _showFileTree = false;
   bool _showScheduling = false;
+  List<PurchaseDetails> _iapPurchases = [];
+  bool _iapExpanded = false;
+  StreamSubscription<List<PurchaseDetails>>? _iapSub;
 
   @override
   void initState() {
     super.initState();
     _loadRoot();
+    _listenIap();
+  }
+
+  @override
+  void dispose() {
+    _iapSub?.cancel();
+    super.dispose();
+  }
+
+  void _listenIap() {
+    _iapSub = InAppPurchase.instance.purchaseStream.listen((purchases) {
+      setState(() {
+        // 合并所有已收到的productID，去重
+        final Map<String, PurchaseDetails> all = {
+          for (final p in _iapPurchases) p.productID ?? '': p,
+          for (final p in purchases) p.productID ?? '': p,
+        };
+        _iapPurchases = all.values.toList();
+      });
+    });
   }
 
   Future<void> _loadRoot() async {
@@ -323,146 +355,137 @@ class _DebugPageState extends State<DebugPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showScheduling && _allSchedulingRows.isNotEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('卡片调度状态')),
-        body: ListView.builder(
-          itemCount: _allSchedulingRows.length,
-          itemBuilder: (context, idx) {
-            final row = _allSchedulingRows[idx];
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('卡片ID: ${row['card_id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text('稳定性: ${row['stability']}'),
-                    Text('难度: ${row['difficulty']}'),
-                    Text('下次复习: ${row['due']}'),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
     return Scaffold(
-      appBar: AppBar(title: const Text('调试-题库文件树浏览')),
-      body: Column(
+      appBar: AppBar(title: const Text('调试工具')),
+      body: ListView(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                DropdownButton<String>(
-                  value: _selectedDebugAction,
-                  hint: const Text('选择调试操作'),
-                  items: _debugActions.map((item) => DropdownMenuItem<String>(
-                    value: item['action'],
-                    child: Text(item['label']),
-                  )).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedDebugAction = val;
-                      _showAllDeckCards = false;
-                      _showFileTree = false;
-                      _showDbDecks = false;
-                    });
-                    if (val == '_showAllDecks') {
-                      setState(() { _showAllDeckCards = true; });
-                      _showAllDecks();
-                    }
-                    if (val == '_showAllScheduling') {
-                      _showAllScheduling();
-                    }
-                    if (val == '_testScheduling') {
-                      _testScheduling();
-                    }
-                    if (val == '_scrollToBottom') _scrollToBottom();
-                    if (val == '_testWebView') _testWebView();
-                    if (val == '_showFileTree') {
-                      setState(() { _showFileTree = true; });
-                    }
-                  },
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: DropdownButton<String>(
+              value: _selectedDebugAction,
+              hint: const Text('选择调试功能'),
+              isExpanded: true,
+              items: _debugActions.map((action) {
+                return DropdownMenuItem<String>(
+                  value: action['action'],
+                  child: Text(action['label']),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedDebugAction = value;
+                  _showAllDeckCards = false;
+                  _showFileTree = false;
+                  _showDbDecks = false;
+                });
+                if (value == '_showAllDecks') _showAllDecks();
+                if (value == '_showAllScheduling') _showAllScheduling();
+                if (value == '_testScheduling') _testScheduling();
+                if (value == '_scrollToBottom') _scrollToBottom();
+                if (value == '_testWebView') _testWebView();
+                if (value == '_showFileTree') setState(() { _showFileTree = true; });
+              },
             ),
           ),
-          if (_showAllDeckCards)
-            Expanded(
-              child: ListView.builder(
-                itemCount: _allDeckRows.length,
-                itemBuilder: (context, idx) {
-                  final row = _allDeckRows[idx];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (row['user_deck_name'] != null)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('名称: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                Expanded(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      row['user_deck_name'] ?? '',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+          if (_selectedDebugAction == '_showIapDebug') ...[
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  InAppPurchase.instance.restorePurchases();
+                },
+                child: const Text('手动刷新IAP状态'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_iapPurchases.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text('暂无IAP服务器返回'),
+              )
+            else
+              ..._iapPurchases.map((p) => Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ExpansionTile(
+                  title: Text('productID: ${p.productID ?? "null"}'),
+                  subtitle: Text('status: ${p.status}'),
+                  children: [
+                    ListTile(
+                      title: const Text('transactionDate'),
+                      subtitle: Text(p.transactionDate ?? 'null'),
+                    ),
+                    ListTile(
+                      title: const Text('purchaseID'),
+                      subtitle: Text(p.purchaseID ?? 'null'),
+                    ),
+                    ListTile(
+                      title: const Text('verificationData.serverVerificationData'),
+                      subtitle: SelectableText(p.verificationData?.serverVerificationData ?? 'null', maxLines: 6),
+                    ),
+                    ListTile(
+                      title: const Text('verificationData.localVerificationData'),
+                      subtitle: SelectableText(p.verificationData?.localVerificationData ?? 'null', maxLines: 6),
+                    ),
+                    ListTile(
+                      title: const Text('error'),
+                      subtitle: Text(p.error?.message ?? 'null'),
+                    ),
+                    ListTile(
+                      title: const Text('pendingCompletePurchase'),
+                      subtitle: Text(p.pendingCompletePurchase.toString()),
+                    ),
+                  ],
+                ),
+              )),
+          ]
+          else if (_selectedDebugAction == null) ...[
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('请选择调试功能'),
+            ),
+          ]
+          else ...[
+            if (_selectedDebugAction == '_showAllDecks' && _showAllDeckCards) ...[
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _allDeckRows.length,
+                  itemBuilder: (context, idx) {
+                    final row = _allDeckRows[idx];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (row['user_deck_name'] != null)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('名称: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Expanded(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        row['user_deck_name'] ?? '',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          if (row['user_deck_name'] != null) const SizedBox(height: 8),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('md5: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                              Expanded(
-                                child: Text(
-                                  row['md5'] ?? '',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                  softWrap: true,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('apkg_path: '),
-                              Expanded(
-                                child: Text(
-                                  row['apkg_path'] ?? '',
-                                  softWrap: true,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (row['version'] != null)
+                            if (row['user_deck_name'] != null) const SizedBox(height: 8),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('version: '),
+                                const Text('md5: ', style: TextStyle(fontWeight: FontWeight.bold)),
                                 Expanded(
                                   child: Text(
-                                    row['version'] ?? '',
+                                    row['md5'] ?? '',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                     softWrap: true,
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 2,
@@ -470,76 +493,100 @@ class _DebugPageState extends State<DebugPage> {
                                 ),
                               ],
                             ),
-                        ],
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('apkg_path: '),
+                                Expanded(
+                                  child: Text(
+                                    row['apkg_path'] ?? '',
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (row['version'] != null)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('version: '),
+                                  Expanded(
+                                    child: Text(
+                                      row['version'] ?? '',
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
+            ],
+            if (_selectedDebugAction == '_showFileTree' && _showFileTree) ...[
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(child: Text('错误: $_error'))
+                        : _ankiDataDir == null
+                            ? const Center(child: Text('anki_data 目录不存在'))
+                            : ListView(
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.sd_storage),
+                                    title: Text(_ankiDataDir!.path),
+                                  ),
+                                  for (final entity in _rootEntities)
+                                    if (entity is Directory)
+                                      ExpansionTile(
+                                        leading: const Icon(Icons.folder),
+                                        title: Text(entity.path.split('/').last + '/'),
+                                        children: [
+                                          _buildDeckDirView(entity),
+                                        ],
+                                      ),
+                                ],
+                              ),
             ),
-
-          if (_showFileTree)
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text('错误: $_error'))
-                      : _ankiDataDir == null
-                          ? const Center(child: Text('anki_data 目录不存在'))
-                          : ListView(
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.sd_storage),
-                                  title: Text(_ankiDataDir!.path),
-                                ),
-                                for (final entity in _rootEntities)
-                                  if (entity is Directory)
-                                    ExpansionTile(
-                                      leading: const Icon(Icons.folder),
-                                      title: Text(entity.path.split('/').last + '/'),
-                                      children: [
-                                        _buildDeckDirView(entity),
-                                      ],
-                                    ),
-                              ],
-                            ),
+            ],
+            if (!_showDbDecks && !_showAllDeckCards && !_showFileTree) ...[
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(child: Text('错误: $_error'))
+                        : _ankiDataDir == null
+                            ? const Center(child: Text('anki_data 目录不存在'))
+                            : ListView(
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.sd_storage),
+                                    title: Text(_ankiDataDir!.path),
+                                  ),
+                                  // 只展示每个deck目录下的collection.sqlite和media
+                                  for (final entity in _rootEntities)
+                                    if (entity is Directory)
+                                      ExpansionTile(
+                                        leading: const Icon(Icons.folder),
+                                        title: Text(entity.path.split('/').last + '/'),
+                                        children: [
+                                          _buildDeckDirView(entity),
+                                        ],
+                                      ),
+                                ],
+                              ),
             ),
-          if (_showDbDecks)
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final deck in _dbDecks)
-                    ListTile(title: Text(deck.toString())),
-                ],
-              ),
-            ),
-          if (!_showDbDecks && !_showAllDeckCards && !_showFileTree)
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text('错误: $_error'))
-                      : _ankiDataDir == null
-                          ? const Center(child: Text('anki_data 目录不存在'))
-                          : ListView(
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.sd_storage),
-                                  title: Text(_ankiDataDir!.path),
-                                ),
-                                // 只展示每个deck目录下的collection.sqlite和media
-                                for (final entity in _rootEntities)
-                                  if (entity is Directory)
-                                    ExpansionTile(
-                                      leading: const Icon(Icons.folder),
-                                      title: Text(entity.path.split('/').last + '/'),
-                                      children: [
-                                        _buildDeckDirView(entity),
-                                      ],
-                                    ),
-                              ],
-                            ),
-            ),
+            ],
+          ],
         ],
       ),
     );

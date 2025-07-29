@@ -195,9 +195,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.star, color: Colors.amber),
-            onPressed: _showIAPPage,
+          Consumer(
+            builder: (context, ref, child) {
+              final trialStatus = ref.watch(trialStatusProvider);
+              Color crownColor = Colors.green; // 默认绿色（试用期或免费版）
+              final bool isFullVersion = trialStatus['fullVersionPurchased'] ?? false;
+              if (isFullVersion) {
+                crownColor = Colors.amber; // 完整版为金黄色
+              }
+              return IconButton(
+                icon: Icon(Icons.workspace_premium, color: crownColor),
+                onPressed: _showIAPPage,
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),

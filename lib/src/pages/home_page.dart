@@ -220,9 +220,8 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
       ),
       body: Builder(
         builder: (context) {
-          final trialStatusAsync = ref.watch(trialStatusProvider);
-          if (currentTabIndex == 0 && !_iapDialogShown && trialStatusAsync.asData != null) {
-            final trialStatus = trialStatusAsync.asData!.value;
+          final trialStatus = ref.watch(trialStatusProvider);
+          if (currentTabIndex == 0 && !_iapDialogShown) {
             final bool isFree = !(trialStatus['trialUsed'] ?? false) && !(trialStatus['fullVersionPurchased'] ?? false);
             if (isFree) {
               _iapDialogShown = true;

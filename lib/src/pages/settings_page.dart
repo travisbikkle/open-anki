@@ -458,8 +458,8 @@ class _SettingsPageState extends State<SettingsPage> {
                               applicationName: kAppName,
                               applicationVersion: '1.0.0',
                               applicationIcon: ClipOval(
-                                child: SvgPicture.asset(
-                                  'assets/icon.svg',
+                                child: Image.asset(
+                                  'assets/icon.png',
                                   width: 64,
                                   height: 64,
                                   fit: BoxFit.cover,
