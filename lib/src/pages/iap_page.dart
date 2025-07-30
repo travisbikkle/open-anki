@@ -62,18 +62,24 @@ class _IAPPageState extends ConsumerState<IAPPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.black,
+        automaticallyImplyLeading: !(trialStatus['trialUsed'] == true && 
+                                   trialStatus['trialExpired'] == true && 
+                                   trialStatus['fullVersionPurchased'] != true),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: 'Close',
-            onPressed: () {
-              if (widget.onClose != null) {
-                widget.onClose!();
-              } else {
-                Navigator.of(context).pop();
-              }
-            },
-          ),
+          if (!(trialStatus['trialUsed'] == true && 
+                trialStatus['trialExpired'] == true && 
+                trialStatus['fullVersionPurchased'] != true))
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () {
+                if (widget.onClose != null) {
+                  widget.onClose!();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
         ],
       ),
       body: iapService.loading
@@ -96,6 +102,57 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                 ],
               ),
             )
+          : !iapService.isAvailable
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 64, color: Colors.orange),
+                      const SizedBox(height: 16),
+                      Text(
+                        '网络连接异常',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        iapService.networkRetryInProgress 
+                            ? '正在后台重试连接...' 
+                            : '无法查询到应用的购买信息，请检查网络',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      if (!iapService.networkRetryInProgress) ...[
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            iapService.initialize();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('重试'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (!(trialStatus['trialUsed'] == true && 
+                            trialStatus['trialExpired'] == true && 
+                            trialStatus['fullVersionPurchased'] != true))
+                        TextButton(
+                          onPressed: () {
+                            if (widget.onClose != null) {
+                              widget.onClose!();
+                            } else {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: Text(AppLocalizations.of(context)?.close ?? '关闭'),
+                        ),
+                    ],
+                  ),
+                )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(

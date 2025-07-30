@@ -214,11 +214,19 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
   Widget build(BuildContext context) {
     final currentTabIndex = ref.watch(currentIndexProvider);
     final trialStatus = ref.watch(trialStatusProvider);
+    final iapService = ref.watch(iapServiceProvider);
     final bool trialUsed = trialStatus['trialUsed'] ?? false;
     final bool trialExpired = trialStatus['trialExpired'] ?? false;
     final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
-    // 只有未试用且未购买完整版才弹窗
-    if (currentTabIndex == 0 && !_iapDialogShown && !trialUsed && !fullVersionPurchased) {
+    
+    // 应用刚打开时不显示内购页面，只在后台查询成功后且用户未购买时才弹窗
+    if (currentTabIndex == 0 && 
+        !_iapDialogShown && 
+        !fullVersionPurchased && 
+        (trialUsed && trialExpired || !trialUsed) && 
+        iapService.isAvailable && 
+        !iapService.loading && 
+        !iapService.networkRetryInProgress) {
       _iapDialogShown = true;
       Future.microtask(() {
         showDialog(

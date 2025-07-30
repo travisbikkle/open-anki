@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import '../log_helper.dart';
 
 class IAPService extends ChangeNotifier {
   static const String _trialProductId = 'iap.trial.14';
@@ -26,6 +27,13 @@ class IAPService extends ChangeNotifier {
   // 购买状态
   bool _trialPurchasePending = false;
   bool _fullVersionPurchasePending = false;
+  
+  // 后台重试机制
+  bool _networkRetryInProgress = false;
+  int _retryCount = 0;
+  static const int _maxRetries = 5; // 5分钟，每30秒重试一次
+  static const Duration _retryInterval = Duration(seconds: 5);
+  Timer? _retryTimer;
 
   bool get isAvailable => _isAvailable;
   bool get purchasePending => _purchasePending;
@@ -38,48 +46,48 @@ class IAPService extends ChangeNotifier {
   DateTime? get trialStartDate => _trialStartDate;
   bool get trialPurchasePending => _trialPurchasePending;
   bool get fullVersionPurchasePending => _fullVersionPurchasePending;
+  bool get networkRetryInProgress => _networkRetryInProgress;
 
   @override
   void dispose() {
     _subscription.cancel();
+    _retryTimer?.cancel();
     super.dispose();
   }
 
   Future<void> initialize() async {
     try {
-      debugPrint('=== IAP Service Initialization Start ===');
-      debugPrint('Platform: ${Platform.operatingSystem}');
+      LogHelper.log('=== IAP Service Initialization Start ===');
+      LogHelper.log('Platform: ${Platform.operatingSystem}');
       try {
         final result = await InternetAddress.lookup('google.com');
-        debugPrint('Network connection: ${result.isNotEmpty ? 'Available' : 'Not available'}');
+        LogHelper.log('Network connection: ${result.isNotEmpty ? 'Available' : 'Not available'}');
       } catch (e) {
-        debugPrint('Network connection error: $e');
+        LogHelper.log('Network connection error: $e');
       }
       _isAvailable = await _inAppPurchase.isAvailable();
-      debugPrint('IAP available: $_isAvailable');
+      LogHelper.log('IAP available: $_isAvailable');
       if (!_isAvailable) {
-        debugPrint('IAP not available, using fallback products');
-        _setupFallbackProducts();
-        _loading = false;
-        notifyListeners();
+        LogHelper.log('IAP not available, starting background retry');
+        _startBackgroundRetry();
         return;
       }
       const Set<String> _kIds = <String>{
         _trialProductId,
         _fullVersionProductId,
       };
-      debugPrint('Querying product details for: $_kIds');
-      debugPrint('Starting product query...');
+      LogHelper.log('Querying product details for: $_kIds');
+      LogHelper.log('Starting product query...');
       final ProductDetailsResponse response = await _inAppPurchase.queryProductDetails(_kIds)
           .timeout(const Duration(seconds: 15), onTimeout: () {
-        debugPrint('Product query timeout after 15 seconds');
+        LogHelper.log('Product query timeout after 15 seconds');
         throw TimeoutException('Product query timeout', const Duration(seconds: 15));
       });
-      debugPrint('Product query completed');
-      debugPrint('Products found: ${response.productDetails.length}');
-      debugPrint('Not found IDs: ${response.notFoundIDs}');
+      LogHelper.log('Product query completed');
+      LogHelper.log('Products found: ${response.productDetails.length}');
+      LogHelper.log('Not found IDs: ${response.notFoundIDs}');
       for (final product in response.productDetails) {
-        debugPrint('Product: ${product.id} - ${product.title} - ${product.price}');
+        LogHelper.log('Product: ${product.id} - ${product.title} - ${product.price}');
       }
       _products = response.productDetails;
       _setupProducts();
@@ -90,21 +98,66 @@ class IAPService extends ChangeNotifier {
       // 监听购买流
       _subscription = _inAppPurchase.purchaseStream.listen(
         _onPurchaseUpdate,
-        onDone: () => debugPrint('Purchase stream done'),
-        onError: (error) => debugPrint('Purchase stream error: $error'),
+        onDone: () => LogHelper.log('Purchase stream done'),
+        onError: (error) => LogHelper.log('Purchase stream error: $error'),
       );
       await _inAppPurchase.restorePurchases();
-      debugPrint('IAP service initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing IAP service: $e');
-      debugPrint('Stack trace: ${StackTrace.current}');
-      _setupFallbackProducts();
-    } finally {
-      debugPrint('Setting loading to false');
+      LogHelper.log('IAP service initialized successfully');
       _loading = false;
       notifyListeners();
-      debugPrint('=== IAP Service Initialization End ===');
+    } catch (e) {
+      LogHelper.log('Error initializing IAP service: $e');
+      LogHelper.log('Stack trace: ${StackTrace.current}');
+      _startBackgroundRetry();
     }
+  }
+  
+  void _startBackgroundRetry() {
+    if (_networkRetryInProgress) return;
+    
+    _networkRetryInProgress = true;
+    _retryCount = 0;
+    _loading = false;
+    notifyListeners();
+    
+    LogHelper.log('Starting background retry mechanism');
+    _scheduleNextRetry();
+  }
+  
+  void _scheduleNextRetry() {
+    if (_retryCount >= _maxRetries) {
+      LogHelper.log('Max retries reached, giving up');
+      _networkRetryInProgress = false;
+      _isAvailable = false;
+      _loading = false;
+      notifyListeners();
+      return;
+    }
+    
+    _retryCount++;
+    LogHelper.log('Scheduling retry #$_retryCount in ${_retryInterval.inSeconds} seconds');
+    
+    _retryTimer = Timer(_retryInterval, () async {
+      if (!_networkRetryInProgress) return;
+      
+      LogHelper.log('Attempting retry #$_retryCount');
+      try {
+        _isAvailable = await _inAppPurchase.isAvailable();
+        if (_isAvailable) {
+          LogHelper.log('IAP became available on retry #$_retryCount');
+          _networkRetryInProgress = false;
+          _retryTimer?.cancel();
+          // 重新初始化
+          await initialize();
+          return;
+        }
+      } catch (e) {
+        LogHelper.log('Retry #$_retryCount failed: $e');
+      }
+      
+      // 继续下一次重试
+      _scheduleNextRetry();
+    });
   }
 
   void _setupProducts() {
@@ -154,11 +207,11 @@ class IAPService extends ChangeNotifier {
   }
 
   void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) {
-    debugPrint('=== _onPurchaseUpdate called ===');
-    debugPrint('purchaseDetailsList length: ${purchaseDetailsList.length}');
+    LogHelper.log('=== _onPurchaseUpdate called ===');
+    LogHelper.log('purchaseDetailsList length: ${purchaseDetailsList.length}');
     bool hasFullVersion = false;
     for (final purchaseDetails in purchaseDetailsList) {
-      debugPrint('Processing purchase: ${purchaseDetails.productID} - status: ${purchaseDetails.status}');
+      LogHelper.log('Processing purchase: ${purchaseDetails.productID} - status: ${purchaseDetails.status}');
       if (purchaseDetails.status == PurchaseStatus.purchased ||
           purchaseDetails.status == PurchaseStatus.restored) {
         if (purchaseDetails.productID == _fullVersionProductId) {
@@ -181,54 +234,54 @@ class IAPService extends ChangeNotifier {
     }
     _fullVersionPurchased = hasFullVersion;
     notifyListeners();
-    debugPrint('=== _onPurchaseUpdate completed ===');
+    LogHelper.log('=== _onPurchaseUpdate completed ===');
   }
 
   Future<void> purchaseTrial() async {
     if (_trialProduct == null) {
-      debugPrint('Trial product is null');
+      LogHelper.log('Trial product is null');
       return;
     }
     try {
       _trialPurchasePending = true;
       notifyListeners();
-      debugPrint('Attempting to purchase trial: ${_trialProduct!.id}');
+      LogHelper.log('Attempting to purchase trial: ${_trialProduct!.id}');
       final PurchaseParam purchaseParam = PurchaseParam(productDetails: _trialProduct!);
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
       _trialPurchasePending = false;
       notifyListeners();
-      debugPrint('Error purchasing trial: $e');
+      LogHelper.log('Error purchasing trial: $e');
       rethrow;
     }
   }
 
   Future<void> purchaseFullVersion() async {
     if (_fullVersionProduct == null) {
-      debugPrint('Full version product is null');
+      LogHelper.log('Full version product is null');
       return;
     }
     try {
       _fullVersionPurchasePending = true;
       notifyListeners();
-      debugPrint('Attempting to purchase full version: ${_fullVersionProduct!.id}');
+      LogHelper.log('Attempting to purchase full version: ${_fullVersionProduct!.id}');
       final PurchaseParam purchaseParam = PurchaseParam(productDetails: _fullVersionProduct!);
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
       _fullVersionPurchasePending = false;
       notifyListeners();
-      debugPrint('Error purchasing full version: $e');
+      LogHelper.log('Error purchasing full version: $e');
       rethrow;
     }
   }
 
   Future<void> restorePurchases() async {
-    debugPrint('=== restorePurchases called ===');
+    LogHelper.log('=== restorePurchases called ===');
     try {
       await _inAppPurchase.restorePurchases();
-      debugPrint('restorePurchases completed');
+      LogHelper.log('restorePurchases completed');
     } catch (e) {
-      debugPrint('restorePurchases error: $e');
+      LogHelper.log('restorePurchases error: $e');
       rethrow;
     }
   }
