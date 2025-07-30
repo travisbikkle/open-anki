@@ -82,23 +82,33 @@ class _IAPPageState extends ConsumerState<IAPPage> {
             ),
         ],
       ),
-      body: iapService.loading
+      body: iapService.loading || iapService.networkRetryInProgress
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 16),
-                  Text(AppLocalizations.of(context)?.iapLoading ?? '正在加载内购信息...'),
-                  const SizedBox(height: 8),
-                  Text(AppLocalizations.of(context)?.iapCheckNetwork ?? '请确保网络连接正常', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      iapService.initialize();
-                    },
-                    child: Text(AppLocalizations.of(context)?.reload ?? '重新加载'),
+                  Text(
+                    iapService.networkRetryInProgress 
+                        ? '正在查询购买状态...' 
+                        : (AppLocalizations.of(context)?.iapLoading ?? '正在加载内购信息...'),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    iapService.networkRetryInProgress 
+                        ? '请稍候，正在从服务器获取您的购买信息' 
+                        : (AppLocalizations.of(context)?.iapCheckNetwork ?? '请确保网络连接正常'), 
+                    style: TextStyle(fontSize: 12, color: Colors.grey)
+                  ),
+                  const SizedBox(height: 16),
+                  if (!iapService.networkRetryInProgress)
+                    ElevatedButton(
+                      onPressed: () {
+                        iapService.initialize();
+                      },
+                      child: Text(AppLocalizations.of(context)?.reload ?? '重新加载'),
+                    ),
                 ],
               ),
             )
@@ -210,7 +220,11 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                   const SizedBox(height: 20),
                   
                   // 购买选项
-                  if (trialStatus['fullVersionPurchased'] != true && iapService.isAvailable && iapService.products.isNotEmpty) ...[
+                  if (!trialStatus['fullVersionPurchased'] && 
+                      iapService.isAvailable && 
+                      iapService.products.isNotEmpty && 
+                      !iapService.loading && 
+                      !iapService.networkRetryInProgress) ...[
                     _buildPurchaseOption(
                       context,
                       ref,
@@ -275,7 +289,11 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                     
                     const SizedBox(height: 20),
                     
-                  ] else ...[
+                  ] else if (trialStatus['fullVersionPurchased']) ...[
+                    // 已购买完整版，不显示任何购买选项
+                  ] else if (iapService.loading || iapService.networkRetryInProgress) ...[
+                    // 正在加载或重试中，不显示购买选项，让用户看到加载状态
+                  ] else if (!iapService.isAvailable) ...[
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(

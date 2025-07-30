@@ -103,6 +103,10 @@ class IAPService extends ChangeNotifier {
       );
       await _inAppPurchase.restorePurchases();
       LogHelper.log('IAP service initialized successfully');
+      
+      // 等待一段时间让restorePurchases的结果被处理
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
       _loading = false;
       notifyListeners();
     } catch (e) {
