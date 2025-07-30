@@ -417,6 +417,10 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     VoidCallback onPressed,
   ) {
     final iapService = ref.watch(iapServiceProvider);
+    final bool isTrialButton = title == (AppLocalizations.of(context)?.iapTrialTitle ?? '试用版');
+    final bool isFullVersionButton = title == (AppLocalizations.of(context)?.iapFullTitle ?? '完整版');
+    final bool isPending = isTrialButton ? iapService.trialPurchasePending : 
+                          isFullVersionButton ? iapService.fullVersionPurchasePending : false;
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -476,7 +480,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: iapService.purchasePending ? null : onPressed,
+              onPressed: isPending ? null : onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
                 foregroundColor: Colors.white,
@@ -485,7 +489,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: iapService.purchasePending
+              child: isPending
                   ? const SizedBox(
                       height: 20,
                       width: 20,

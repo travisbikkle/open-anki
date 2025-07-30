@@ -22,6 +22,10 @@ class IAPService extends ChangeNotifier {
   bool _fullVersionPurchased = false;
   bool _trialUsed = false;
   DateTime? _trialStartDate;
+  
+  // 购买状态
+  bool _trialPurchasePending = false;
+  bool _fullVersionPurchasePending = false;
 
   bool get isAvailable => _isAvailable;
   bool get purchasePending => _purchasePending;
@@ -32,6 +36,8 @@ class IAPService extends ChangeNotifier {
   bool get fullVersionPurchased => _fullVersionPurchased;
   bool get trialUsed => _trialUsed;
   DateTime? get trialStartDate => _trialStartDate;
+  bool get trialPurchasePending => _trialPurchasePending;
+  bool get fullVersionPurchasePending => _fullVersionPurchasePending;
 
   @override
   void dispose() {
@@ -165,6 +171,13 @@ class IAPService extends ChangeNotifier {
           }
         }
       }
+      // 无论成功还是失败，都重置购买状态
+      if (purchaseDetails.productID == _trialProductId) {
+        _trialPurchasePending = false;
+      }
+      if (purchaseDetails.productID == _fullVersionProductId) {
+        _fullVersionPurchasePending = false;
+      }
     }
     _fullVersionPurchased = hasFullVersion;
     notifyListeners();
@@ -177,10 +190,14 @@ class IAPService extends ChangeNotifier {
       return;
     }
     try {
+      _trialPurchasePending = true;
+      notifyListeners();
       debugPrint('Attempting to purchase trial: ${_trialProduct!.id}');
       final PurchaseParam purchaseParam = PurchaseParam(productDetails: _trialProduct!);
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
+      _trialPurchasePending = false;
+      notifyListeners();
       debugPrint('Error purchasing trial: $e');
       rethrow;
     }
@@ -192,10 +209,14 @@ class IAPService extends ChangeNotifier {
       return;
     }
     try {
+      _fullVersionPurchasePending = true;
+      notifyListeners();
       debugPrint('Attempting to purchase full version: ${_fullVersionProduct!.id}');
       final PurchaseParam purchaseParam = PurchaseParam(productDetails: _fullVersionProduct!);
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
+      _fullVersionPurchasePending = false;
+      notifyListeners();
       debugPrint('Error purchasing full version: $e');
       rethrow;
     }
