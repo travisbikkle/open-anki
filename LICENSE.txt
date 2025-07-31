@@ -1,0 +1,71 @@
+OPEN ANKI PROJECT LICENSE
+
+Copyright (c) 2024 Open Anki Project Contributors
+
+This software and associated documentation files (the "Software") are licensed under the following terms:
+
+1. DEFINITIONS
+
+"Contributor" means any individual or entity that has contributed code, documentation, or other materials to this project and whose contributions are included in the Software.
+
+"Commercial Use" means any use of the Software that is primarily intended for commercial advantage or monetary compensation, including but not limited to:
+- Selling the Software or any derivative works
+- Using the Software to provide commercial services
+- Incorporating the Software into commercial products
+- Using the Software in a commercial environment for profit generation
+
+"Non-Commercial Use" means any use of the Software that is not Commercial Use, including but not limited to:
+- Personal use
+- Educational use
+- Research use
+- Open source development
+- Non-profit activities
+
+2. LICENSE GRANT
+
+Subject to the terms and conditions of this License:
+
+a) For Contributors: Contributors are granted a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, distribute, and commercially exploit the Software and any derivative works thereof.
+
+b) For Non-Contributors: Non-contributors are granted a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, and distribute the Software and any derivative works thereof, but ONLY for Non-Commercial Use. Commercial Use by non-contributors is expressly prohibited.
+
+3. CONTRIBUTOR REQUIREMENTS
+
+To become a Contributor and gain commercial use rights:
+- You must submit code, documentation, or other materials to the project
+- Your contributions must be accepted and merged into the main codebase
+- You must comply with the project's contribution guidelines
+- Your contributions must be substantial and meaningful to the project
+
+4. RESTRICTIONS
+
+a) Non-contributors may NOT:
+- Use the Software for Commercial Use
+- Sell, rent, or lease the Software
+- Use the Software to provide commercial services
+- Incorporate the Software into commercial products without written permission from all Contributors
+
+b) All users must:
+- Include the original copyright notice in any copy or substantial portion of the Software
+- Include this license text in any distribution of the Software
+- Not misrepresent the origin of the Software
+
+5. DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. TERMINATION
+
+This license automatically terminates if you fail to comply with its terms and conditions. Upon termination, you must cease all use, distribution, and possession of the Software.
+
+7. GOVERNING LAW
+
+This license shall be governed by and construed in accordance with the laws of the jurisdiction where the project is primarily developed, without regard to its conflict of law provisions.
+
+8. CONTACT
+
+For questions about this license or to request commercial use permissions, please contact the project maintainers through the project's official channels.
+
+---
+
+This license ensures that only those who contribute to the project can benefit commercially from it, while still allowing open source development and non-commercial use by the broader community.
