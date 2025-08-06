@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const String kAppName = 'Open Anki';
+const String kAppName = 'Flashcards Viewer';
 const String kSupportEmail = 'support@eusoftbank.com';
 
 /// 全局马卡龙配色

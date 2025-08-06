@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Open Anki 应用图标设置脚本
+# Flashcards Viewer 应用图标设置脚本
 # 一键生成图标并替换到所有平台
 
-echo "🚀 设置 Open Anki 应用图标..."
+echo "🚀 设置 Flashcards Viewer 应用图标..."
 
 # 检查 ImageMagick
 if ! command -v magick &> /dev/null && ! command -v convert &> /dev/null; then

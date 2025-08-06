@@ -9,7 +9,7 @@
 - 使用你的Apple Developer账户登录
 
 ### 2. **选择你的应用**
-- 在"我的App"中找到"Open Anki"
+- 在"我的App"中找到"Flashcards Viewer"
 - 点击进入应用详情页面
 
 ### 3. **配置内购产品**

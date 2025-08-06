@@ -51,7 +51,7 @@ dependencies:
   webview_flutter: ^4.13.0
   shared_preferences: ^2.2.2
   image_picker: ^1.1.2
-  image_cropper: ^5.0.1
+  image_cropper: ^9.1.0
   flutter_svg: ^2.0.0
   url_launcher: ^6.3.2
   package_info_plus: ^8.3.0

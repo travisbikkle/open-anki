@@ -480,7 +480,7 @@
 				DEVELOPMENT_TEAM = PBJ8XX5FQ7;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "OpenAnki - 极简闪卡记忆";
+				INFOPLIST_KEY_CFBundleDisplayName = "Flashcards Viewer - 极简闪卡记忆";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -704,7 +704,7 @@
 				DEVELOPMENT_TEAM = PBJ8XX5FQ7;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "OpenAnki - 极简闪卡记忆";
+				INFOPLIST_KEY_CFBundleDisplayName = "Flashcards Viewer - 极简闪卡记忆";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -766,7 +766,7 @@
 				DEVELOPMENT_TEAM = PBJ8XX5FQ7;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "OpenAnki - 极简闪卡记忆";
+				INFOPLIST_KEY_CFBundleDisplayName = "Flashcards Viewer - 极简闪卡记忆";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

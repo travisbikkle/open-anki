@@ -1,6 +1,6 @@
-OPEN ANKI PROJECT LICENSE
+Flashcards Viewer PROJECT LICENSE
 
-Copyright (c) 2024 Open Anki Project Contributors
+Copyright (c) 2024 Flashcards Viewer Project Contributors
 
 This software and associated documentation files (the "Software") are licensed under the following terms:
 

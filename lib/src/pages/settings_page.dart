@@ -476,7 +476,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           leading: const Icon(Icons.article_outlined),
                           title: Text(AppLocalizations.of(context)!.eula),
                           onTap: () async {
-                            final url = Uri.parse('https://anki.eusoftbank.com/en/eula');
+                            final url = Uri.parse('https://flashcards.eusoftbank.com/en/eula');
                             if (await canLaunchUrl(url)) {
                               await launchUrl(url, mode: LaunchMode.externalApplication);
                             }
@@ -486,7 +486,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           leading: const Icon(Icons.privacy_tip_outlined),
                           title: Text(AppLocalizations.of(context)!.privacyPolicy),
                           onTap: () async {
-                            final url = Uri.parse('https://anki.eusoftbank.com/en/policy');
+                            final url = Uri.parse('https://flashcards.eusoftbank.com/en/policy');
                             if (await canLaunchUrl(url)) {
                               await launchUrl(url, mode: LaunchMode.externalApplication);
                             }

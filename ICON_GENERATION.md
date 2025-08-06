@@ -1,4 +1,4 @@
-# Open Anki 应用图标
+# Flashcards Viewer 应用图标
 
 ## 使用方法
 

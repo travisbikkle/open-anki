@@ -94,7 +94,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
       final cropped = await ImageCropper().cropImage(
         sourcePath: picked.path,
         aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-        cropStyle: CropStyle.circle,
         compressFormat: ImageCompressFormat.jpg,
         compressQuality: 90,
         uiSettings: [

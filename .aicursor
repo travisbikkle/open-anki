@@ -1,6 +1,6 @@
 {
   "project": {
-    "name": "Open Anki",
+    "name": "Flashcards Viewer",
     "description": "一个基于 Flutter + Rust 的开源 Anki 客户端",
     "guidelines": {
       "code_style": {

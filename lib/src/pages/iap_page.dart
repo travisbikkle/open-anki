@@ -191,7 +191,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Open Anki',
+                          'Flashcards Viewer',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,

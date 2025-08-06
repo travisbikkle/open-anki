@@ -175,7 +175,7 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      onGenerateTitle: (context) => AppLocalizations.of(context)?.appTitle ?? 'Open Anki',
+      onGenerateTitle: (context) => AppLocalizations.of(context)?.appTitle ?? 'Flashcards Viewer',
       home: Scaffold(
         body: _pages[safeIndex],
         bottomNavigationBar: Builder(
