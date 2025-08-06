@@ -113,6 +113,7 @@
   "iapFullDesc": "解锁所有功能，永久使用",
   "iapFullBuy": "立即购买",
   "iapRestore": "恢复购买",
+  "iapRestorePurchases": "恢复购买",
   "iapPurchaseFailed": "购买失败，请检查网络或账户后重试",
   "iapInAppPurchaseUnavailable": "内购产品暂不可用",
   "iapInAppPurchaseConfiguredForRealDevice": "产品已配置，请在真实设备上测试购买",
@@ -128,5 +129,8 @@
   "iapCustomPlan": "自定义学习计划",
   "iapAdvancedAlgo": "高级记忆算法",
   "iapPrioritySupport": "优先技术支持",
-  "iapFullBuyOrRestore": "购买或恢复完整版"
+  "iapFullBuyOrRestore": "购买或恢复完整版",
+  "iapNoPurchasesToRestore": "没有找到可恢复的购买记录",
+  "iapPurchaseMayNotComplete": "购买可能未完成，请稍后检查",
+  "iapTrialMayNotStart": "试用可能未开始，请稍后检查"
 } 

@@ -27,6 +27,7 @@ class IAPService extends ChangeNotifier {
   // 购买状态
   bool _trialPurchasePending = false;
   bool _fullVersionPurchasePending = false;
+  bool _restorePurchasePending = false;
   
   // 后台重试机制
   bool _networkRetryInProgress = false;
@@ -46,6 +47,7 @@ class IAPService extends ChangeNotifier {
   DateTime? get trialStartDate => _trialStartDate;
   bool get trialPurchasePending => _trialPurchasePending;
   bool get fullVersionPurchasePending => _fullVersionPurchasePending;
+  bool get restorePurchasePending => _restorePurchasePending;
   bool get networkRetryInProgress => _networkRetryInProgress;
 
   @override
@@ -213,30 +215,50 @@ class IAPService extends ChangeNotifier {
   void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) {
     LogHelper.log('=== _onPurchaseUpdate called ===');
     LogHelper.log('purchaseDetailsList length: ${purchaseDetailsList.length}');
+    LogHelper.log('Current _fullVersionPurchased before processing: $_fullVersionPurchased');
+    LogHelper.log('Current _trialUsed before processing: $_trialUsed');
+    
     bool hasFullVersion = false;
     for (final purchaseDetails in purchaseDetailsList) {
       LogHelper.log('Processing purchase: ${purchaseDetails.productID} - status: ${purchaseDetails.status}');
+      LogHelper.log('Purchase details: ${purchaseDetails.toString()}');
+      
       if (purchaseDetails.status == PurchaseStatus.purchased ||
           purchaseDetails.status == PurchaseStatus.restored) {
+        LogHelper.log('Purchase/Restore status detected for: ${purchaseDetails.productID}');
+        
         if (purchaseDetails.productID == _fullVersionProductId) {
+          LogHelper.log('Full version product detected! Setting hasFullVersion = true');
           hasFullVersion = true;
         }
         if (purchaseDetails.productID == _trialProductId) {
+          LogHelper.log('Trial product detected! Setting _trialUsed = true');
           _trialUsed = true;
           if (_trialStartDate == null) {
             _trialStartDate = DateTime.now();
+            LogHelper.log('Setting trial start date to: $_trialStartDate');
           }
         }
+      } else {
+        LogHelper.log('Purchase status is not purchased/restored: ${purchaseDetails.status}');
       }
+      
       // 无论成功还是失败，都重置购买状态
       if (purchaseDetails.productID == _trialProductId) {
         _trialPurchasePending = false;
+        LogHelper.log('Reset trial purchase pending to false');
       }
       if (purchaseDetails.productID == _fullVersionProductId) {
         _fullVersionPurchasePending = false;
+        LogHelper.log('Reset full version purchase pending to false');
       }
     }
+    
+    LogHelper.log('Final hasFullVersion: $hasFullVersion');
     _fullVersionPurchased = hasFullVersion;
+    LogHelper.log('Set _fullVersionPurchased to: $_fullVersionPurchased');
+    LogHelper.log('Final _trialUsed: $_trialUsed');
+    
     notifyListeners();
     LogHelper.log('=== _onPurchaseUpdate completed ===');
   }
@@ -281,12 +303,37 @@ class IAPService extends ChangeNotifier {
 
   Future<void> restorePurchases() async {
     LogHelper.log('=== restorePurchases called ===');
+    LogHelper.log('Current state before restore:');
+    LogHelper.log('  - _fullVersionPurchased: $_fullVersionPurchased');
+    LogHelper.log('  - _trialUsed: $_trialUsed');
+    LogHelper.log('  - _trialStartDate: $_trialStartDate');
+    LogHelper.log('  - _fullVersionProductId: $_fullVersionProductId');
+    LogHelper.log('  - _trialProductId: $_trialProductId');
+    
     try {
+      _restorePurchasePending = true;
+      notifyListeners();
+      LogHelper.log('Calling _inAppPurchase.restorePurchases()...');
       await _inAppPurchase.restorePurchases();
-      LogHelper.log('restorePurchases completed');
+      LogHelper.log('_inAppPurchase.restorePurchases() completed successfully');
+      LogHelper.log('Waiting for purchase stream to process restored purchases...');
+      
+      // 等待一段时间让购买流处理恢复的购买
+      await Future.delayed(const Duration(seconds: 2));
+      
+      LogHelper.log('State after restore:');
+      LogHelper.log('  - _fullVersionPurchased: $_fullVersionPurchased');
+      LogHelper.log('  - _trialUsed: $_trialUsed');
+      LogHelper.log('  - _trialStartDate: $_trialStartDate');
+      
     } catch (e) {
       LogHelper.log('restorePurchases error: $e');
+      LogHelper.log('Error type: ${e.runtimeType}');
       rethrow;
+    } finally {
+      _restorePurchasePending = false;
+      notifyListeners();
+      LogHelper.log('restorePurchases finally block completed');
     }
   }
 

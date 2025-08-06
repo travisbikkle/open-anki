@@ -112,6 +112,7 @@
   "iapFullDesc": "Разблокировать все функции, использовать навсегда",
   "iapFullBuy": "Купить сейчас",
   "iapRestore": "Восстановить покупки",
+  "iapRestorePurchases": "Восстановить покупки",
   "iapPurchaseFailed": "Покупка не удалась, пожалуйста, проверьте сеть или аккаунт и попробуйте снова",
   "iapInAppPurchaseUnavailable": "Встроенная покупка недоступна",
   "iapInAppPurchaseConfiguredForRealDevice": "Продукт настроен, пожалуйста, протестируйте покупку на реальном устройстве",
@@ -127,5 +128,8 @@
   "iapCustomPlan": "Индивидуальный учебный план",
   "iapAdvancedAlgo": "Продвинутый алгоритм памяти",
   "iapPrioritySupport": "Приоритетная поддержка",
-  "iapFullBuyOrRestore": "Купить или восстановить полную версию"
+  "iapFullBuyOrRestore": "Купить или восстановить полную версию",
+  "iapNoPurchasesToRestore": "Покупки для восстановления не найдены",
+  "iapPurchaseMayNotComplete": "Покупка может быть не завершена, проверьте позже",
+  "iapTrialMayNotStart": "Пробная версия может не запуститься, проверьте позже"
 } 

@@ -112,6 +112,7 @@
   "iapFullDesc": "すべての機能をアンロック、永久に利用可能",
   "iapFullBuy": "今すぐ購入",
   "iapRestore": "購入を復元",
+  "iapRestorePurchases": "購入を復元",
   "iapPurchaseFailed": "購入に失敗しました。ネットワークまたはアカウントを確認して再試行してください",
   "iapInAppPurchaseUnavailable": "アプリ内購入は利用できません",
   "iapInAppPurchaseConfiguredForRealDevice": "製品が設定されました。実機で購入をテストしてください",
@@ -127,5 +128,8 @@
   "iapCustomPlan": "カスタム学習プラン",
   "iapAdvancedAlgo": "高度な記憶アルゴリズム",
   "iapPrioritySupport": "優先サポート",
-  "iapFullBuyOrRestore": "フルバージョンを購入または復元"
+  "iapFullBuyOrRestore": "フルバージョンを購入または復元",
+  "iapNoPurchasesToRestore": "復元する購入が見つかりません",
+  "iapPurchaseMayNotComplete": "購入が完了していない可能性があります。後で確認してください",
+  "iapTrialMayNotStart": "試用版が開始されていない可能性があります。後で確認してください"
 } 

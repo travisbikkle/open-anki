@@ -112,6 +112,7 @@
   "iapFullDesc": "Unlock all features, use forever",
   "iapFullBuy": "Buy Now",
   "iapRestore": "Restore Purchases",
+  "iapRestorePurchases": "Restore Purchases",
   "iapPurchaseFailed": "Purchase failed, please check your network or account and try again",
   "iapInAppPurchaseUnavailable": "In-app purchase unavailable",
   "iapInAppPurchaseConfiguredForRealDevice": "Product configured, please test purchase on a real device",
@@ -127,5 +128,8 @@
   "iapCustomPlan": "Custom study plan",
   "iapAdvancedAlgo": "Advanced memory algorithm",
   "iapPrioritySupport": "Priority support",
-  "iapFullBuyOrRestore": "Buy or Restore Full Version"
+  "iapFullBuyOrRestore": "Buy or Restore Full Version",
+  "iapNoPurchasesToRestore": "No purchases found to restore",
+  "iapPurchaseMayNotComplete": "Purchase may not have completed, please check later",
+  "iapTrialMayNotStart": "Trial may not have started, please check later"
 } 

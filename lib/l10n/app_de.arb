@@ -112,6 +112,7 @@
   "iapFullDesc": "Alle Funktionen freischalten, für immer nutzen",
   "iapFullBuy": "Jetzt kaufen",
   "iapRestore": "Käufe wiederherstellen",
+  "iapRestorePurchases": "Käufe wiederherstellen",
   "iapPurchaseFailed": "Kauf fehlgeschlagen, bitte überprüfen Sie Ihr Netzwerk oder Konto und versuchen Sie es erneut",
   "iapInAppPurchaseUnavailable": "In-App-Kauf nicht verfügbar",
   "iapInAppPurchaseConfiguredForRealDevice": "Produkt konfiguriert, bitte Kauf auf echtem Gerät testen",
@@ -127,5 +128,8 @@
   "iapCustomPlan": "Individueller Lernplan",
   "iapAdvancedAlgo": "Erweiterter Gedächtnisalgorithmus",
   "iapPrioritySupport": "Priorisierter Support",
-  "iapFullBuyOrRestore": "Vollversion kaufen oder wiederherstellen"
+  "iapFullBuyOrRestore": "Vollversion kaufen oder wiederherstellen",
+  "iapNoPurchasesToRestore": "Keine Käufe zum Wiederherstellen gefunden",
+  "iapPurchaseMayNotComplete": "Kauf möglicherweise nicht abgeschlossen, bitte später prüfen",
+  "iapTrialMayNotStart": "Testversion möglicherweise nicht gestartet, bitte später prüfen"
 } 

@@ -31,10 +31,23 @@ final userAccessProvider = Provider<bool>((ref) {
 
 final trialStatusProvider = Provider<Map<String, dynamic>>((ref) {
   final iapService = ref.watch(iapServiceProvider);
-  return {
+  
+  final trialStatus = {
     'trialUsed': iapService.trialUsed,
     'trialExpired': iapService.getTrialExpired(),
     'remainingDays': iapService.getRemainingTrialDays(),
     'fullVersionPurchased': iapService.fullVersionPurchased,
   };
+  
+  // 添加调试日志
+  print('=== trialStatusProvider updated ===');
+  print('IAP Service state:');
+  print('  - fullVersionPurchased: ${iapService.fullVersionPurchased}');
+  print('  - trialUsed: ${iapService.trialUsed}');
+  print('  - trialStartDate: ${iapService.trialStartDate}');
+  print('  - getTrialExpired(): ${iapService.getTrialExpired()}');
+  print('  - getRemainingTrialDays(): ${iapService.getRemainingTrialDays()}');
+  print('Trial status result: $trialStatus');
+  
+  return trialStatus;
 });
