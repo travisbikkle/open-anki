@@ -139,14 +139,14 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString('locale');
     setState(() {
-      _selectedLocale = code == null || code == 'system' ? null : Locale(code);
+      _selectedLocale = (code == null || code == 'system') ? null : Locale(code);
     });
   }
 
   Future<void> _saveLocale(String? code) async {
     final prefs = await SharedPreferences.getInstance();
     if (code == null || code == 'system') {
-      await prefs.remove('locale');
+      await prefs.setString('locale', 'system');
       setState(() { _selectedLocale = null; });
     } else {
       await prefs.setString('locale', code);
@@ -382,7 +382,11 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ],
                           onChanged: (locale) {
-                            _saveLocale(locale?.languageCode == 'system' ? null : locale?.languageCode);
+                            if (locale?.languageCode == 'system') {
+                              _saveLocale('system');
+                            } else {
+                              _saveLocale(locale?.languageCode);
+                            }
                           },
                         ),
                       ],
@@ -466,7 +470,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                               ),
                               children: [
-                                 Text('An open-source Anki flashcard app'), // TODO: Add to ARB
+                                 Text('An open-source flashcards viewer app'), // TODO: Add to ARB
                               ],
                             );
                           },

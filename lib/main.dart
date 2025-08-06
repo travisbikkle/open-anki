@@ -156,6 +156,22 @@ class _MyAppState extends State<MyApp> {
     const ProfilePage(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLocale();
+  }
+
+  Future<void> _loadSavedLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('locale');
+    if (code != null && code != 'system') {
+      setState(() {
+        _locale = Locale(code);
+      });
+    }
+  }
+
   void setLocale(Locale? locale) {
     setState(() {
       _locale = locale;
