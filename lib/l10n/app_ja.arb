@@ -131,5 +131,12 @@
   "iapFullBuyOrRestore": "フルバージョンを購入または復元",
   "iapNoPurchasesToRestore": "復元する購入が見つかりません",
   "iapPurchaseMayNotComplete": "購入が完了していない可能性があります。後で確認してください",
-  "iapTrialMayNotStart": "試用版が開始されていない可能性があります。後で確認してください"
+  "iapTrialMayNotStart": "試用版が開始されていない可能性があります。後で確認してください",
+  "iapAppTitle": "Flashcards Viewer",
+  "iapAppDescription": "科学的記憶アルゴリズムに基づくインテリジェント学習ツール",
+  "iapNetworkError": "ネットワーク接続エラー",
+  "iapRetryConnection": "再試行",
+  "iapQueryingPurchaseStatus": "購入ステータスを照会中...",
+  "iapPleaseWaitGettingInfo": "お待ちください。サーバーから購入情報を取得中です",
+  "iapCannotQueryPurchaseInfo": "アプリの購入情報を照会できません。ネットワークを確認してください"
 } 

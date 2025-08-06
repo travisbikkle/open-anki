@@ -131,5 +131,12 @@
   "iapFullBuyOrRestore": "Vollversion kaufen oder wiederherstellen",
   "iapNoPurchasesToRestore": "Keine Käufe zum Wiederherstellen gefunden",
   "iapPurchaseMayNotComplete": "Kauf möglicherweise nicht abgeschlossen, bitte später prüfen",
-  "iapTrialMayNotStart": "Testversion möglicherweise nicht gestartet, bitte später prüfen"
+  "iapTrialMayNotStart": "Testversion möglicherweise nicht gestartet, bitte später prüfen",
+  "iapAppTitle": "Flashcards Viewer",
+  "iapAppDescription": "Intelligentes Lernwerkzeug basierend auf wissenschaftlichen Gedächtnisalgorithmen",
+  "iapNetworkError": "Netzwerkverbindungsfehler",
+  "iapRetryConnection": "Wiederholen",
+  "iapQueryingPurchaseStatus": "Kaufstatus wird abgefragt...",
+  "iapPleaseWaitGettingInfo": "Bitte warten, Kaufinformationen werden vom Server abgerufen",
+  "iapCannotQueryPurchaseInfo": "App-Kaufinformationen können nicht abgefragt werden, bitte Netzwerk prüfen"
 } 

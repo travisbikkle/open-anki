@@ -131,5 +131,12 @@
   "iapFullBuyOrRestore": "Buy or Restore Full Version",
   "iapNoPurchasesToRestore": "No purchases found to restore",
   "iapPurchaseMayNotComplete": "Purchase may not have completed, please check later",
-  "iapTrialMayNotStart": "Trial may not have started, please check later"
+  "iapTrialMayNotStart": "Trial may not have started, please check later",
+  "iapAppTitle": "Flashcards Viewer",
+  "iapAppDescription": "Intelligent learning tool based on scientific memory algorithms",
+  "iapNetworkError": "Network connection error",
+  "iapRetryConnection": "Retry",
+  "iapQueryingPurchaseStatus": "Querying purchase status...",
+  "iapPleaseWaitGettingInfo": "Please wait, getting your purchase information from server",
+  "iapCannotQueryPurchaseInfo": "Cannot query app purchase information, please check network"
 } 

@@ -131,5 +131,12 @@
   "iapFullBuyOrRestore": "Купить или восстановить полную версию",
   "iapNoPurchasesToRestore": "Покупки для восстановления не найдены",
   "iapPurchaseMayNotComplete": "Покупка может быть не завершена, проверьте позже",
-  "iapTrialMayNotStart": "Пробная версия может не запуститься, проверьте позже"
+  "iapTrialMayNotStart": "Пробная версия может не запуститься, проверьте позже",
+  "iapAppTitle": "Flashcards Viewer",
+  "iapAppDescription": "Интеллектуальный инструмент обучения на основе научных алгоритмов памяти",
+  "iapNetworkError": "Ошибка сетевого подключения",
+  "iapRetryConnection": "Повторить",
+  "iapQueryingPurchaseStatus": "Запрос статуса покупки...",
+  "iapPleaseWaitGettingInfo": "Пожалуйста, подождите, получение информации о покупке с сервера",
+  "iapCannotQueryPurchaseInfo": "Не удается запросить информацию о покупке приложения, проверьте сеть"
 } 

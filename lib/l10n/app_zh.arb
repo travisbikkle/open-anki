@@ -132,5 +132,12 @@
   "iapFullBuyOrRestore": "购买或恢复完整版",
   "iapNoPurchasesToRestore": "没有找到可恢复的购买记录",
   "iapPurchaseMayNotComplete": "购买可能未完成，请稍后检查",
-  "iapTrialMayNotStart": "试用可能未开始，请稍后检查"
+  "iapTrialMayNotStart": "试用可能未开始，请稍后检查",
+  "iapAppTitle": "Flashcards Viewer",
+  "iapAppDescription": "基于科学记忆算法的智能学习工具",
+  "iapNetworkError": "网络连接异常",
+  "iapRetryConnection": "重试",
+  "iapQueryingPurchaseStatus": "正在查询购买状态...",
+  "iapPleaseWaitGettingInfo": "请稍候，正在从服务器获取您的购买信息",
+  "iapCannotQueryPurchaseInfo": "无法查询到应用的购买信息，请检查网络"
 } 

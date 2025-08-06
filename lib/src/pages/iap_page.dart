@@ -103,13 +103,13 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                   const SizedBox(height: 16),
                   Text(
                     iapService.networkRetryInProgress 
-                        ? '正在查询购买状态...' 
+                        ? (AppLocalizations.of(context)?.iapQueryingPurchaseStatus ?? '正在查询购买状态...')
                         : (AppLocalizations.of(context)?.iapLoading ?? '正在加载内购信息...'),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     iapService.networkRetryInProgress 
-                        ? '请稍候，正在从服务器获取您的购买信息' 
+                        ? (AppLocalizations.of(context)?.iapPleaseWaitGettingInfo ?? '请稍候，正在从服务器获取您的购买信息')
                         : (AppLocalizations.of(context)?.iapCheckNetwork ?? '请确保网络连接正常'), 
                     style: TextStyle(fontSize: 12, color: Colors.grey)
                   ),
@@ -132,14 +132,14 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                       const Icon(Icons.wifi_off, size: 64, color: Colors.orange),
                       const SizedBox(height: 16),
                       Text(
-                        '网络连接异常',
+                        AppLocalizations.of(context)?.iapNetworkError ?? '网络连接异常',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         iapService.networkRetryInProgress 
                             ? '正在后台重试连接...' 
-                            : '无法查询到应用的购买信息，请检查网络',
+                            : (AppLocalizations.of(context)?.iapCannotQueryPurchaseInfo ?? '无法查询到应用的购买信息，请检查网络'),
                         style: const TextStyle(fontSize: 14, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ),
@@ -150,7 +150,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                             iapService.initialize();
                           },
                           icon: const Icon(Icons.refresh),
-                          label: const Text('重试'),
+                          label: Text(AppLocalizations.of(context)?.iapRetryConnection ?? '重试'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
@@ -203,7 +203,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Flashcards Viewer',
+                          AppLocalizations.of(context)?.iapAppTitle ?? 'Flashcards Viewer',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -211,7 +211,7 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '基于科学记忆算法的智能学习工具',
+                          AppLocalizations.of(context)?.iapAppDescription ?? '基于科学记忆算法的智能学习工具',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey,
