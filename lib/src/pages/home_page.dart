@@ -220,7 +220,9 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
     final bool fullVersionPurchased = trialStatus['fullVersionPurchased'] ?? false;
     
     // 应用刚打开时不显示内购页面，只在后台查询成功后且用户未购买时才弹窗
-    if (currentTabIndex == 0 && 
+    // 在Android平台上跳过内购弹窗
+    if (enableIAP && 
+        currentTabIndex == 0 && 
         !_iapDialogShown && 
         !fullVersionPurchased && 
         (trialUsed && trialExpired || !trialUsed) && 

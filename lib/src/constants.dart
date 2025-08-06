@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 const String kAppName = 'Flashcards Viewer';
@@ -14,4 +16,14 @@ final List<Color> kMacaronColors = [
   Color(0xFFF6DFEB), // 淡紫
   Color(0xFFD4F1F4), // 淡蓝
 ];
+
+// Platform detection functions
+bool get isIOS => Platform.isIOS;
+bool get isAndroid => Platform.isAndroid;
+bool get isWeb => false; // Platform.isWeb is not available in dart:io
+bool get isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+
+// Feature flags based on platform
+bool get enableIAP => isIOS; // Only enable IAP on iOS
+bool get enableAppleFeatures => isIOS; // Only enable Apple-specific features on iOS
 

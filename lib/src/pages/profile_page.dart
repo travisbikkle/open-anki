@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'iap_page.dart';
+import '../constants.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -194,17 +195,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with SingleTickerProv
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          Consumer(
-            builder: (context, ref, child) {
-              final trialStatus = ref.watch(trialStatusProvider);
-              final bool isFullVersion = trialStatus['fullVersionPurchased'] ?? false;
-              Color crownColor = isFullVersion ? Colors.amber : Colors.green;
-              return IconButton(
-                icon: Icon(Icons.workspace_premium, color: crownColor),
-                onPressed: _showIAPPage,
-              );
-            },
-          ),
+          // Only show IAP button on iOS
+          if (enableIAP)
+            Consumer(
+              builder: (context, ref, child) {
+                final trialStatus = ref.watch(trialStatusProvider);
+                final bool isFullVersion = trialStatus['fullVersionPurchased'] ?? false;
+                Color crownColor = isFullVersion ? Colors.amber : Colors.green;
+                return IconButton(
+                  icon: Icon(Icons.workspace_premium, color: crownColor),
+                  onPressed: _showIAPPage,
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
             onPressed: _showSettings,

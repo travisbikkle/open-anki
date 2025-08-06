@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import '../log_helper.dart';
+import '../constants.dart';
 
 class IAPService extends ChangeNotifier {
   static const String _trialProductId = 'iap.trial.14';
@@ -58,6 +59,15 @@ class IAPService extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
+    // Skip IAP initialization on Android
+    if (!enableIAP) {
+      LogHelper.log('=== IAP Service Initialization Skipped (Android Platform) ===');
+      _isAvailable = false;
+      _loading = false;
+      notifyListeners();
+      return;
+    }
+
     try {
       LogHelper.log('=== IAP Service Initialization Start ===');
       LogHelper.log('Platform: ${Platform.operatingSystem}');
