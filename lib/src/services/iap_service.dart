@@ -233,6 +233,24 @@ class IAPService extends ChangeNotifier {
     LogHelper.log('purchaseDetailsList length: ${purchaseDetailsList.length}');
     LogHelper.log('Current _fullVersionPurchased before processing: $_fullVersionPurchased');
     LogHelper.log('Current _trialUsed before processing: $_trialUsed');
+    LogHelper.log('_restorePurchasePending: $_restorePurchasePending');
+    
+    // 如果在恢复购买过程中，且当前已有完整版，不要被试用版覆盖
+    if (_restorePurchasePending && _fullVersionPurchased) {
+      LogHelper.log('Restore purchase in progress and full version already purchased, preserving full version state');
+      // 只重置购买状态，不改变购买结果
+      for (final purchaseDetails in purchaseDetailsList) {
+        if (purchaseDetails.productID == _trialProductId) {
+          _trialPurchasePending = false;
+          LogHelper.log('Reset trial purchase pending to false');
+        }
+        if (purchaseDetails.productID == _fullVersionProductId) {
+          _fullVersionPurchasePending = false;
+          LogHelper.log('Reset full version purchase pending to false');
+        }
+      }
+      return;
+    }
     
     bool hasFullVersion = false;
     bool hasTrial = false;
@@ -350,11 +368,6 @@ class IAPService extends ChangeNotifier {
     LogHelper.log('  - _fullVersionProductId: $_fullVersionProductId');
     LogHelper.log('  - _trialProductId: $_trialProductId');
     
-    // 保存当前状态，防止在恢复过程中被重置
-    final bool currentFullVersionPurchased = _fullVersionPurchased;
-    final bool currentTrialUsed = _trialUsed;
-    final DateTime? currentTrialStartDate = _trialStartDate;
-    
     try {
       _restorePurchasePending = true;
       notifyListeners();
@@ -370,15 +383,6 @@ class IAPService extends ChangeNotifier {
       LogHelper.log('  - _fullVersionPurchased: $_fullVersionPurchased');
       LogHelper.log('  - _trialUsed: $_trialUsed');
       LogHelper.log('  - _trialStartDate: $_trialStartDate');
-      
-      // 如果恢复后状态被重置了，恢复之前的状态
-      if (!_fullVersionPurchased && currentFullVersionPurchased) {
-        LogHelper.log('Restoring previous full version state');
-        _fullVersionPurchased = currentFullVersionPurchased;
-        _trialUsed = currentTrialUsed;
-        _trialStartDate = currentTrialStartDate;
-        notifyListeners();
-      }
       
     } catch (e) {
       LogHelper.log('restorePurchases error: $e');
