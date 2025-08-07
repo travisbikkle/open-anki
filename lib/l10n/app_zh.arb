@@ -71,7 +71,6 @@
   "cardInfo": "卡片信息",
   "previousCard": "上一题",
   "backToFront": "返回正面",
-  "showAnswer": "Answer",
   "showAnswer": "答案",
   "nextCard": "下一题",
   "feedbackMailSubject": "{appName} 问题反馈",
@@ -139,5 +138,9 @@
   "iapRetryConnection": "重试",
   "iapQueryingPurchaseStatus": "正在查询购买状态...",
   "iapPleaseWaitGettingInfo": "请稍候，正在从服务器获取您的购买信息",
-  "iapCannotQueryPurchaseInfo": "无法查询到应用的购买信息，请检查网络"
+  "iapCannotQueryPurchaseInfo": "无法查询到应用的购买信息，请检查网络",
+  "iapRestoreSuccess": "恢复购买成功，您已拥有完整版",
+  "iapTrialAlreadyUsed": "您已经使用过试用版",
+  "iapTrialExpiredMessage": "试用期已过期，请购买完整版",
+  "iapTrialRemainingMessage": "试用期剩余{days}天"
 } 

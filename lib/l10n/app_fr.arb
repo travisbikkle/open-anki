@@ -138,5 +138,9 @@
   "iapRetryConnection": "Réessayer",
   "iapQueryingPurchaseStatus": "Interrogation du statut d'achat...",
   "iapPleaseWaitGettingInfo": "Veuillez patienter, récupération de vos informations d'achat depuis le serveur",
-  "iapCannotQueryPurchaseInfo": "Impossible d'interroger les informations d'achat de l'application, vérifiez le réseau"
+  "iapCannotQueryPurchaseInfo": "Impossible d'interroger les informations d'achat de l'application, vérifiez le réseau",
+  "iapRestoreSuccess": "Restauration réussie, vous possédez déjà la version complète",
+  "iapTrialAlreadyUsed": "Vous avez déjà utilisé la version d'essai",
+  "iapTrialExpiredMessage": "La version d'essai a expiré, veuillez acheter la version complète",
+  "iapTrialRemainingMessage": "Version d'essai restante {days} jours"
 } 

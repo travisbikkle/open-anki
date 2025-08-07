@@ -66,6 +66,9 @@ class _IAPPageState extends ConsumerState<IAPPage> {
     debugPrint('IAP Service - Loading: ${iapService.loading}, Available: ${iapService.isAvailable}');
     debugPrint('Trial Product: ${iapService.trialProduct?.title}');
     debugPrint('Full Version Product: ${iapService.fullVersionProduct?.title}');
+    debugPrint('IAP Service fullVersionPurchased: ${iapService.fullVersionPurchased}');
+    debugPrint('Trial Status fullVersionPurchased: ${trialStatus['fullVersionPurchased']}');
+    debugPrint('Status mismatch: ${iapService.fullVersionPurchased != trialStatus['fullVersionPurchased']}');
     
     return Scaffold(
       backgroundColor: const Color(0xffeaf6ff),
@@ -232,151 +235,183 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                   const SizedBox(height: 20),
                   
                   // 购买选项
-                  if (!trialStatus['fullVersionPurchased'] && 
-                      iapService.isAvailable && 
+                  if (iapService.isAvailable && 
                       iapService.products.isNotEmpty && 
                       !iapService.loading && 
                       !iapService.networkRetryInProgress) ...[
-                    _buildPurchaseOption(
-                      context,
-                      ref,
-                      iapService.trialProduct,
-                      AppLocalizations.of(context)?.iapTrialTitle ?? '试用版',
-                      AppLocalizations.of(context)?.iapTrialDesc ?? '免费试用14天',
-                      AppLocalizations.of(context)?.iapTrialStart ?? '开始试用',
-                      Colors.blue,
-                      () async {
-                        debugPrint('=== Start Trial button clicked ===');
-                        debugPrint('Current trial status: $trialStatus');
-                        debugPrint('IAP Service state:');
-                        debugPrint('  - isAvailable: ${iapService.isAvailable}');
-                        debugPrint('  - loading: ${iapService.loading}');
-                        debugPrint('  - trialUsed: ${iapService.trialUsed}');
-                        
-                        try {
-                          debugPrint('Calling iapService.purchaseTrial()...');
+                    // 试用和购买按钮只在未购买完整版时显示
+                    if (!trialStatus['fullVersionPurchased']) ...[
+                      _buildPurchaseOption(
+                        context,
+                        ref,
+                        iapService.trialProduct,
+                        AppLocalizations.of(context)?.iapTrialTitle ?? '试用版',
+                        AppLocalizations.of(context)?.iapTrialDesc ?? '免费试用14天',
+                        AppLocalizations.of(context)?.iapTrialStart ?? '开始试用',
+                        Colors.blue,
+                        () async {
+                          debugPrint('=== Start Trial button clicked ===');
+                          debugPrint('Current trial status: $trialStatus');
+                          debugPrint('IAP Service state:');
+                          debugPrint('  - isAvailable: ${iapService.isAvailable}');
+                          debugPrint('  - loading: ${iapService.loading}');
+                          debugPrint('  - trialUsed: ${iapService.trialUsed}');
                           
-                          // 记录试用前的状态
-                          final beforeTrial = iapService.trialUsed;
-                          debugPrint('Before trial - trialUsed: $beforeTrial');
-                          
-                          await iapService.purchaseTrial();
-                          debugPrint('purchaseTrial() completed successfully');
-                          
-                          // 试用成功后刷新状态
-                          debugPrint('Invalidating trialStatusProvider...');
-                          ref.invalidate(trialStatusProvider);
-                          
-                          debugPrint('Waiting 500ms for state to update...');
-                          await Future.delayed(const Duration(milliseconds: 500));
-                          
-                          // 检查试用后的状态
-                          final afterTrial = iapService.trialUsed;
-                          debugPrint('After trial - trialUsed: $afterTrial');
-                          
-                          if (mounted) {
-                            if (afterTrial && !beforeTrial) {
-                              // 只有在真正开始试用时才显示成功对话框
-                              debugPrint('Trial was successfully started! Showing success dialog...');
-                              _showPurchaseSuccessDialog();
-                            } else {
-                              debugPrint('Trial may not have started successfully');
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(AppLocalizations.of(context)?.iapTrialMayNotStart ?? '试用可能未开始，请稍后检查'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
+                          try {
+                            debugPrint('Calling iapService.purchaseTrial()...');
+                            
+                            // 记录试用前的状态
+                            final beforeTrial = iapService.trialUsed;
+                            debugPrint('Before trial - trialUsed: $beforeTrial');
+                            
+                            await iapService.purchaseTrial();
+                            debugPrint('purchaseTrial() completed successfully');
+                            
+                            // 试用成功后刷新状态
+                            debugPrint('Invalidating trialStatusProvider...');
+                            ref.invalidate(trialStatusProvider);
+                            
+                            debugPrint('Waiting 500ms for state to update...');
+                            await Future.delayed(const Duration(milliseconds: 500));
+                            
+                            // 检查试用后的状态
+                            final afterTrial = iapService.trialUsed;
+                            debugPrint('After trial - trialUsed: $afterTrial');
+                            
+                            if (mounted) {
+                              if (afterTrial && !beforeTrial) {
+                                // 只有在真正开始试用时才显示成功对话框
+                                debugPrint('Trial was successfully started! Showing success dialog...');
+                                _showPurchaseSuccessDialog();
+                              } else if (afterTrial && beforeTrial) {
+                                // 用户已经试用过，显示当前试用状态
+                                debugPrint('User has already used trial, showing current trial status');
+                                final trialStatus = ref.read(trialStatusProvider);
+                                final bool trialExpired = trialStatus['trialExpired'] ?? false;
+                                final int? remainingDays = trialStatus['remainingDays'];
+                                
+                                if (context.mounted) {
+                                  String message;
+                                  Color backgroundColor;
+                                  
+                                  if (trialExpired) {
+                                    message = AppLocalizations.of(context)?.iapTrialExpiredMessage ?? '试用期已过期，请购买完整版';
+                                    backgroundColor = Colors.red;
+                                  } else if (remainingDays != null) {
+                                    message = AppLocalizations.of(context)?.iapTrialRemainingMessage(remainingDays) ?? '试用期剩余$remainingDays天';
+                                    backgroundColor = Colors.blue;
+                                  } else {
+                                    message = AppLocalizations.of(context)?.iapTrialAlreadyUsed ?? '您已经使用过试用版';
+                                    backgroundColor = Colors.orange;
+                                  }
+                                  
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(message),
+                                      backgroundColor: backgroundColor,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                debugPrint('Trial may not have started successfully');
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(AppLocalizations.of(context)?.iapTrialMayNotStart ?? '试用可能未开始，请稍后检查'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
                               }
                             }
-                          }
-                        } catch (e) {
-                          debugPrint('Trial failed with error: $e');
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    _buildPurchaseOption(
-                      context,
-                      ref,
-                      iapService.fullVersionProduct,
-                      AppLocalizations.of(context)?.iapFullTitle ?? '完整版',
-                      AppLocalizations.of(context)?.iapFullDesc ?? '解锁所有功能，永久使用',
-                      AppLocalizations.of(context)?.iapFullBuy ?? '立即购买',
-                      Colors.green,
-                      () async {
-                        debugPrint('=== Buy Full Version button clicked ===');
-                        debugPrint('Current trial status: $trialStatus');
-                        debugPrint('IAP Service state:');
-                        debugPrint('  - isAvailable: ${iapService.isAvailable}');
-                        debugPrint('  - loading: ${iapService.loading}');
-                        debugPrint('  - fullVersionPurchased: ${iapService.fullVersionPurchased}');
-                        
-                        try {
-                          debugPrint('Calling iapService.purchaseFullVersion()...');
-                          
-                          // 记录购买前的状态
-                          final beforePurchase = iapService.fullVersionPurchased;
-                          debugPrint('Before purchase - fullVersionPurchased: $beforePurchase');
-                          
-                          await iapService.purchaseFullVersion();
-                          debugPrint('purchaseFullVersion() completed successfully');
-                          
-                          // 购买成功后刷新状态
-                          debugPrint('Invalidating trialStatusProvider...');
-                          ref.invalidate(trialStatusProvider);
-                          
-                          debugPrint('Waiting 500ms for state to update...');
-                          await Future.delayed(const Duration(milliseconds: 500));
-                          
-                          // 检查购买后的状态
-                          final afterPurchase = iapService.fullVersionPurchased;
-                          debugPrint('After purchase - fullVersionPurchased: $afterPurchase');
-                          
-                          if (mounted) {
-                            if (afterPurchase && !beforePurchase) {
-                              // 只有在真正购买成功时才显示成功对话框
-                              debugPrint('Purchase was successful! Showing success dialog...');
-                              _showPurchaseSuccessDialog();
-                            } else {
-                              debugPrint('Purchase may not have completed successfully');
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(AppLocalizations.of(context)?.iapPurchaseMayNotComplete ?? '购买可能未完成，请稍后检查'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              }
+                          } catch (e) {
+                            debugPrint('Trial failed with error: $e');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
                             }
                           }
-                        } catch (e) {
-                          debugPrint('Purchase failed with error: $e');
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                        },
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      _buildPurchaseOption(
+                        context,
+                        ref,
+                        iapService.fullVersionProduct,
+                        AppLocalizations.of(context)?.iapFullTitle ?? '完整版',
+                        AppLocalizations.of(context)?.iapFullDesc ?? '解锁所有功能，永久使用',
+                        AppLocalizations.of(context)?.iapFullBuy ?? '立即购买',
+                        Colors.green,
+                        () async {
+                          debugPrint('=== Buy Full Version button clicked ===');
+                          debugPrint('Current trial status: $trialStatus');
+                          debugPrint('IAP Service state:');
+                          debugPrint('  - isAvailable: ${iapService.isAvailable}');
+                          debugPrint('  - loading: ${iapService.loading}');
+                          debugPrint('  - fullVersionPurchased: ${iapService.fullVersionPurchased}');
+                          
+                          try {
+                            debugPrint('Calling iapService.purchaseFullVersion()...');
+                            
+                            // 记录购买前的状态
+                            final beforePurchase = iapService.fullVersionPurchased;
+                            debugPrint('Before purchase - fullVersionPurchased: $beforePurchase');
+                            
+                            await iapService.purchaseFullVersion();
+                            debugPrint('purchaseFullVersion() completed successfully');
+                            
+                            // 购买成功后刷新状态
+                            debugPrint('Invalidating trialStatusProvider...');
+                            ref.invalidate(trialStatusProvider);
+                            
+                            debugPrint('Waiting 500ms for state to update...');
+                            await Future.delayed(const Duration(milliseconds: 500));
+                            
+                            // 检查购买后的状态
+                            final afterPurchase = iapService.fullVersionPurchased;
+                            debugPrint('After purchase - fullVersionPurchased: $afterPurchase');
+                            
+                            if (mounted) {
+                              if (afterPurchase && !beforePurchase) {
+                                // 只有在真正购买成功时才显示成功对话框
+                                debugPrint('Purchase was successful! Showing success dialog...');
+                                _showPurchaseSuccessDialog();
+                              } else {
+                                debugPrint('Purchase may not have completed successfully');
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(AppLocalizations.of(context)?.iapPurchaseMayNotComplete ?? '购买可能未完成，请稍后检查'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint('Purchase failed with error: $e');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)?.iapPurchaseFailed ?? '购买失败，请检查网络或账户后重试'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
-                        }
-                      },
-                    ),
+                        },
+                      ),
+                      
+                      const SizedBox(height: 16),
+                    ],
                     
-                    const SizedBox(height: 16),
-                    
+                    // 恢复购买按钮始终显示
                     _buildPurchaseOption(
                       context,
                       ref,
@@ -420,6 +455,17 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                               // 只有在真正恢复了购买时才显示成功对话框
                               debugPrint('Purchase was successfully restored! Showing success dialog...');
                               _showPurchaseSuccessDialog();
+                            } else if (afterRestore && beforeRestore) {
+                              // 用户已经拥有完整版，恢复购买成功
+                              debugPrint('User already owns full version, restore completed successfully');
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(AppLocalizations.of(context)?.iapRestoreSuccess ?? '恢复购买成功，您已拥有完整版'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
                             } else {
                               debugPrint('No purchases were restored. Showing info message...');
                               if (context.mounted) {
@@ -448,8 +494,6 @@ class _IAPPageState extends ConsumerState<IAPPage> {
                     
                     const SizedBox(height: 20),
                     
-                  ] else if (trialStatus['fullVersionPurchased']) ...[
-                    // 已购买完整版，不显示任何购买选项
                   ] else if (iapService.loading || iapService.networkRetryInProgress) ...[
                     // 正在加载或重试中，不显示购买选项，让用户看到加载状态
                   ] else if (!iapService.isAvailable) ...[

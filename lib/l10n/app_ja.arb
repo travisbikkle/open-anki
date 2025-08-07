@@ -138,5 +138,9 @@
   "iapRetryConnection": "再試行",
   "iapQueryingPurchaseStatus": "購入ステータスを照会中...",
   "iapPleaseWaitGettingInfo": "お待ちください。サーバーから購入情報を取得中です",
-  "iapCannotQueryPurchaseInfo": "アプリの購入情報を照会できません。ネットワークを確認してください"
+  "iapCannotQueryPurchaseInfo": "アプリの購入情報を照会できません。ネットワークを確認してください",
+  "iapRestoreSuccess": "復元が成功しました。既に完全版を所有しています",
+  "iapTrialAlreadyUsed": "既に試用版を使用済みです",
+  "iapTrialExpiredMessage": "試用期間が終了しました。完全版を購入してください",
+  "iapTrialRemainingMessage": "試用期間残り{days}日"
 } 

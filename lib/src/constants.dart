@@ -24,6 +24,8 @@ bool get isWeb => false; // Platform.isWeb is not available in dart:io
 bool get isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 // Feature flags based on platform
-bool get enableIAP => isIOS; // Only enable IAP on iOS
+bool get enableIAP => isIOS && !isDesktop; // Only enable IAP on iOS devices, not macOS
 bool get enableAppleFeatures => isIOS; // Only enable Apple-specific features on iOS
 
+// 内购
+const int kIAPTrialDays = 14;

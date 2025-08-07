@@ -138,5 +138,9 @@
   "iapRetryConnection": "Wiederholen",
   "iapQueryingPurchaseStatus": "Kaufstatus wird abgefragt...",
   "iapPleaseWaitGettingInfo": "Bitte warten, Kaufinformationen werden vom Server abgerufen",
-  "iapCannotQueryPurchaseInfo": "App-Kaufinformationen können nicht abgefragt werden, bitte Netzwerk prüfen"
+  "iapCannotQueryPurchaseInfo": "App-Kaufinformationen können nicht abgefragt werden, bitte Netzwerk prüfen",
+  "iapRestoreSuccess": "Wiederherstellung erfolgreich, Sie besitzen bereits die Vollversion",
+  "iapTrialAlreadyUsed": "Sie haben die Testversion bereits verwendet",
+  "iapTrialExpiredMessage": "Testversion ist abgelaufen, bitte Vollversion kaufen",
+  "iapTrialRemainingMessage": "Testversion verbleibend {days} Tage"
 } 

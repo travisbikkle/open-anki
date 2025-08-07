@@ -138,5 +138,9 @@
   "iapRetryConnection": "Повторить",
   "iapQueryingPurchaseStatus": "Запрос статуса покупки...",
   "iapPleaseWaitGettingInfo": "Пожалуйста, подождите, получение информации о покупке с сервера",
-  "iapCannotQueryPurchaseInfo": "Не удается запросить информацию о покупке приложения, проверьте сеть"
+  "iapCannotQueryPurchaseInfo": "Не удается запросить информацию о покупке приложения, проверьте сеть",
+  "iapRestoreSuccess": "Восстановление успешно, у вас уже есть полная версия",
+  "iapTrialAlreadyUsed": "Вы уже использовали пробную версию",
+  "iapTrialExpiredMessage": "Пробная версия истекла, пожалуйста, купите полную версию",
+  "iapTrialRemainingMessage": "Пробная версия осталось {days} дней"
 } 

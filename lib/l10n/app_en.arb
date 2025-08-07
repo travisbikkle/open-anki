@@ -138,5 +138,9 @@
   "iapRetryConnection": "Retry",
   "iapQueryingPurchaseStatus": "Querying purchase status...",
   "iapPleaseWaitGettingInfo": "Please wait, getting your purchase information from server",
-  "iapCannotQueryPurchaseInfo": "Cannot query app purchase information, please check network"
+  "iapCannotQueryPurchaseInfo": "Cannot query app purchase information, please check network",
+  "iapRestoreSuccess": "Restore successful, you already own the full version",
+  "iapTrialAlreadyUsed": "You have already used the trial",
+  "iapTrialExpiredMessage": "Trial has expired, please purchase full version",
+  "iapTrialRemainingMessage": "Trial remaining {days} days"
 } 

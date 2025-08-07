@@ -85,6 +85,82 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..enableZoom(false)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (WebResourceError error) {
+            LogHelper.log('WebView Error: ${error.description}');
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.completeError(error);
+            }
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.completeError(error);
+            }
+          },
+          onPageFinished: (String url) async {
+            // Inject JS to scale checkboxes and radios
+            await _controller.runJavaScript('''
+              (function() {
+                var scale = 1.1;
+                var fontSize = window.getComputedStyle(document.body).fontSize;
+                var px = parseFloat(fontSize || '12');
+                var size = Math.max(px, 12);
+                var css = 'input[type=checkbox], input[type=radio] { width: ' + size + 'px !important; height: ' + size + 'px !important; min-width: ' + size + 'px !important; min-height: ' + size + 'px !important; zoom: ' + scale + '; vertical-align: middle; }';
+                var style = document.createElement('style');
+                style.innerHTML = css;
+                document.head.appendChild(style);
+              })();
+            ''');
+            
+            // Complete the flip operation now that the page is fully loaded
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.complete();
+            }
+            // Complete the card load operation
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.complete();
+            }
+          },
+        ),
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (WebResourceError error) {
+            LogHelper.log('WebView Error: ${error.description}');
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.completeError(error);
+            }
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.completeError(error);
+            }
+          },
+          onPageFinished: (String url) async {
+            // Inject JS to scale checkboxes and radios
+            await _controller.runJavaScript('''
+              (function() {
+                var scale = 1.1;
+                var fontSize = window.getComputedStyle(document.body).fontSize;
+                var px = parseFloat(fontSize || '12');
+                var size = Math.max(px, 12);
+                var css = 'input[type=checkbox], input[type=radio] { width: ' + size + 'px !important; height: ' + size + 'px !important; min-width: ' + size + 'px !important; min-height: ' + size + 'px !important; zoom: ' + scale + '; vertical-align: middle; }';
+                var style = document.createElement('style');
+                style.innerHTML = css;
+                document.head.appendChild(style);
+              })();
+            ''');
+            
+            // Complete the flip operation now that the page is fully loaded
+            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
+              _flipCompleter!.complete();
+            }
+            // Complete the card load operation
+            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
+              _cardLoadCompleter!.complete();
+            }
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'AnkiDebug',
         onMessageReceived: (JavaScriptMessage message) {
@@ -128,43 +204,6 @@ class _CardReviewPageState extends ConsumerState<CardReviewPage> {
             }
           }();
         },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onWebResourceError: (WebResourceError error) {
-            LogHelper.log('WebView Error: ${error.description}');
-            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
-              _flipCompleter!.completeError(error);
-            }
-            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
-              _cardLoadCompleter!.completeError(error);
-            }
-          },
-          onPageFinished: (String url) async {
-            // Inject JS to scale checkboxes and radios
-            await _controller.runJavaScript('''
-              (function() {
-                var scale = 1.1;
-                var fontSize = window.getComputedStyle(document.body).fontSize;
-                var px = parseFloat(fontSize || '12');
-                var size = Math.max(px, 12);
-                var css = 'input[type=checkbox], input[type=radio] { width: ' + size + 'px !important; height: ' + size + 'px !important; min-width: ' + size + 'px !important; min-height: ' + size + 'px !important; zoom: ' + scale + '; vertical-align: middle; }';
-                var style = document.createElement('style');
-                style.innerHTML = css;
-                document.head.appendChild(style);
-              })();
-            ''');
-            
-            // Complete the flip operation now that the page is fully loaded
-            if (_flipCompleter != null && !_flipCompleter!.isCompleted) {
-              _flipCompleter!.complete();
-            }
-            // Complete the card load operation
-            if (_cardLoadCompleter != null && !_cardLoadCompleter!.isCompleted) {
-              _cardLoadCompleter!.complete();
-            }
-          },
-        ),
       );
     _loadFontSizeAndDeck();
   }

@@ -248,7 +248,7 @@ class _HomePageWrapperState extends ConsumerState<HomePageWrapper> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('首页'),
+        title: Text(AppLocalizations.of(context)?.home ?? '首页'),
         // 移除actions中的清理按钮
       ),
       body: Builder(

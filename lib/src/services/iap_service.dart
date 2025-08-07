@@ -119,6 +119,12 @@ class IAPService extends ChangeNotifier {
       // 等待一段时间让restorePurchases的结果被处理
       await Future.delayed(const Duration(milliseconds: 1000));
       
+      LogHelper.log('IAP service initialization completed');
+      LogHelper.log('Final state:');
+      LogHelper.log('  - _fullVersionPurchased: $_fullVersionPurchased');
+      LogHelper.log('  - _trialUsed: $_trialUsed');
+      LogHelper.log('  - _trialStartDate: $_trialStartDate');
+      
       _loading = false;
       notifyListeners();
     } catch (e) {
@@ -229,6 +235,10 @@ class IAPService extends ChangeNotifier {
     LogHelper.log('Current _trialUsed before processing: $_trialUsed');
     
     bool hasFullVersion = false;
+    bool hasTrial = false;
+    DateTime? trialStartDate;
+    
+    // 首先遍历所有购买记录，收集信息
     for (final purchaseDetails in purchaseDetailsList) {
       LogHelper.log('Processing purchase: ${purchaseDetails.productID} - status: ${purchaseDetails.status}');
       LogHelper.log('Purchase details: ${purchaseDetails.toString()}');
@@ -242,11 +252,12 @@ class IAPService extends ChangeNotifier {
           hasFullVersion = true;
         }
         if (purchaseDetails.productID == _trialProductId) {
-          LogHelper.log('Trial product detected! Setting _trialUsed = true');
-          _trialUsed = true;
-          if (_trialStartDate == null) {
-            _trialStartDate = DateTime.now();
-            LogHelper.log('Setting trial start date to: $_trialStartDate');
+          LogHelper.log('Trial product detected! Setting hasTrial = true');
+          hasTrial = true;
+          // 记录试用开始时间，但不立即设置
+          if (trialStartDate == null) {
+            trialStartDate = DateTime.now();
+            LogHelper.log('Trial start date would be: $trialStartDate');
           }
         }
       } else {
@@ -264,10 +275,29 @@ class IAPService extends ChangeNotifier {
       }
     }
     
+    // 设置最终状态，完整版优先级更高
     LogHelper.log('Final hasFullVersion: $hasFullVersion');
+    LogHelper.log('Final hasTrial: $hasTrial');
+    
     _fullVersionPurchased = hasFullVersion;
     LogHelper.log('Set _fullVersionPurchased to: $_fullVersionPurchased');
+    
+    // 只有在没有完整版的情况下才设置试用状态
+    if (hasTrial && !hasFullVersion) {
+      _trialUsed = true;
+      if (_trialStartDate == null) {
+        _trialStartDate = trialStartDate;
+        LogHelper.log('Setting trial start date to: $_trialStartDate');
+      }
+    } else if (hasFullVersion) {
+      // 如果有完整版，清除试用状态
+      _trialUsed = false;
+      _trialStartDate = null;
+      LogHelper.log('Full version detected, clearing trial status');
+    }
+    
     LogHelper.log('Final _trialUsed: $_trialUsed');
+    LogHelper.log('Final _trialStartDate: $_trialStartDate');
     
     notifyListeners();
     LogHelper.log('=== _onPurchaseUpdate completed ===');
@@ -320,6 +350,11 @@ class IAPService extends ChangeNotifier {
     LogHelper.log('  - _fullVersionProductId: $_fullVersionProductId');
     LogHelper.log('  - _trialProductId: $_trialProductId');
     
+    // 保存当前状态，防止在恢复过程中被重置
+    final bool currentFullVersionPurchased = _fullVersionPurchased;
+    final bool currentTrialUsed = _trialUsed;
+    final DateTime? currentTrialStartDate = _trialStartDate;
+    
     try {
       _restorePurchasePending = true;
       notifyListeners();
@@ -335,6 +370,15 @@ class IAPService extends ChangeNotifier {
       LogHelper.log('  - _fullVersionPurchased: $_fullVersionPurchased');
       LogHelper.log('  - _trialUsed: $_trialUsed');
       LogHelper.log('  - _trialStartDate: $_trialStartDate');
+      
+      // 如果恢复后状态被重置了，恢复之前的状态
+      if (!_fullVersionPurchased && currentFullVersionPurchased) {
+        LogHelper.log('Restoring previous full version state');
+        _fullVersionPurchased = currentFullVersionPurchased;
+        _trialUsed = currentTrialUsed;
+        _trialStartDate = currentTrialStartDate;
+        notifyListeners();
+      }
       
     } catch (e) {
       LogHelper.log('restorePurchases error: $e');
@@ -353,12 +397,12 @@ class IAPService extends ChangeNotifier {
     if (_trialStartDate == null) return false;
     final now = DateTime.now();
     final difference = now.difference(_trialStartDate!).inDays;
-    return difference >= 14;
+    return difference >= kIAPTrialDays;
   }
   int? getRemainingTrialDays() {
     if (_trialStartDate == null) return null;
     final now = DateTime.now();
     final difference = now.difference(_trialStartDate!).inDays;
-    return 14 - difference;
+    return kIAPTrialDays - difference;
   }
 } 
